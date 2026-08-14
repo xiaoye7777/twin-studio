@@ -39,6 +39,12 @@ const router = createRouter({
       meta: { title: '场景编辑器' },
     },
     {
+      path: '/dev/meteor-sandbox',
+      name: 'meteor-sandbox',
+      component: () => import('@/views/dev/MeteorSandbox.vue'),
+      meta: { title: 'Meteor3D Runtime Sandbox' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/projects',
     },

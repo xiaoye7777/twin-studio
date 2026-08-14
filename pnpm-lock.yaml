@@ -11,6 +11,9 @@ importers:
       '@element-plus/icons-vue':
         specifier: 2.3.2
         version: 2.3.2(vue@3.5.25(typescript@5.9.3))
+      '@meteor3d/core':
+        specifier: file:../Meteor3D/packages/core
+        version: file:../Meteor3D/packages/core
       element-plus:
         specifier: 2.11.8
         version: 2.11.8(vue@3.5.25(typescript@5.9.3))
@@ -53,6 +56,29 @@ importers:
         version: 3.1.5(typescript@5.9.3)
 
 packages:
+
+  3d-tiles-renderer@0.4.28:
+    resolution: {integrity: sha512-eDFg3fTgnFeoa6kU9oyAQIci/N/CJq6JUi/ZUrmDyqLzEDH9mWd9FBs+NqS+0eO8b7y4HjIWfUVnf8o03AFtSA==}
+    peerDependencies:
+      '@babylonjs/core': '>=8.0.0'
+      '@babylonjs/loaders': '>=8.0.0'
+      '@react-three/fiber': ^8.17.9 || ^9.0.0
+      react: ^18.3.1 || ^19.0.0
+      react-dom: ^18.3.1 || ^19.0.0
+      three: '>=0.167.0'
+    peerDependenciesMeta:
+      '@babylonjs/core':
+        optional: true
+      '@babylonjs/loaders':
+        optional: true
+      '@react-three/fiber':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      three:
+        optional: true
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -264,6 +290,15 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@mapbox/point-geometry@1.1.0':
+    resolution: {integrity: sha512-YGcBz1cg4ATXDCM/71L9xveh4dynfGmcLDqufR+nQQy3fKwsAZsWd/x4621/6uJaeB9mwOHE6hPeDgXz9uViUQ==}
+
+  '@mapbox/vector-tile@2.0.5':
+    resolution: {integrity: sha512-pXj8m7KTsqZt+1jsE0xIpGvqTSbblfkuEJL/NJmNePMtEwxO8V3XMDo9WMSfDeqHvCtBI9Lmt4mGcGR10zecmw==}
+
+  '@meteor3d/core@file:../Meteor3D/packages/core':
+    resolution: {directory: ../Meteor3D/packages/core, type: directory}
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
@@ -412,6 +447,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@sparkjsdev/spark@2.1.0':
+    resolution: {integrity: sha512-BRw+MuMzx0B3K8fDLQygt2OHEhYUV+41RX7btq9pZ3rCVrq42o57jW34VAIvC7JO/84DJh/1AutACV9ym6BfVg==}
+    peerDependencies:
+      three: '>=0.180.0'
+
   '@sxzz/popperjs-es@2.11.8':
     resolution: {integrity: sha512-wOwESXvvED3S8xBmcPWHs2dUuzrE4XiZeFu7e1hROIJkm02a49N120pmOXxY33sBb6hArItm5W5tcg1cBtV+HQ==}
 
@@ -512,8 +552,14 @@ packages:
   '@tweenjs/tween.js@23.1.3':
     resolution: {integrity: sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==}
 
+  '@tweenjs/tween.js@25.0.0':
+    resolution: {integrity: sha512-XKLA6syeBUaPzx4j3qwMqzzq+V4uo72BnlbOjmuljLrRqdsd3qnzvZZoxvMHZ23ndsRS4aufU6JOZYpCbU6T1A==}
+
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
+
+  '@types/geojson@7946.0.16':
+    resolution: {integrity: sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==}
 
   '@types/lodash-es@4.17.12':
     resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
@@ -816,6 +862,10 @@ packages:
   path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
 
+  pbf@4.0.2:
+    resolution: {integrity: sha512-J0ajxARhZfpUEebxYs1vhMGMuLSXtBe1e+fFPDrf2uA2hgo+UshKfNUWOz92HJNz6/NFEXseQPddnHkTreWRqg==}
+    hasBin: true
+
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
 
@@ -835,9 +885,18 @@ packages:
       typescript:
         optional: true
 
+  pmtiles@4.5.0:
+    resolution: {integrity: sha512-CBeD4SoUluFziGdy/8k7FOjQxQy486n+929W/tWophauvMICpkZ26vGBWhDt/6b1FZQWNaf4jFdT/5+q0Wii5w==}
+
   postcss@8.5.26:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
+
+  protocol-buffers-schema@3.6.1:
+    resolution: {integrity: sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ==}
+
+  resolve-protobuf-schema@2.1.0:
+    resolution: {integrity: sha512-kI5ffTiZWmJaS/huM8wZfEMer1eRd7oJQhDuxeCLe3t7N7mX3z94CN0xPxBQxFYQTSNz9T0i+v6inKqSdK8xrQ==}
 
   rfdc@1.4.1:
     resolution: {integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==}
@@ -865,6 +924,11 @@ packages:
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
+
+  three-mesh-bvh@0.9.14:
+    resolution: {integrity: sha512-xJzfUXnLYjgw5tRKGxjfJW3Pcx0IbwNskvpdwRryhK07SYrKrYB4W8zAaPxu784gK7G4lCBgG+vfG3YeYn95kg==}
+    peerDependencies:
+      three: '>= 0.159.0'
 
   three@0.184.0:
     resolution: {integrity: sha512-wtTRjG92pM5eUg/KuUnHsqSAlPM296brTOcLgMRqEeylYTh/CdtvKUvCyyCQTzFuStieWxvZb8mVTMvdPyUpxg==}
@@ -955,6 +1019,14 @@ packages:
         optional: true
 
 snapshots:
+
+  3d-tiles-renderer@0.4.28(three@0.184.0):
+    dependencies:
+      '@mapbox/vector-tile': 2.0.5
+      pbf: 4.0.2
+      pmtiles: 4.5.0
+    optionalDependencies:
+      three: 0.184.0
 
   '@babel/helper-string-parser@7.29.7': {}
 
@@ -1085,6 +1157,28 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@mapbox/point-geometry@1.1.0': {}
+
+  '@mapbox/vector-tile@2.0.5':
+    dependencies:
+      '@mapbox/point-geometry': 1.1.0
+      '@types/geojson': 7946.0.16
+      pbf: 4.0.2
+
+  '@meteor3d/core@file:../Meteor3D/packages/core':
+    dependencies:
+      3d-tiles-renderer: 0.4.28(three@0.184.0)
+      '@sparkjsdev/spark': 2.1.0(three@0.184.0)
+      '@tweenjs/tween.js': 25.0.0
+      three: 0.184.0
+      three-mesh-bvh: 0.9.14(three@0.184.0)
+    transitivePeerDependencies:
+      - '@babylonjs/core'
+      - '@babylonjs/loaders'
+      - '@react-three/fiber'
+      - react
+      - react-dom
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
@@ -1165,6 +1259,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.4':
     optional: true
 
+  '@sparkjsdev/spark@2.1.0(three@0.184.0)':
+    dependencies:
+      fflate: 0.8.3
+      three: 0.184.0
+
   '@sxzz/popperjs-es@2.11.8': {}
 
   '@tailwindcss/node@4.1.17':
@@ -1237,7 +1336,11 @@ snapshots:
 
   '@tweenjs/tween.js@23.1.3': {}
 
+  '@tweenjs/tween.js@25.0.0': {}
+
   '@types/estree@1.0.9': {}
+
+  '@types/geojson@7946.0.16': {}
 
   '@types/lodash-es@4.17.12':
     dependencies:
@@ -1574,6 +1677,10 @@ snapshots:
 
   path-browserify@1.0.1: {}
 
+  pbf@4.0.2:
+    dependencies:
+      resolve-protobuf-schema: 2.1.0
+
   perfect-debounce@1.0.0: {}
 
   picocolors@1.1.1: {}
@@ -1587,11 +1694,21 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  pmtiles@4.5.0:
+    dependencies:
+      fflate: 0.8.3
+
   postcss@8.5.26:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  protocol-buffers-schema@3.6.1: {}
+
+  resolve-protobuf-schema@2.1.0:
+    dependencies:
+      protocol-buffers-schema: 3.6.1
 
   rfdc@1.4.1: {}
 
@@ -1638,6 +1755,10 @@ snapshots:
   tailwindcss@4.1.17: {}
 
   tapable@2.3.3: {}
+
+  three-mesh-bvh@0.9.14(three@0.184.0):
+    dependencies:
+      three: 0.184.0
 
   three@0.184.0: {}
 
