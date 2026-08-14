@@ -1,7 +1,11 @@
 import type { SceneManager as SceneManagerType } from '@meteor3d/core'
 import { Mesh, REVISION, Vector2 } from 'three'
-import type { Object3D } from 'three'
-import type { MeteorDisposeDiagnostics, MeteorRuntimeDiagnostics } from './types'
+import type { Intersection, Object3D, PerspectiveCamera, Scene } from 'three'
+import type {
+  MeteorDisposeDiagnostics,
+  MeteorRaycastOptions,
+  MeteorRuntimeDiagnostics,
+} from './types'
 
 type MeshRaycast = Mesh['raycast']
 
@@ -60,6 +64,33 @@ export class MeteorScene {
 
   findObjectByBid<T extends Object3D>(bid: string): T | null {
     return this.requireManager().findObjectByBid<T>(bid)
+  }
+
+  getScene(): Scene {
+    return this.requireManager().scene
+  }
+
+  getCamera(): PerspectiveCamera {
+    return this.requireManager().camera
+  }
+
+  getDomElement(): HTMLCanvasElement {
+    return this.requireManager().renderer.domElement
+  }
+
+  raycastObjects(
+    screenPosition: Vector2,
+    options: MeteorRaycastOptions = {},
+  ): Intersection<Object3D>[] {
+    return this.requireManager().raycastObjects(screenPosition, options)
+  }
+
+  isCameraControlsEnabled(): boolean {
+    return this.requireManager().controls.enabled
+  }
+
+  setCameraControlsEnabled(enabled: boolean): void {
+    this.requireManager().controls.enabled = enabled
   }
 
   setGridHelper(

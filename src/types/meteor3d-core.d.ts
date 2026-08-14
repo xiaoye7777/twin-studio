@@ -1,5 +1,12 @@
 declare module '@meteor3d/core' {
-  import type { Object3D, PerspectiveCamera, Scene, WebGLRenderer } from 'three'
+  import type {
+    Intersection,
+    Object3D,
+    PerspectiveCamera,
+    Scene,
+    Vector2,
+    WebGLRenderer,
+  } from 'three'
 
   interface MeteorOrbitControls {
     enabled: boolean
@@ -19,6 +26,10 @@ declare module '@meteor3d/core' {
 
     addObject<T extends Object3D>(object: T): boolean
     findObjectByBid<T extends Object3D = Object3D>(bid: string): T | null
+    raycastObjects(
+      screenPosition: Vector2,
+      options?: { recursive?: boolean; includeTileMap?: boolean },
+    ): Intersection<Object3D>[]
     setGridHelper(
       visible: boolean,
       length?: number,

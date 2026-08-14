@@ -27,3 +27,8 @@ export interface MeteorDisposeDiagnostics {
   raycastRestored: boolean
   raycastAfterDispose: string
 }
+
+export interface MeteorRaycastOptions {
+  recursive?: boolean
+  includeTileMap?: boolean
+}
