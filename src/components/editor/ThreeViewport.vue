@@ -15,7 +15,6 @@ import {
   Mesh,
   MeshStandardMaterial,
 } from 'three'
-import type { Object3D } from 'three'
 import { SelectionManager } from '@/editor/services/SelectionManager'
 import { TransformManager } from '@/editor/services/TransformManager'
 import { MeteorScene } from '@/infrastructure/meteor3d'
@@ -39,12 +38,13 @@ let meteorScene: MeteorScene | null = null
 let selectionManager: SelectionManager | null = null
 let transformManager: TransformManager | null = null
 let testCube: Mesh | null = null
-let selectableRoots: Object3D[] = []
 let stopSelectionWatch: WatchStopHandle | null = null
 let stopTransformModeWatch: WatchStopHandle | null = null
+let stopTransformRevisionWatch: WatchStopHandle | null = null
 let unmounted = false
 
 const selectedLabel = computed(() => {
+  editorStore.sceneRevision
   if (!editorStore.selectedObject) return '未选择对象'
   return `${editorStore.selectedObject.name || 'Object3D'} · ${editorStore.selectedBid ?? 'No BID'}`
 })
@@ -62,8 +62,10 @@ function syncCubeTransform(): void {
 function disposeEditorRuntime(): void {
   stopSelectionWatch?.()
   stopTransformModeWatch?.()
+  stopTransformRevisionWatch?.()
   stopSelectionWatch = null
   stopTransformModeWatch = null
+  stopTransformRevisionWatch = null
 
   selectionManager?.dispose()
   transformManager?.dispose()
@@ -71,10 +73,10 @@ function disposeEditorRuntime(): void {
   transformManager = null
 
   editorStore.clearSelection()
+  editorStore.setSceneRoots([])
   meteorScene?.dispose()
   meteorScene = null
   testCube = null
-  selectableRoots = []
   cameraControlsEnabled.value = false
 }
 
@@ -114,7 +116,7 @@ onMounted(async () => {
     if (!runtime.addObject(cube)) throw new Error('Meteor3D rejected the demo cube')
 
     testCube = cube
-    selectableRoots = [cube]
+    editorStore.setSceneRoots([cube])
     syncCubeTransform()
 
     const transforms = new TransformManager(runtime, {
@@ -128,7 +130,7 @@ onMounted(async () => {
           lastCameraConflictCheck.value = cameraControlsEnabled.value ? 'fail' : 'pass'
         }
       },
-      onObjectChange: syncCubeTransform,
+      onObjectChange: () => editorStore.notifyTransformChanged('gizmo'),
     })
     transformManager = transforms
 
@@ -136,7 +138,7 @@ onMounted(async () => {
       canvas,
       meteorScene: runtime,
       editorStore,
-      getSelectableRoots: () => selectableRoots,
+      getSelectableRoots: () => editorStore.sceneRoots,
       shouldIgnorePointer: () => transforms.isPointerInteractionActive(),
     })
 
@@ -153,6 +155,11 @@ onMounted(async () => {
       () => editorStore.transformMode,
       (mode) => transforms.setMode(mode),
       { immediate: true },
+    )
+
+    stopTransformRevisionWatch = watch(
+      () => editorStore.transformRevision,
+      syncCubeTransform,
     )
   } catch (error) {
     if (!unmounted) {
