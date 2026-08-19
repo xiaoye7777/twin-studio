@@ -12,8 +12,8 @@ importers:
         specifier: 2.3.2
         version: 2.3.2(vue@3.5.25(typescript@5.9.3))
       '@meteor3d/core':
-        specifier: file:../Meteor3D/packages/core
-        version: file:../Meteor3D/packages/core
+        specifier: git+https://github.com/nikonikoCW/Meteor3DEditor.git#34cb34712ba25b09732dd646c6d1203084eb055a&path:/packages/core
+        version: https://codeload.github.com/nikonikoCW/Meteor3DEditor/tar.gz/34cb34712ba25b09732dd646c6d1203084eb055a#path:/packages/core
       element-plus:
         specifier: 2.11.8
         version: 2.11.8(vue@3.5.25(typescript@5.9.3))
@@ -296,8 +296,9 @@ packages:
   '@mapbox/vector-tile@2.0.5':
     resolution: {integrity: sha512-pXj8m7KTsqZt+1jsE0xIpGvqTSbblfkuEJL/NJmNePMtEwxO8V3XMDo9WMSfDeqHvCtBI9Lmt4mGcGR10zecmw==}
 
-  '@meteor3d/core@file:../Meteor3D/packages/core':
-    resolution: {directory: ../Meteor3D/packages/core, type: directory}
+  '@meteor3d/core@https://codeload.github.com/nikonikoCW/Meteor3DEditor/tar.gz/34cb34712ba25b09732dd646c6d1203084eb055a#path:/packages/core':
+    resolution: {gitHosted: true, integrity: sha512-rJ2UyuYk9t3HSEIRLgijkZm+9h3kBC//DNUP/XZo5IRW4ocjxAwUOnCqq+i00s1WXOhArZ8Oj7MDzkvv7AFDcQ==, path: /packages/core, tarball: https://codeload.github.com/nikonikoCW/Meteor3DEditor/tar.gz/34cb34712ba25b09732dd646c6d1203084eb055a}
+    version: 1.0.0
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
@@ -1165,7 +1166,7 @@ snapshots:
       '@types/geojson': 7946.0.16
       pbf: 4.0.2
 
-  '@meteor3d/core@file:../Meteor3D/packages/core':
+  '@meteor3d/core@https://codeload.github.com/nikonikoCW/Meteor3DEditor/tar.gz/34cb34712ba25b09732dd646c6d1203084eb055a#path:/packages/core':
     dependencies:
       3d-tiles-renderer: 0.4.28(three@0.184.0)
       '@sparkjsdev/spark': 2.1.0(three@0.184.0)
