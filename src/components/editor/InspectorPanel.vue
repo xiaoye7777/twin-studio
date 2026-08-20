@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { MathUtils } from 'three'
+import { getEditorMetadata } from '@/editor/editorMetadata'
 import type { InspectorFormState, Vector3FormValue } from '@/editor/types'
 import { useEditorStore } from '@/stores/editor'
 
@@ -24,6 +25,9 @@ const transformFields: readonly TransformField[] = [
 ]
 
 const editorStore = useEditorStore()
+const selectedMetadata = computed(() =>
+  editorStore.selectedObject ? getEditorMetadata(editorStore.selectedObject) : null,
+)
 const form = reactive<InspectorFormState>({
   name: '',
   position: { x: 0, y: 0, z: 0 },
@@ -57,7 +61,7 @@ function updateName(value: string): void {
   if (!object) return
 
   object.name = value
-  editorStore.notifySceneChanged()
+  editorStore.notifySceneChanged(object)
 }
 
 function updateTransformValue(
@@ -84,7 +88,7 @@ function applyTransformToSelectedObject(): void {
   object.scale.set(form.scale.x, form.scale.y, form.scale.z)
   object.updateMatrix()
   object.updateMatrixWorld(true)
-  editorStore.notifyTransformChanged('inspector')
+  editorStore.notifyTransformChanged('inspector', object)
 }
 
 watch(
@@ -109,6 +113,9 @@ watch(
     :data-position="`${form.position.x},${form.position.y},${form.position.z}`"
     :data-rotation-degrees="`${form.rotation.x},${form.rotation.y},${form.rotation.z}`"
     :data-scale="`${form.scale.x},${form.scale.y},${form.scale.z}`"
+    :data-asset-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.assetId : ''"
+    :data-instance-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.instanceId : ''"
+    :data-node-id="selectedMetadata?.kind === 'primitive' ? selectedMetadata.nodeId : ''"
     class="w-[280px] shrink-0 border-l border-slate-700 bg-slate-800 text-slate-300"
   >
     <div class="flex h-10 items-center border-b border-slate-700 px-4 text-xs font-semibold text-slate-200">
@@ -142,6 +149,13 @@ watch(
         <p class="text-[10px] uppercase tracking-wide text-slate-500">BID</p>
         <p data-testid="inspector-bid" class="mt-1 truncate font-mono text-[10px] text-sky-300">
           {{ editorStore.selectedBid ?? '—' }}
+        </p>
+      </div>
+
+      <div class="rounded-md border border-slate-700 bg-slate-900/40 px-3 py-2">
+        <p class="text-[10px] uppercase tracking-wide text-slate-500">Asset Node ID</p>
+        <p data-testid="inspector-asset-node-id" class="mt-1 truncate font-mono text-[10px] text-slate-300">
+          {{ editorStore.selectedObject.userData.assetNodeId ?? '—' }}
         </p>
       </div>
 

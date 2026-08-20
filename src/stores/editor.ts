@@ -13,6 +13,10 @@ export const useEditorStore = defineStore('editor', () => {
   const sceneRevision = ref(0)
   const transformRevision = ref(0)
   const transformChangeSource = ref<TransformChangeSource | null>(null)
+  const pendingModelFile = shallowRef<File | null>(null)
+  const modelImportRevision = ref(0)
+  const modifiedObjects = shallowRef<Object3D[]>([])
+  const sceneSaveRevision = ref(0)
 
   function selectObject(object: Object3D): void {
     selectedObject.value = markRaw(object)
@@ -33,13 +37,37 @@ export const useEditorStore = defineStore('editor', () => {
     sceneRevision.value += 1
   }
 
-  function notifySceneChanged(): void {
+  function markObjectModified(object: Object3D): void {
+    if (modifiedObjects.value.includes(object)) return
+    modifiedObjects.value = [...modifiedObjects.value, markRaw(object)]
+  }
+
+  function notifySceneChanged(object?: Object3D): void {
+    if (object) markObjectModified(object)
     sceneRevision.value += 1
   }
 
-  function notifyTransformChanged(source: TransformChangeSource): void {
+  function notifyTransformChanged(source: TransformChangeSource, object?: Object3D): void {
+    if (object) markObjectModified(object)
     transformChangeSource.value = source
     transformRevision.value += 1
+  }
+
+  function requestModelImport(file: File): void {
+    pendingModelFile.value = markRaw(file)
+    modelImportRevision.value += 1
+  }
+
+  function clearPendingModelImport(): void {
+    pendingModelFile.value = null
+  }
+
+  function requestSceneSave(): void {
+    sceneSaveRevision.value += 1
+  }
+
+  function clearModifiedObjects(): void {
+    modifiedObjects.value = []
   }
 
   return {
@@ -50,11 +78,20 @@ export const useEditorStore = defineStore('editor', () => {
     sceneRevision,
     transformRevision,
     transformChangeSource,
+    pendingModelFile,
+    modelImportRevision,
+    modifiedObjects,
+    sceneSaveRevision,
     selectObject,
     clearSelection,
     setTransformMode,
     setSceneRoots,
     notifySceneChanged,
     notifyTransformChanged,
+    markObjectModified,
+    requestModelImport,
+    clearPendingModelImport,
+    requestSceneSave,
+    clearModifiedObjects,
   }
 })
