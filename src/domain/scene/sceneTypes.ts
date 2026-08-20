@@ -10,6 +10,7 @@ export interface SceneNodeOverrideV1 {
   name: string
   transform: SceneTransformV1
   runtimeBid?: string
+  visible?: boolean
 }
 
 export interface SceneAssetInstanceV1 {
@@ -19,6 +20,8 @@ export interface SceneAssetInstanceV1 {
   transform: SceneTransformV1
   nodeOverrides: SceneNodeOverrideV1[]
   runtimeBid?: string
+  visible?: boolean
+  deletedAssetNodeIds?: string[]
 }
 
 export interface SceneBoxPropertiesV1 {
@@ -32,6 +35,7 @@ export interface ScenePrimitiveV1 {
   transform: SceneTransformV1
   properties: SceneBoxPropertiesV1
   runtimeBid?: string
+  visible?: boolean
 }
 
 export interface SceneDocumentV1 {

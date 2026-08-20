@@ -5,6 +5,7 @@ export interface AssetInstanceEditorMetadata {
   assetRoot: true
   assetId: string
   instanceId: string
+  deletedAssetNodeIds: string[]
 }
 export interface PrimitiveEditorMetadata {
   kind: 'primitive'

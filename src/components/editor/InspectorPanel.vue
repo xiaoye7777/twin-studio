@@ -2,6 +2,8 @@
 import { computed, reactive, watch } from 'vue'
 import { MathUtils } from 'three'
 import { getEditorMetadata } from '@/editor/editorMetadata'
+import { captureTransform } from '@/editor/history'
+import type { TransformState } from '@/editor/history'
 import type { InspectorFormState, Vector3FormValue } from '@/editor/types'
 import { useEditorStore } from '@/stores/editor'
 
@@ -34,6 +36,8 @@ const form = reactive<InspectorFormState>({
   rotation: { x: 0, y: 0, z: 0 },
   scale: { x: 1, y: 1, z: 1 },
 })
+let nameEditBefore = ''
+let transformEditBefore: TransformState | null = null
 
 function copyVector(target: Vector3FormValue, source: readonly [number, number, number]): void {
   target.x = source[0]
@@ -62,6 +66,19 @@ function updateName(value: string): void {
 
   object.name = value
   editorStore.notifySceneChanged(object)
+}
+function commitName(): void {
+  const object = editorStore.selectedObject
+  if (object && nameEditBefore !== object.name) editorStore.commitRename(object, nameEditBefore, object.name)
+}
+function beginTransformEdit(): void {
+  const object = editorStore.selectedObject
+  if (object && !transformEditBefore) transformEditBefore = captureTransform(object)
+}
+function commitTransformEdit(): void {
+  const object = editorStore.selectedObject
+  if (object && transformEditBefore) editorStore.commitTransform(object, transformEditBefore, captureTransform(object))
+  transformEditBefore = null
 }
 
 function updateTransformValue(
@@ -142,6 +159,8 @@ watch(
           :model-value="form.name"
           size="small"
           @update:model-value="updateName"
+          @focus="nameEditBefore = editorStore.selectedObject?.name ?? ''"
+          @change="commitName"
         />
       </label>
 
@@ -178,10 +197,13 @@ watch(
               size="small"
               class="w-full!"
               @update:model-value="(value: number | undefined) => updateTransformValue(field.key, axis, value)"
+              @focus="beginTransformEdit"
+              @change="commitTransformEdit"
             />
           </label>
         </div>
       </div>
+      <el-button data-testid="reset-transform" size="small" class="w-full" @click="editorStore.resetSelectedTransform()">重置变换</el-button>
     </div>
   </aside>
 </template>

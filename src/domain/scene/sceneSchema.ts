@@ -38,6 +38,7 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
     ) {
       return false
     }
+    if (instance.deletedAssetNodeIds !== undefined && (!Array.isArray(instance.deletedAssetNodeIds) || !instance.deletedAssetNodeIds.every((id) => typeof id === 'string'))) return false
     return instance.nodeOverrides.every(
       (override) =>
         isRecord(override) &&

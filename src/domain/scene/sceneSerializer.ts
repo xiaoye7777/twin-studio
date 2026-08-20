@@ -44,6 +44,7 @@ function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
     transform: serializeTransform(root),
     properties: { color },
     runtimeBid: runtimeBid(root),
+    visible: root.visible,
   }
 }
 
@@ -66,6 +67,7 @@ export function serializeSceneDocument(options: {
       name: object.name,
       transform: serializeTransform(object),
       runtimeBid: runtimeBid(object),
+      visible: object.visible,
     })
     overridesByRoot.set(root, overrides)
   }
@@ -83,6 +85,8 @@ export function serializeSceneDocument(options: {
         transform: serializeTransform(root),
         nodeOverrides: overridesByRoot.get(root) ?? [],
         runtimeBid: runtimeBid(root),
+        visible: root.visible,
+        deletedAssetNodeIds: metadata.deletedAssetNodeIds,
       })
       continue
     }

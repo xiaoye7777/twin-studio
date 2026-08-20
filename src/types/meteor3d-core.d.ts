@@ -25,6 +25,7 @@ declare module '@meteor3d/core' {
     gridVisible: boolean
 
     addObject<T extends Object3D>(object: T): boolean
+    removeObject(object: Object3D): void
     findObjectByBid<T extends Object3D = Object3D>(bid: string): T | null
     raycastObjects(
       screenPosition: Vector2,
@@ -38,6 +39,7 @@ declare module '@meteor3d/core' {
       lengthSegments?: number,
     ): void
     focusObject(bid: string, options?: Record<string, unknown>): Promise<void>
+    fitCameraToScene(): Promise<void>
     dispose(): void
   }
 

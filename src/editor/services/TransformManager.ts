@@ -1,6 +1,7 @@
 import type { Object3D } from 'three'
 import { TransformControls } from 'three/addons/controls/TransformControls.js'
 import type { MeteorScene } from '@/infrastructure/meteor3d'
+import { MathUtils } from 'three'
 import type { TransformMode } from '@/stores/editor'
 
 interface TransformManagerOptions {
@@ -22,6 +23,7 @@ export class TransformManager {
   private readonly onObjectChange?: (object: Object3D) => void
   private restoreCameraControls: boolean | null = null
   private suppressSelectionUntil = 0
+  private snapValue: number | null = null
 
   constructor(meteorScene: MeteorScene, options: TransformManagerOptions = {}) {
     this.meteorScene = meteorScene
@@ -52,7 +54,10 @@ export class TransformManager {
 
   setMode(mode: TransformMode): void {
     this.controls.setMode(mode)
+    this.applySnap(mode)
   }
+
+  setSnap(value: number | null): void { this.snapValue = value; this.applySnap(this.controls.getMode()) }
 
   isPointerInteractionActive(): boolean {
     return (
@@ -108,5 +113,11 @@ export class TransformManager {
 
   private readonly handleObjectChange = (): void => {
     if (this.controls.object) this.onObjectChange?.(this.controls.object)
+  }
+
+  private applySnap(mode: TransformMode): void {
+    this.controls.setTranslationSnap(mode === 'translate' ? this.snapValue : null)
+    this.controls.setRotationSnap(mode === 'rotate' && this.snapValue !== null ? MathUtils.degToRad(this.snapValue) : null)
+    this.controls.setScaleSnap(mode === 'scale' ? this.snapValue : null)
   }
 }

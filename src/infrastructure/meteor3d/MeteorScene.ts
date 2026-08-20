@@ -66,6 +66,7 @@ export class MeteorScene {
   addObject<T extends Object3D>(object: T): boolean {
     return this.requireManager().addObject(object)
   }
+  removeObject(object: Object3D): void { this.requireManager().removeObject(object) }
 
   loadGLTFModel(url: string): Promise<Object3D> {
     return this.requirePersistenceManager().loadGLTFModel(url)
@@ -74,6 +75,7 @@ export class MeteorScene {
   focusObject(bid: string): Promise<void> {
     return this.requireManager().focusObject(bid)
   }
+  fitScene(): Promise<void> { return this.requireManager().fitCameraToScene() }
 
   findObjectByBid<T extends Object3D>(bid: string): T | null {
     return this.requireManager().findObjectByBid<T>(bid)

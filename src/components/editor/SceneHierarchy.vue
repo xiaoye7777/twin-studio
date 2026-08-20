@@ -118,6 +118,13 @@ watch(
             <span class="h-3 w-3 shrink-0 rounded-sm border border-sky-400/70 bg-sky-500/20" />
             <span class="min-w-0 flex-1 truncate">{{ data.name }}</span>
             <span class="shrink-0 text-[9px] text-slate-600">{{ data.type }}</span>
+            <button
+              :data-testid="`visibility-${data.id}`"
+              :aria-label="data.object.visible ? '隐藏对象' : '显示对象'"
+              class="shrink-0 rounded px-1 text-[11px] text-slate-500 hover:bg-slate-700 hover:text-white"
+              type="button"
+              @click.stop="editorStore.toggleVisibility(data.object)"
+            >{{ data.object.visible ? '◉' : '○' }}</button>
           </div>
         </template>
       </el-tree>

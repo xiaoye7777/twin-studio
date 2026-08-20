@@ -14,7 +14,9 @@ import {
 import type { Object3D } from 'three'
 import { applySceneTransform, serializeSceneDocument } from '@/domain/scene'
 import type { SceneAssetInstanceV1, SceneDocumentV1, ScenePrimitiveV1 } from '@/domain/scene'
-import { setEditorMetadata } from '@/editor/editorMetadata'
+import { findAssetInstanceRoot, getEditorMetadata, setEditorMetadata } from '@/editor/editorMetadata'
+import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
+import type { TransformState } from '@/editor/history'
 import { ImportedAssetResourceRegistry } from '@/editor/services/ImportedAssetResourceRegistry'
 import { SelectionManager } from '@/editor/services/SelectionManager'
 import { TransformManager } from '@/editor/services/TransformManager'
@@ -63,6 +65,11 @@ let unmounted = false
 let nextModelOffsetX = 2.5
 let importQueue = Promise.resolve()
 let saveQueue = Promise.resolve()
+let gizmoTransformBefore: TransformState | null = null
+const history = new HistoryManager(() => {
+  editorStore.setHistoryState(history.canUndo, history.canRedo)
+  if (history.canUndo || history.canRedo) editorStore.setDirty(true)
+})
 
 const selectedLabel = computed(() => {
   editorStore.sceneRevision
@@ -72,6 +79,14 @@ const selectedLabel = computed(() => {
 
 function createPlatformId(prefix: 'instance' | 'node'): string {
   return `${prefix}_${globalThis.crypto.randomUUID()}`
+}
+
+function captureInitialTransforms(root: Object3D): void {
+  root.traverse((object) => { object.userData.editorInitialTransform = captureTransform(object) })
+}
+
+function notifyTransform(object: Object3D): void {
+  editorStore.notifyTransformChanged('inspector', object)
 }
 
 function syncCubeTransform(): void {
@@ -111,6 +126,12 @@ function createBoxPrimitive(saved?: ScenePrimitiveV1): Mesh {
   } else {
     cube.position.y = 0.7
   }
+  cube.visible = saved?.visible ?? true
+  cube.userData.editorInitialTransform = {
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+  } satisfies TransformState
   return cube
 }
 
@@ -142,7 +163,9 @@ async function restoreAssetInstance(
     assetRoot: true,
     assetId: instance.assetId,
     instanceId: instance.instanceId,
+    deletedAssetNodeIds: [...(instance.deletedAssetNodeIds ?? [])],
   })
+  captureInitialTransforms(model)
   applySceneTransform(model, instance.transform)
   if (instance.runtimeBid) model.userData.bid = instance.runtimeBid
 
@@ -155,9 +178,12 @@ async function restoreAssetInstance(
     }
     node.name = override.name
     applySceneTransform(node, override.transform)
+    node.visible = override.visible ?? true
     if (override.runtimeBid) node.userData.bid = override.runtimeBid
     editorStore.markObjectModified(node)
   }
+  for (const assetNodeId of instance.deletedAssetNodeIds ?? []) nodes.get(assetNodeId)?.removeFromParent()
+  model.visible = instance.visible ?? true
 
   if (!runtime.addObject(model)) throw new Error(`Meteor3D 无法恢复模型 ${instance.name}`)
   importedModelCount.value += 1
@@ -200,7 +226,9 @@ async function importModel(file: File): Promise<void> {
       assetRoot: true,
       assetId: asset.id,
       instanceId: createPlatformId('instance'),
+      deletedAssetNodeIds: [],
     })
+    captureInitialTransforms(model)
     model.updateMatrixWorld(true)
     const size = new Box3().setFromObject(model).getSize(new Vector3())
     model.position.x += nextModelOffsetX
@@ -234,10 +262,104 @@ async function saveScene(): Promise<void> {
     sceneDocumentDebugJson.value = JSON.stringify(document)
     lastSavedInstanceCount.value = document.instances.length
     lastSavedPrimitiveCount.value = document.primitives.length
+    editorStore.setDirty(false)
     ElMessage.success('场景已保存')
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '场景保存失败')
   }
+}
+
+function refreshRootRegistration(root: Object3D): void {
+  if (!meteorScene) return
+  meteorScene.removeObject(root)
+  meteorScene.addObject(root)
+}
+
+async function deleteSelected(): Promise<void> {
+  const runtime = meteorScene
+  const object = editorStore.selectedObject
+  if (!runtime || !object) return
+  const isRoot = editorStore.sceneRoots.includes(object)
+  const parent = object.parent
+  const order = isRoot ? editorStore.sceneRoots.indexOf(object) : (parent?.children.indexOf(object) ?? -1)
+  const assetRoot = isRoot ? object : findAssetInstanceRoot(object)
+  const metadata = assetRoot ? getEditorMetadata(assetRoot) : null
+  const assetNodeId = typeof object.userData.assetNodeId === 'string' ? object.userData.assetNodeId : null
+
+  const remove = () => {
+    runtime.removeObject(object)
+    if (isRoot) editorStore.setSceneRoots(editorStore.sceneRoots.filter((item) => item !== object))
+    else if (metadata?.kind === 'assetInstance' && assetNodeId && !metadata.deletedAssetNodeIds.includes(assetNodeId)) metadata.deletedAssetNodeIds.push(assetNodeId)
+    editorStore.clearSelection()
+    editorStore.notifySceneChanged()
+  }
+  const restore = () => {
+    if (isRoot) {
+      runtime.addObject(object)
+      const roots = [...editorStore.sceneRoots]
+      roots.splice(Math.max(0, Math.min(order, roots.length)), 0, object)
+      editorStore.setSceneRoots(roots)
+    } else if (parent && assetRoot) {
+      parent.add(object)
+      const current = parent.children.indexOf(object)
+      parent.children.splice(current, 1)
+      parent.children.splice(Math.max(0, order), 0, object)
+      if (metadata?.kind === 'assetInstance' && assetNodeId) metadata.deletedAssetNodeIds = metadata.deletedAssetNodeIds.filter((id) => id !== assetNodeId)
+      refreshRootRegistration(assetRoot)
+      editorStore.notifySceneChanged()
+    }
+    editorStore.selectObject(object)
+  }
+  await history.execute(new FunctionalCommand('Delete', remove, restore))
+}
+
+async function createDuplicate(root: Object3D): Promise<Object3D | null> {
+  const metadata = getEditorMetadata(root)
+  if (metadata?.kind === 'primitive') {
+    return createBoxPrimitive({
+      nodeId: createPlatformId('node'), type: 'box', name: `${root.name} Copy`,
+      transform: { position: [root.position.x + 0.5, root.position.y, root.position.z + 0.5], rotation: [root.rotation.x, root.rotation.y, root.rotation.z], scale: [root.scale.x, root.scale.y, root.scale.z] },
+      properties: { color: '#3b82f6' }, visible: root.visible,
+    })
+  }
+  if (metadata?.kind !== 'assetInstance' || !meteorScene) return null
+  const asset = await assetRepository.get(metadata.assetId)
+  if (!asset) return null
+  const duplicate = await meteorScene.loadGLTFModel(importedAssetResources.getOrCreate(asset).objectUrl)
+  duplicate.name = `${root.name} Copy`
+  duplicate.position.copy(root.position).add(new Vector3(0.5, 0, 0.5))
+  duplicate.rotation.copy(root.rotation)
+  duplicate.scale.copy(root.scale)
+  setEditorMetadata(duplicate, { kind: 'assetInstance', assetRoot: true, assetId: metadata.assetId, instanceId: createPlatformId('instance'), deletedAssetNodeIds: [] })
+  captureInitialTransforms(duplicate)
+  return duplicate
+}
+
+async function duplicateSelected(): Promise<void> {
+  const selected = editorStore.selectedObject
+  if (!selected) return
+  if (!editorStore.sceneRoots.includes(selected)) { ElMessage.info('暂不支持复制 GLB 内部子节点'); return }
+  const duplicate = await createDuplicate(selected)
+  if (!duplicate || !meteorScene) return
+  const runtime = meteorScene
+  await history.execute(new FunctionalCommand('Duplicate', () => {
+    runtime.addObject(duplicate); editorStore.setSceneRoots([...editorStore.sceneRoots, duplicate]); editorStore.selectObject(duplicate)
+  }, () => {
+    runtime.removeObject(duplicate); editorStore.setSceneRoots(editorStore.sceneRoots.filter((item) => item !== duplicate)); editorStore.clearSelection()
+  }))
+}
+
+function installEditorActions(transforms: TransformManager): void {
+  editorStore.setActions({
+    undo: () => { void history.undo() }, redo: () => { void history.redo() },
+    deleteSelected: () => { void deleteSelected() }, duplicateSelected: () => { void duplicateSelected() },
+    toggleVisibility: (object) => { const before = object.visible; void history.execute(new PropertyCommand('Visibility', before, !before, (value) => { object.visible = value; editorStore.notifySceneChanged(object) })) },
+    resetSelectedTransform: () => { const object = editorStore.selectedObject; const initial = object?.userData.editorInitialTransform as TransformState | undefined; if (object && initial) void history.execute(new TransformCommand(object, captureTransform(object), initial, notifyTransform)) },
+    focusSelected: () => { if (editorStore.selectedBid) void meteorScene?.focusObject(editorStore.selectedBid) },
+    fitScene: () => { void meteorScene?.fitScene() }, setSnap: (value) => transforms.setSnap(value),
+    commitRename: (object, before, after) => { if (before !== after) void history.execute(new PropertyCommand('Rename', before, after, (value) => { object.name = value; editorStore.notifySceneChanged(object) }), true) },
+    commitTransform: (object, before, after) => { void history.execute(new TransformCommand(object, before, after, notifyTransform), true) },
+  })
 }
 
 function disposeEditorRuntime(): void {
@@ -259,6 +381,9 @@ function disposeEditorRuntime(): void {
   editorStore.setSceneRoots([])
   editorStore.clearPendingModelImport()
   editorStore.clearModifiedObjects()
+  editorStore.setActions(null)
+  history.clear()
+  editorStore.setDirty(false)
   importedAssetResources.dispose()
   meteorScene?.dispose()
   meteorScene = null
@@ -311,10 +436,17 @@ onMounted(async () => {
         transformDragging.value = dragging
         cameraControlsEnabled.value = runtime.isCameraControlsEnabled()
         if (dragging) lastCameraConflictCheck.value = cameraControlsEnabled.value ? 'fail' : 'pass'
+        const object = editorStore.selectedObject
+        if (dragging && object) gizmoTransformBefore = captureTransform(object)
+        if (!dragging && object && gizmoTransformBefore) {
+          void history.execute(new TransformCommand(object, gizmoTransformBefore, captureTransform(object), notifyTransform), true)
+          gizmoTransformBefore = null
+        }
       },
       onObjectChange: (object) => editorStore.notifyTransformChanged('gizmo', object),
     })
     transformManager = transforms
+    installEditorActions(transforms)
     selectionManager = new SelectionManager({
       canvas,
       meteorScene: runtime,
