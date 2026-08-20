@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Aim, ArrowLeft, Promotion, Rank, RefreshRight, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useEditorStore, type TransformMode } from '@/stores/editor'
 
 defineProps<{
@@ -13,6 +13,7 @@ defineEmits<{
 }>()
 
 const editorStore = useEditorStore()
+const fileInputRef = ref<HTMLInputElement>()
 
 const transformTools: Array<{
   mode: TransformMode
@@ -27,6 +28,23 @@ const transformTools: Array<{
 
 function showDemoMessage(action: string) {
   ElMessage.info(`${action}功能将在后续版本中接入`)
+}
+
+function openModelPicker(): void {
+  fileInputRef.value?.click()
+}
+
+function handleModelFile(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  if (!file.name.toLowerCase().endsWith('.glb')) {
+    ElMessage.error('当前仅支持可独立加载的 .glb 文件')
+    return
+  }
+  editorStore.requestModelImport(file)
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -87,7 +105,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     </div>
 
     <div class="flex w-[320px] items-center justify-end gap-2">
-      <el-button size="small" dark @click="showDemoMessage('保存')">保存</el-button>
+      <input ref="fileInputRef" data-testid="model-file-input" class="hidden" type="file" accept=".glb,model/gltf-binary" @change="handleModelFile" />
+      <el-button data-testid="import-model" size="small" dark @click="openModelPicker">
+        <el-icon class="mr-1"><Upload /></el-icon>导入模型
+      </el-button>
+      <el-button data-testid="save-scene" size="small" dark @click="editorStore.requestSceneSave()">保存</el-button>
       <el-button size="small" dark @click="showDemoMessage('预览')">
         <el-icon class="mr-1"><Promotion /></el-icon>预览
       </el-button>

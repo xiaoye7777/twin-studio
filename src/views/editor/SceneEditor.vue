@@ -21,7 +21,11 @@ const projectName = computed(() => projectStore.getProjectById(projectId.value)?
     <EditorToolbar :project-name="projectName" @back="router.push('/projects')" />
     <div class="flex min-h-0 flex-1">
       <SceneHierarchy />
-      <ThreeViewport />
+      <ThreeViewport
+        :key="projectId"
+        :project-id="projectId"
+        :project-name="projectName"
+      />
       <InspectorPanel />
     </div>
     <EditorResourcePanel />

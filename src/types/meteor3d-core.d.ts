@@ -37,6 +37,27 @@ declare module '@meteor3d/core' {
       widthSegments?: number,
       lengthSegments?: number,
     ): void
+    focusObject(bid: string, options?: Record<string, unknown>): Promise<void>
+    dispose(): void
+  }
+
+  export class PersistenceManager {
+    constructor(
+      sceneManager: SceneManager,
+      editorStore?: unknown,
+      dbManager?: unknown,
+      options?: { dracoPath?: string },
+    )
+
+    disposed: boolean
+    loadGLTFModel(
+      url: string,
+      options?: {
+        assignBids?: boolean
+        assetId?: string
+        assetVersionId?: string
+      },
+    ): Promise<Object3D>
     dispose(): void
   }
 }

@@ -106,9 +106,9 @@ export class SelectionManager {
     })
 
     for (const intersection of intersections) {
-      const root = this.findSelectableRoot(intersection.object, roots)
-      if (root) {
-        this.editorStore.selectObject(root)
+      const target = this.findSelectionTarget(intersection.object, roots)
+      if (target) {
+        this.editorStore.selectObject(target)
         return
       }
     }
@@ -116,14 +116,18 @@ export class SelectionManager {
     this.editorStore.clearSelection()
   }
 
-  private findSelectableRoot(
+  private findSelectionTarget(
     object: Object3D,
     selectableRoots: readonly Object3D[],
   ): Object3D | null {
     let current: Object3D | null = object
+    let nearestEditableNode: Object3D | null = null
 
     while (current) {
-      if (selectableRoots.includes(current)) return current
+      if (typeof current.userData.bid === 'string' && !nearestEditableNode) {
+        nearestEditableNode = current
+      }
+      if (selectableRoots.includes(current)) return nearestEditableNode ?? current
       current = current.parent
     }
 

@@ -1,4 +1,7 @@
-import type { SceneManager as SceneManagerType } from '@meteor3d/core'
+import type {
+  PersistenceManager as PersistenceManagerType,
+  SceneManager as SceneManagerType,
+} from '@meteor3d/core'
 import { Mesh, REVISION, Vector2 } from 'three'
 import type { Intersection, Object3D, PerspectiveCamera, Scene } from 'three'
 import type {
@@ -31,6 +34,7 @@ export function getLastMeteorDisposeDiagnostics(): MeteorDisposeDiagnostics | nu
 
 export class MeteorScene {
   private manager: SceneManagerType | null = null
+  private persistenceManager: PersistenceManagerType | null = null
   private resizeObserver: ResizeObserver | null = null
   private disposed = false
   private resizeObserverDisconnected = false
@@ -45,12 +49,13 @@ export class MeteorScene {
     if (this.disposed) throw new Error('Cannot initialize a disposed MeteorScene')
 
     this.raycastBeforeCoreImport = Mesh.prototype.raycast
-    const { SceneManager } = await import('@meteor3d/core')
+    const { PersistenceManager, SceneManager } = await import('@meteor3d/core')
     this.raycastAfterCoreImport = Mesh.prototype.raycast
 
     if (this.disposed) return
 
     this.manager = new SceneManager(this.canvas)
+    this.persistenceManager = new PersistenceManager(this.manager)
     this.raycastAfterManagerInitialization = Mesh.prototype.raycast
 
     this.resizeObserver = new ResizeObserver(() => this.resize())
@@ -60,6 +65,14 @@ export class MeteorScene {
 
   addObject<T extends Object3D>(object: T): boolean {
     return this.requireManager().addObject(object)
+  }
+
+  loadGLTFModel(url: string): Promise<Object3D> {
+    return this.requirePersistenceManager().loadGLTFModel(url)
+  }
+
+  focusObject(bid: string): Promise<void> {
+    return this.requireManager().focusObject(bid)
   }
 
   findObjectByBid<T extends Object3D>(bid: string): T | null {
@@ -154,6 +167,8 @@ export class MeteorScene {
 
     const manager = this.manager
     const webglContext = manager?.renderer.getContext()
+    this.persistenceManager?.dispose()
+    this.persistenceManager = null
     manager?.dispose()
     this.manager = null
 
@@ -182,5 +197,12 @@ export class MeteorScene {
       throw new Error('MeteorScene has not been initialized')
     }
     return this.manager
+  }
+
+  private requirePersistenceManager(): PersistenceManagerType {
+    if (!this.persistenceManager || this.persistenceManager.disposed) {
+      throw new Error('Meteor3D PersistenceManager is not available')
+    }
+    return this.persistenceManager
   }
 }
