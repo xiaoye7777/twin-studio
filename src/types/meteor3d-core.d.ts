@@ -31,6 +31,7 @@ declare module '@meteor3d/core' {
       screenPosition: Vector2,
       options?: { recursive?: boolean; includeTileMap?: boolean },
     ): Intersection<Object3D>[]
+    raycastGround(screenPosition: Vector2): import('three').Vector3 | null
     setGridHelper(
       visible: boolean,
       length?: number,

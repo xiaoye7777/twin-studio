@@ -3,7 +3,7 @@ import type {
   SceneManager as SceneManagerType,
 } from '@meteor3d/core'
 import { Mesh, REVISION, Vector2 } from 'three'
-import type { Intersection, Object3D, PerspectiveCamera, Scene } from 'three'
+import type { Intersection, Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
 import type {
   MeteorDisposeDiagnostics,
   MeteorRaycastOptions,
@@ -98,6 +98,10 @@ export class MeteorScene {
     options: MeteorRaycastOptions = {},
   ): Intersection<Object3D>[] {
     return this.requireManager().raycastObjects(screenPosition, options)
+  }
+
+  raycastGround(screenPosition: Vector2): Vector3 | null {
+    return this.requireManager().raycastGround(screenPosition)
   }
 
   isCameraControlsEnabled(): boolean {

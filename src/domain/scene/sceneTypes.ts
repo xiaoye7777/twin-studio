@@ -26,11 +26,17 @@ export interface SceneAssetInstanceV1 {
 
 export interface SceneBoxPropertiesV1 {
   color: string
+  width?: number
+  height?: number
+  depth?: number
+  radiusTop?: number
+  radiusBottom?: number
+  radialSegments?: number
 }
 
 export interface ScenePrimitiveV1 {
   nodeId: string
-  type: 'box'
+  type: 'box' | 'plane' | 'cylinder'
   name: string
   transform: SceneTransformV1
   properties: SceneBoxPropertiesV1

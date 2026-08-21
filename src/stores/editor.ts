@@ -4,6 +4,7 @@ import { markRaw, ref, shallowRef } from 'vue'
 import type { TransformState } from '@/editor/history'
 
 export type TransformMode = 'translate' | 'rotate' | 'scale'
+export type PrimitiveType = 'box' | 'plane' | 'cylinder'
 export type TransformChangeSource = 'gizmo' | 'inspector'
 export interface EditorActions {
   undo(): void
@@ -17,6 +18,8 @@ export interface EditorActions {
   setSnap(value: number | null): void
   commitRename(object: Object3D, before: string, after: string): void
   commitTransform(object: Object3D, before: TransformState, after: TransformState): void
+  addPrimitive(type: PrimitiveType): void
+  instantiateAsset(assetId: string): void
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -27,8 +30,6 @@ export const useEditorStore = defineStore('editor', () => {
   const sceneRevision = ref(0)
   const transformRevision = ref(0)
   const transformChangeSource = ref<TransformChangeSource | null>(null)
-  const pendingModelFile = shallowRef<File | null>(null)
-  const modelImportRevision = ref(0)
   const modifiedObjects = shallowRef<Object3D[]>([])
   const sceneSaveRevision = ref(0)
   const canUndo = ref(false)
@@ -36,6 +37,7 @@ export const useEditorStore = defineStore('editor', () => {
   const isDirty = ref(false)
   const snapValue = ref<number | null>(null)
   const actions = shallowRef<EditorActions | null>(null)
+  const runtimeReady = ref(false)
 
   function selectObject(object: Object3D): void {
     selectedObject.value = markRaw(object)
@@ -72,21 +74,15 @@ export const useEditorStore = defineStore('editor', () => {
     transformRevision.value += 1
   }
 
-  function requestModelImport(file: File): void {
-    pendingModelFile.value = markRaw(file)
-    modelImportRevision.value += 1
-  }
-
-  function clearPendingModelImport(): void {
-    pendingModelFile.value = null
-  }
-
   function requestSceneSave(): void {
     sceneSaveRevision.value += 1
   }
   function setHistoryState(undo: boolean, redo: boolean): void { canUndo.value = undo; canRedo.value = redo }
   function setDirty(value: boolean): void { isDirty.value = value }
-  function setActions(value: EditorActions | null): void { actions.value = value ? markRaw(value) : null }
+  function setActions(value: EditorActions | null): void {
+    actions.value = value ? markRaw(value) : null
+    runtimeReady.value = value !== null
+  }
 
   function clearModifiedObjects(): void {
     modifiedObjects.value = []
@@ -100,11 +96,9 @@ export const useEditorStore = defineStore('editor', () => {
     sceneRevision,
     transformRevision,
     transformChangeSource,
-    pendingModelFile,
-    modelImportRevision,
     modifiedObjects,
     sceneSaveRevision,
-    canUndo, canRedo, isDirty, snapValue,
+    canUndo, canRedo, isDirty, snapValue, runtimeReady,
     selectObject,
     clearSelection,
     setTransformMode,
@@ -112,8 +106,6 @@ export const useEditorStore = defineStore('editor', () => {
     notifySceneChanged,
     notifyTransformChanged,
     markObjectModified,
-    requestModelImport,
-    clearPendingModelImport,
     requestSceneSave,
     clearModifiedObjects,
     setHistoryState, setDirty, setActions,
@@ -128,5 +120,7 @@ export const useEditorStore = defineStore('editor', () => {
     setSnap: (value: number | null) => { snapValue.value = value; actions.value?.setSnap(value) },
     commitRename: (object: Object3D, before: string, after: string) => actions.value?.commitRename(object, before, after),
     commitTransform: (object: Object3D, before: TransformState, after: TransformState) => actions.value?.commitTransform(object, before, after),
+    addPrimitive: (type: PrimitiveType) => actions.value?.addPrimitive(type),
+    instantiateAsset: (assetId: string) => actions.value?.instantiateAsset(assetId),
   }
 })

@@ -1,4 +1,4 @@
-import type { AssetRecord, AssetRepository } from './AssetRepository'
+import type { AssetMetadata, AssetRecord, AssetRepository } from './AssetRepository'
 
 const DATABASE_NAME = 'digital-twin-studio-assets'
 const DATABASE_VERSION = 1
@@ -57,6 +57,35 @@ export class IndexedDbAssetRepository implements AssetRepository {
     const transaction = database.transaction(STORE_NAME, 'readonly')
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(assetId))
     return (record as AssetRecord | undefined) ?? null
+  }
+
+  async listMetadata(): Promise<AssetMetadata[]> {
+    const database = await this.openDatabase()
+    const transaction = database.transaction(STORE_NAME, 'readonly')
+    const store = transaction.objectStore(STORE_NAME)
+
+    return new Promise((resolve, reject) => {
+      const assets: AssetMetadata[] = []
+      const request = store.openCursor()
+      request.onsuccess = () => {
+        const cursor = request.result
+        if (!cursor) {
+          assets.sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+          resolve(assets)
+          return
+        }
+        const record = cursor.value as AssetRecord
+        assets.push({
+          id: record.id,
+          name: record.name,
+          mimeType: record.mimeType,
+          size: record.size,
+          createdAt: record.createdAt,
+        })
+        cursor.continue()
+      }
+      request.onerror = () => reject(request.error ?? new Error('无法读取本地资产列表'))
+    })
   }
 
   private openDatabase(): Promise<IDBDatabase> {

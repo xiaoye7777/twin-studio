@@ -30,7 +30,7 @@ export function applySceneTransform(object: Object3D, transform: SceneTransformV
 
 function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
   const metadata = getEditorMetadata(root)
-  if (metadata?.kind !== 'primitive' || metadata.primitiveType !== 'box') return null
+  if (metadata?.kind !== 'primitive') return null
 
   const color = root instanceof Mesh && root.material && !Array.isArray(root.material)
     && 'color' in root.material && root.material.color instanceof Color
@@ -39,7 +39,7 @@ function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
 
   return {
     nodeId: metadata.nodeId,
-    type: 'box',
+    type: metadata.primitiveType,
     name: root.name,
     transform: serializeTransform(root),
     properties: { color },

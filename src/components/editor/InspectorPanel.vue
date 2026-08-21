@@ -3,7 +3,6 @@ import { computed, reactive, watch } from 'vue'
 import { MathUtils } from 'three'
 import { getEditorMetadata } from '@/editor/editorMetadata'
 import { captureTransform } from '@/editor/history'
-import type { TransformState } from '@/editor/history'
 import type { InspectorFormState, Vector3FormValue } from '@/editor/types'
 import { useEditorStore } from '@/stores/editor'
 
@@ -37,7 +36,6 @@ const form = reactive<InspectorFormState>({
   scale: { x: 1, y: 1, z: 1 },
 })
 let nameEditBefore = ''
-let transformEditBefore: TransformState | null = null
 
 function copyVector(target: Vector3FormValue, source: readonly [number, number, number]): void {
   target.x = source[0]
@@ -71,16 +69,6 @@ function commitName(): void {
   const object = editorStore.selectedObject
   if (object && nameEditBefore !== object.name) editorStore.commitRename(object, nameEditBefore, object.name)
 }
-function beginTransformEdit(): void {
-  const object = editorStore.selectedObject
-  if (object && !transformEditBefore) transformEditBefore = captureTransform(object)
-}
-function commitTransformEdit(): void {
-  const object = editorStore.selectedObject
-  if (object && transformEditBefore) editorStore.commitTransform(object, transformEditBefore, captureTransform(object))
-  transformEditBefore = null
-}
-
 function updateTransformValue(
   section: TransformSection,
   axis: Axis,
@@ -88,8 +76,12 @@ function updateTransformValue(
 ): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) return
 
+  const object = editorStore.selectedObject
+  if (!object) return
+  const before = captureTransform(object)
   form[section][axis] = section === 'scale' ? Math.max(value, 0.001) : value
   applyTransformToSelectedObject()
+  editorStore.commitTransform(object, before, captureTransform(object))
 }
 
 function applyTransformToSelectedObject(): void {
@@ -197,8 +189,6 @@ watch(
               size="small"
               class="w-full!"
               @update:model-value="(value: number | undefined) => updateTransformValue(field.key, axis, value)"
-              @focus="beginTransformEdit"
-              @change="commitTransformEdit"
             />
           </label>
         </div>

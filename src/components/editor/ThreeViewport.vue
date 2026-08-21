@@ -6,14 +6,18 @@ import {
   AmbientLight,
   Box3,
   BoxGeometry,
+  CylinderGeometry,
   DirectionalLight,
   Mesh,
   MeshStandardMaterial,
+  PlaneGeometry,
+  Vector2,
   Vector3,
 } from 'three'
 import type { Object3D } from 'three'
 import { applySceneTransform, serializeSceneDocument } from '@/domain/scene'
 import type { SceneAssetInstanceV1, SceneDocumentV1, ScenePrimitiveV1 } from '@/domain/scene'
+import { ASSET_DRAG_MIME, readAssetDragPayload } from '@/editor/assetDrag'
 import { findAssetInstanceRoot, getEditorMetadata, setEditorMetadata } from '@/editor/editorMetadata'
 import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
 import type { TransformState } from '@/editor/history'
@@ -23,7 +27,7 @@ import { TransformManager } from '@/editor/services/TransformManager'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { MeteorScene } from '@/infrastructure/meteor3d'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import { useEditorStore } from '@/stores/editor'
+import { useEditorStore, type PrimitiveType } from '@/stores/editor'
 
 const props = defineProps<{ projectId: string; projectName: string }>()
 
@@ -45,6 +49,10 @@ const sceneLoadedFromStorage = ref(false)
 const lastSavedInstanceCount = ref(0)
 const lastSavedPrimitiveCount = ref(0)
 const sceneDocumentDebugJson = ref('')
+const assetDropLoading = ref(false)
+const lastDroppedAssetId = ref('')
+const lastDroppedInstanceId = ref('')
+const lastDroppedBottomY = ref('')
 
 const editorStore = useEditorStore()
 const { selectedObject } = storeToRefs(editorStore)
@@ -59,11 +67,8 @@ let testCube: Mesh | null = null
 let stopSelectionWatch: WatchStopHandle | null = null
 let stopTransformModeWatch: WatchStopHandle | null = null
 let stopTransformRevisionWatch: WatchStopHandle | null = null
-let stopModelImportWatch: WatchStopHandle | null = null
 let stopSceneSaveWatch: WatchStopHandle | null = null
 let unmounted = false
-let nextModelOffsetX = 2.5
-let importQueue = Promise.resolve()
 let saveQueue = Promise.resolve()
 let gizmoTransformBefore: TransformState | null = null
 const history = new HistoryManager(() => {
@@ -105,34 +110,50 @@ function uniqueModelName(preferredName: string): string {
   return `${preferredName} (${suffix})`
 }
 
-function createBoxPrimitive(saved?: ScenePrimitiveV1): Mesh {
-  const cube = new Mesh(
-    new BoxGeometry(1.4, 1.4, 1.4),
-    new MeshStandardMaterial({
-      color: saved?.properties.color ?? 0x3b82f6,
-      roughness: 0.35,
-      metalness: 0.08,
-    }),
+function createPrimitive(type: PrimitiveType, saved?: ScenePrimitiveV1): Mesh {
+  const color = saved?.properties.color ?? (type === 'plane' ? 0x64748b : type === 'cylinder' ? 0x10b981 : 0x3b82f6)
+  let geometry: BoxGeometry | PlaneGeometry | CylinderGeometry
+  if (type === 'plane') {
+    geometry = new PlaneGeometry(saved?.properties.width ?? 10, saved?.properties.height ?? 10)
+    geometry.rotateX(-Math.PI / 2)
+  } else if (type === 'cylinder') {
+    const height = saved?.properties.height ?? 1
+    geometry = new CylinderGeometry(
+      saved?.properties.radiusTop ?? 0.5,
+      saved?.properties.radiusBottom ?? 0.5,
+      height,
+      saved?.properties.radialSegments ?? 32,
+    )
+    geometry.translate(0, height / 2, 0)
+  } else {
+    const width = saved?.properties.width ?? 1
+    const height = saved?.properties.height ?? 1
+    const depth = saved?.properties.depth ?? 1
+    geometry = new BoxGeometry(width, height, depth)
+    geometry.translate(0, height / 2, 0)
+  }
+
+  const object = new Mesh(
+    geometry,
+    new MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.05 }),
   )
-  cube.name = saved?.name ?? 'Demo Cube'
-  setEditorMetadata(cube, {
+  object.name = saved?.name ?? uniqueModelName(type === 'box' ? 'Box' : type === 'plane' ? 'Plane' : 'Cylinder')
+  setEditorMetadata(object, {
     kind: 'primitive',
     nodeId: saved?.nodeId ?? createPlatformId('node'),
-    primitiveType: 'box',
+    primitiveType: type,
   })
   if (saved) {
-    applySceneTransform(cube, saved.transform)
-    if (saved.runtimeBid) cube.userData.bid = saved.runtimeBid
-  } else {
-    cube.position.y = 0.7
+    applySceneTransform(object, saved.transform)
+    if (saved.runtimeBid) object.userData.bid = saved.runtimeBid
   }
-  cube.visible = saved?.visible ?? true
-  cube.userData.editorInitialTransform = {
+  object.visible = saved?.visible ?? true
+  object.userData.editorInitialTransform = {
     position: [0, 0, 0],
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
   } satisfies TransformState
-  return cube
+  return object
 }
 
 function indexAssetNodes(root: Object3D): Map<string, Object3D> {
@@ -193,7 +214,7 @@ async function restoreAssetInstance(
 async function restoreScene(runtime: MeteorScene, document: SceneDocumentV1): Promise<Object3D[]> {
   const roots: Object3D[] = []
   for (const primitive of document.primitives) {
-    const object = createBoxPrimitive(primitive)
+    const object = createPrimitive(primitive.type, primitive)
     if (!runtime.addObject(object)) throw new Error(`Meteor3D 无法恢复 Primitive ${primitive.name}`)
     roots.push(object)
     if (!testCube && object instanceof Mesh) testCube = object
@@ -207,47 +228,6 @@ async function restoreScene(runtime: MeteorScene, document: SceneDocumentV1): Pr
     }
   }
   return roots
-}
-
-async function importModel(file: File): Promise<void> {
-  const runtime = meteorScene
-  if (!runtime || unmounted) return
-  const loadingMessage = ElMessage({ message: `正在导入 ${file.name}…`, type: 'info', duration: 0 })
-
-  try {
-    const asset = await assetRepository.saveFile(file)
-    const resource = importedAssetResources.getOrCreate(asset)
-    const model = await runtime.loadGLTFModel(resource.objectUrl)
-    if (unmounted) return
-
-    model.name = uniqueModelName(model.name.trim() || resource.displayName)
-    setEditorMetadata(model, {
-      kind: 'assetInstance',
-      assetRoot: true,
-      assetId: asset.id,
-      instanceId: createPlatformId('instance'),
-      deletedAssetNodeIds: [],
-    })
-    captureInitialTransforms(model)
-    model.updateMatrixWorld(true)
-    const size = new Box3().setFromObject(model).getSize(new Vector3())
-    model.position.x += nextModelOffsetX
-    nextModelOffsetX += Math.max(size.x * 1.2, 2.5)
-
-    if (!runtime.addObject(model)) throw new Error('Meteor3D 拒绝将模型加入场景')
-    editorStore.setSceneRoots([...editorStore.sceneRoots, model])
-    editorStore.selectObject(model)
-    importedModelCount.value += 1
-    latestImportName.value = model.name
-    latestImportAnimations.value = model.animations.length
-    latestImportRootBid.value = typeof model.userData.bid === 'string' ? model.userData.bid : ''
-    if (latestImportRootBid.value) await runtime.focusObject(latestImportRootBid.value)
-    ElMessage.success(`${model.name} 导入成功`)
-  } catch (error) {
-    if (!unmounted) ElMessage.error(error instanceof Error ? error.message : '模型导入失败')
-  } finally {
-    loadingMessage.close()
-  }
 }
 
 async function saveScene(): Promise<void> {
@@ -267,6 +247,106 @@ async function saveScene(): Promise<void> {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '场景保存失败')
   }
+}
+
+async function addRootWithHistory(object: Object3D, label: string): Promise<void> {
+  const runtime = meteorScene
+  if (!runtime || unmounted) return
+  await history.execute(new FunctionalCommand(label, () => {
+    if (!runtime.addObject(object)) throw new Error('Meteor3D 拒绝将对象加入场景')
+    editorStore.setSceneRoots([...editorStore.sceneRoots, object])
+    editorStore.selectObject(object)
+  }, () => {
+    runtime.removeObject(object)
+    editorStore.setSceneRoots(editorStore.sceneRoots.filter((item) => item !== object))
+    const selected = editorStore.selectedObject
+    let selectedBelongsToRoot = selected === object
+    if (selected && !selectedBelongsToRoot) {
+      object.traverse((node) => { if (node === selected) selectedBelongsToRoot = true })
+    }
+    if (selectedBelongsToRoot) editorStore.clearSelection()
+  }))
+}
+
+async function addPrimitive(type: PrimitiveType): Promise<void> {
+  const object = createPrimitive(type)
+  await addRootWithHistory(object, `Add ${type}`)
+  if (type === 'box' && !testCube) testCube = object
+}
+
+function placeObjectOnGround(object: Object3D, groundPoint: Vector3): void {
+  object.position.set(groundPoint.x, 0, groundPoint.z)
+  object.updateMatrixWorld(true)
+  const bounds = new Box3().setFromObject(object)
+  object.position.y = bounds.isEmpty() ? groundPoint.y : groundPoint.y - bounds.min.y
+  object.updateMatrixWorld(true)
+}
+
+async function instantiateAsset(assetId: string, groundPoint: Vector3): Promise<Object3D | null> {
+  const runtime = meteorScene
+  if (!runtime || unmounted) return null
+  assetDropLoading.value = true
+  try {
+    const asset = await assetRepository.get(assetId)
+    if (!asset) throw new Error('资产记录不存在，无法创建场景实例')
+    const resource = importedAssetResources.getOrCreate(asset)
+    const model = await runtime.loadGLTFModel(resource.objectUrl)
+    if (unmounted) return null
+
+    const instanceId = createPlatformId('instance')
+    model.name = uniqueModelName(model.name.trim() || resource.displayName)
+    setEditorMetadata(model, {
+      kind: 'assetInstance',
+      assetRoot: true,
+      assetId,
+      instanceId,
+      deletedAssetNodeIds: [],
+    })
+    captureInitialTransforms(model)
+    placeObjectOnGround(model, groundPoint)
+    await addRootWithHistory(model, 'Add asset instance')
+
+    importedModelCount.value += 1
+    latestImportName.value = model.name
+    latestImportAnimations.value = model.animations.length
+    latestImportRootBid.value = typeof model.userData.bid === 'string' ? model.userData.bid : ''
+    lastDroppedAssetId.value = assetId
+    lastDroppedInstanceId.value = instanceId
+    lastDroppedBottomY.value = new Box3().setFromObject(model).min.y.toFixed(4)
+    ElMessage.success(`${model.name} 已放入场景`)
+    return model
+  } catch (error) {
+    if (!unmounted) ElMessage.error(error instanceof Error ? error.message : '模型实例创建失败')
+    return null
+  } finally {
+    assetDropLoading.value = false
+  }
+}
+
+function handleDragOver(event: DragEvent): void {
+  if (!event.dataTransfer?.types.includes(ASSET_DRAG_MIME)) return
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+}
+
+function handleDrop(event: DragEvent): void {
+  event.preventDefault()
+  const payload = readAssetDragPayload(event.dataTransfer)
+  const runtime = meteorScene
+  const canvas = canvasRef.value
+  if (!payload || !runtime || !canvas) return
+  const rect = canvas.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return
+  const screenPosition = new Vector2(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1,
+  )
+  const groundPoint = runtime.raycastGround(screenPosition)
+  if (!groundPoint) {
+    ElMessage.warning('无法确定放置位置')
+    return
+  }
+  void instantiateAsset(payload.assetId, groundPoint)
 }
 
 function refreshRootRegistration(root: Object3D): void {
@@ -316,8 +396,8 @@ async function deleteSelected(): Promise<void> {
 async function createDuplicate(root: Object3D): Promise<Object3D | null> {
   const metadata = getEditorMetadata(root)
   if (metadata?.kind === 'primitive') {
-    return createBoxPrimitive({
-      nodeId: createPlatformId('node'), type: 'box', name: `${root.name} Copy`,
+    return createPrimitive(metadata.primitiveType, {
+      nodeId: createPlatformId('node'), type: metadata.primitiveType, name: `${root.name} Copy`,
       transform: { position: [root.position.x + 0.5, root.position.y, root.position.z + 0.5], rotation: [root.rotation.x, root.rotation.y, root.rotation.z], scale: [root.scale.x, root.scale.y, root.scale.z] },
       properties: { color: '#3b82f6' }, visible: root.visible,
     })
@@ -359,6 +439,8 @@ function installEditorActions(transforms: TransformManager): void {
     fitScene: () => { void meteorScene?.fitScene() }, setSnap: (value) => transforms.setSnap(value),
     commitRename: (object, before, after) => { if (before !== after) void history.execute(new PropertyCommand('Rename', before, after, (value) => { object.name = value; editorStore.notifySceneChanged(object) }), true) },
     commitTransform: (object, before, after) => { void history.execute(new TransformCommand(object, before, after, notifyTransform), true) },
+    addPrimitive: (type) => { void addPrimitive(type) },
+    instantiateAsset: (assetId) => { void instantiateAsset(assetId, new Vector3()) },
   })
 }
 
@@ -366,12 +448,10 @@ function disposeEditorRuntime(): void {
   stopSelectionWatch?.()
   stopTransformModeWatch?.()
   stopTransformRevisionWatch?.()
-  stopModelImportWatch?.()
   stopSceneSaveWatch?.()
   stopSelectionWatch = null
   stopTransformModeWatch = null
   stopTransformRevisionWatch = null
-  stopModelImportWatch = null
   stopSceneSaveWatch = null
   selectionManager?.dispose()
   transformManager?.dispose()
@@ -379,7 +459,6 @@ function disposeEditorRuntime(): void {
   transformManager = null
   editorStore.clearSelection()
   editorStore.setSceneRoots([])
-  editorStore.clearPendingModelImport()
   editorStore.clearModifiedObjects()
   editorStore.setActions(null)
   history.clear()
@@ -422,7 +501,7 @@ onMounted(async () => {
     }
 
     if (!sceneLoadedFromStorage.value) {
-      const cube = createBoxPrimitive()
+      const cube = createPrimitive('box')
       if (!runtime.addObject(cube)) throw new Error('Meteor3D rejected the demo cube')
       testCube = cube
       roots.push(cube)
@@ -460,10 +539,6 @@ onMounted(async () => {
     }, { immediate: true })
     stopTransformModeWatch = watch(() => editorStore.transformMode, (mode) => transforms.setMode(mode), { immediate: true })
     stopTransformRevisionWatch = watch(() => editorStore.transformRevision, syncCubeTransform)
-    stopModelImportWatch = watch(() => editorStore.modelImportRevision, () => {
-      const file = editorStore.pendingModelFile
-      if (file) importQueue = importQueue.then(() => importModel(file))
-    })
     stopSceneSaveWatch = watch(() => editorStore.sceneSaveRevision, () => {
       saveQueue = saveQueue.then(saveScene)
     })
@@ -503,7 +578,15 @@ onBeforeUnmount(() => {
     :data-scene-loaded-from-storage="sceneLoadedFromStorage ? 'true' : 'false'"
     :data-last-saved-instance-count="lastSavedInstanceCount"
     :data-last-saved-primitive-count="lastSavedPrimitiveCount"
+    :data-asset-drop-loading="assetDropLoading ? 'true' : 'false'"
+    :data-last-dropped-asset-id="lastDroppedAssetId"
+    :data-last-dropped-instance-id="lastDroppedInstanceId"
+    :data-last-dropped-bottom-y="lastDroppedBottomY"
+    :data-scene-root-count="editorStore.sceneRoots.length"
+    :data-runtime-ready="editorStore.runtimeReady ? 'true' : 'false'"
     class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-900"
+    @dragover="handleDragOver"
+    @drop="handleDrop"
   >
     <canvas ref="canvasRef" class="block h-full w-full" />
     <pre data-testid="scene-document-debug" class="hidden">{{ sceneDocumentDebugJson }}</pre>

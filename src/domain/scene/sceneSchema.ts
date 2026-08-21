@@ -51,7 +51,7 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
   const validPrimitives = value.primitives.every(
     (primitive) =>
       isRecord(primitive) &&
-      primitive.type === 'box' &&
+      (primitive.type === 'box' || primitive.type === 'plane' || primitive.type === 'cylinder') &&
       typeof primitive.nodeId === 'string' &&
       typeof primitive.name === 'string' &&
       isTransform(primitive.transform) &&
