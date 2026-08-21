@@ -1,3 +1,5 @@
+import type { TwinBinding } from '@/domain/twin'
+
 export type Vector3Tuple = [number, number, number]
 
 export interface SceneGroundSettingsV1 {
@@ -81,4 +83,5 @@ export interface SceneDocumentV1 {
   primitives: ScenePrimitiveV1[]
   sceneSettings?: SceneSettingsV1
   cameraView?: SceneCameraViewV1
+  bindings?: TwinBinding[]
 }

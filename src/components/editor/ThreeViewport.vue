@@ -28,13 +28,17 @@ import { findAssetInstanceRoot, getEditorMetadata, setEditorMetadata } from '@/e
 import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
 import type { TransformState } from '@/editor/history'
 import { ImportedAssetResourceRegistry } from '@/editor/services/ImportedAssetResourceRegistry'
+import { BindingTargetResolver, bindingTargetsInObjectTree } from '@/editor/services/BindingTargetResolver'
 import { SelectionManager } from '@/editor/services/SelectionManager'
 import { TransformManager } from '@/editor/services/TransformManager'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { MeteorScene } from '@/infrastructure/meteor3d'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
+import { getMockDataSourceDiagnostics, MockDataSource } from '@/infrastructure/data'
 import { useEditorStore, type CommonView, type PrimitiveType } from '@/stores/editor'
 import { useSceneSettingsStore } from '@/stores/sceneSettings'
+import { useTwinStore } from '@/stores/twin'
+import type { TwinBinding } from '@/domain/twin'
 
 const props = defineProps<{ projectId: string; projectName: string }>()
 
@@ -65,6 +69,7 @@ const environmentStatus = ref('None')
 
 const editorStore = useEditorStore()
 const sceneSettingsStore = useSceneSettingsStore()
+const twinStore = useTwinStore()
 const { selectedObject } = storeToRefs(editorStore)
 const assetRepository = new IndexedDbAssetRepository()
 const sceneRepository = new LocalSceneRepository()
@@ -73,6 +78,8 @@ const importedAssetResources = new ImportedAssetResourceRegistry()
 let meteorScene: MeteorScene | null = null
 let selectionManager: SelectionManager | null = null
 let transformManager: TransformManager | null = null
+let bindingTargetResolver: BindingTargetResolver | null = null
+let mockDataSource: MockDataSource | null = null
 let testCube: Mesh | null = null
 let ambientLight: AmbientLight | null = null
 let directionalLight: DirectionalLight | null = null
@@ -82,6 +89,7 @@ let stopTransformModeWatch: WatchStopHandle | null = null
 let stopTransformRevisionWatch: WatchStopHandle | null = null
 let stopSceneSaveWatch: WatchStopHandle | null = null
 let stopSceneSettingsWatch: WatchStopHandle | null = null
+let stopBindingWatch: WatchStopHandle | null = null
 let unmounted = false
 let saveQueue = Promise.resolve()
 let environmentQueue = Promise.resolve()
@@ -110,6 +118,22 @@ const infrastructureCounts = computed(() => {
     ambient: scene.children.filter((object) => object.name === 'Editor Ambient Light').length,
     directional: scene.children.filter((object) => object.name === 'Editor Directional Light').length,
   }
+})
+
+const unresolvedBindingCount = computed(() => {
+  twinStore.resolutionRevision
+  return twinStore.bindings.filter((binding) => twinStore.resolutionByBindingId[binding.id] === 'unresolved').length
+})
+
+const mockDiagnostics = computed(() => {
+  twinStore.mockRunning
+  twinStore.mockTickCount
+  return getMockDataSourceDiagnostics()
+})
+
+const bindingResolverDiagnostics = computed(() => {
+  twinStore.resolutionRevision
+  return bindingTargetResolver?.getDiagnostics() ?? { platformLookupCount: 0, meteorLookupCount: 0 }
 })
 
 function createPlatformId(prefix: 'instance' | 'node'): string {
@@ -393,6 +417,19 @@ async function setCommonView(view: CommonView): Promise<void> {
   activeView.value = labels[view]
 }
 
+function refreshBindingResolutions(): void {
+  const resolver = bindingTargetResolver
+  if (!resolver) return
+  for (const binding of twinStore.bindings) {
+    const status = resolver.resolve(binding.target) ? 'resolved' : 'unresolved'
+    const previousStatus = twinStore.resolutionByBindingId[binding.id]
+    twinStore.setResolutionStatus(binding.id, status)
+    if (status === 'unresolved' && previousStatus !== 'unresolved') {
+      console.warn(`Twin binding target unresolved: ${binding.id}`)
+    }
+  }
+}
+
 async function saveScene(): Promise<void> {
   try {
     const document = serializeSceneDocument({
@@ -402,6 +439,7 @@ async function saveScene(): Promise<void> {
       modifiedObjects: editorStore.modifiedObjects,
       sceneSettings: cloneSceneSettings(sceneSettingsStore.settings),
       cameraView: captureCameraView(),
+      bindings: twinStore.cloneBindings(),
     })
     await sceneRepository.save(document)
     sceneDocumentDebugJson.value = JSON.stringify(document)
@@ -530,8 +568,11 @@ async function deleteSelected(): Promise<void> {
   const assetRoot = isRoot ? object : findAssetInstanceRoot(object)
   const metadata = assetRoot ? getEditorMetadata(assetRoot) : null
   const assetNodeId = typeof object.userData.assetNodeId === 'string' ? object.userData.assetNodeId : null
+  const bindingTargets = bindingTargetsInObjectTree(object)
+  let removedBindings: TwinBinding[] = []
 
   const remove = () => {
+    removedBindings = twinStore.removeBindingsForTargets(bindingTargets)
     runtime.removeObject(object)
     if (isRoot) editorStore.setSceneRoots(editorStore.sceneRoots.filter((item) => item !== object))
     else if (metadata?.kind === 'assetInstance' && assetNodeId && !metadata.deletedAssetNodeIds.includes(assetNodeId)) metadata.deletedAssetNodeIds.push(assetNodeId)
@@ -553,6 +594,7 @@ async function deleteSelected(): Promise<void> {
       refreshRootRegistration(assetRoot)
       editorStore.notifySceneChanged()
     }
+    twinStore.restoreBindings(removedBindings)
     editorStore.selectObject(object)
   }
   await history.execute(new FunctionalCommand('Delete', remove, restore))
@@ -616,11 +658,17 @@ function disposeEditorRuntime(): void {
   stopTransformRevisionWatch?.()
   stopSceneSaveWatch?.()
   stopSceneSettingsWatch?.()
+  stopBindingWatch?.()
   stopSelectionWatch = null
   stopTransformModeWatch = null
   stopTransformRevisionWatch = null
   stopSceneSaveWatch = null
   stopSceneSettingsWatch = null
+  stopBindingWatch = null
+  mockDataSource?.stop()
+  mockDataSource = null
+  twinStore.setMockRunning(false)
+  bindingTargetResolver = null
   selectionManager?.dispose()
   transformManager?.dispose()
   selectionManager = null
@@ -651,6 +699,7 @@ function disposeEditorRuntime(): void {
   testCube = null
   cameraControlsEnabled.value = false
   sceneSettingsStore.resetProject(props.projectId)
+  twinStore.resetProject(props.projectId)
 }
 
 onMounted(async () => {
@@ -659,6 +708,7 @@ onMounted(async () => {
   editorStore.clearSelection()
   editorStore.clearModifiedObjects()
   sceneSettingsStore.initializeProject(props.projectId)
+  twinStore.initializeProject(props.projectId)
   const runtime = new MeteorScene(canvas)
   meteorScene = runtime
 
@@ -675,6 +725,7 @@ onMounted(async () => {
       if (document) {
         restoredDocument = document
         sceneSettingsStore.initializeProject(props.projectId, document.sceneSettings)
+        twinStore.initializeProject(props.projectId, document.bindings ?? [])
         sceneDocumentDebugJson.value = JSON.stringify(document)
         roots = await restoreScene(runtime, document)
         sceneLoadedFromStorage.value = true
@@ -691,6 +742,19 @@ onMounted(async () => {
     }
     applySceneSettings(runtime, sceneSettingsStore.settings)
     editorStore.setSceneRoots(roots)
+    bindingTargetResolver = new BindingTargetResolver(() => editorStore.sceneRoots, runtime)
+    stopBindingWatch = watch(() => twinStore.bindingRevision, refreshBindingResolutions, { immediate: true })
+    mockDataSource = new MockDataSource({
+      getBindings: () => twinStore.bindings.filter(
+        (binding) => twinStore.resolutionByBindingId[binding.id] === 'resolved',
+      ),
+      setRuntimeValue: (bindingId, variableKey, value) => {
+        twinStore.setRuntimeValue(bindingId, variableKey, value)
+      },
+      onTick: () => twinStore.recordMockTick(),
+    })
+    mockDataSource.start()
+    twinStore.setMockRunning(true)
     syncCubeTransform()
     if (restoredDocument?.cameraView) await restoreCameraView(runtime, restoredDocument.cameraView)
 
@@ -780,6 +844,14 @@ onBeforeUnmount(() => {
     :data-ground-mesh-count="infrastructureCounts.ground"
     :data-ambient-light-count="infrastructureCounts.ambient"
     :data-directional-light-count="infrastructureCounts.directional"
+    :data-twin-binding-count="twinStore.bindings.length"
+    :data-unresolved-binding-count="unresolvedBindingCount"
+    :data-mock-running="twinStore.mockRunning ? 'true' : 'false'"
+    :data-mock-tick-count="twinStore.mockTickCount"
+    :data-active-mock-timers="mockDiagnostics.activeTimerCount"
+    :data-binding-platform-lookups="bindingResolverDiagnostics.platformLookupCount"
+    :data-binding-meteor-lookups="bindingResolverDiagnostics.meteorLookupCount"
+    :data-scene-dirty="editorStore.isDirty ? 'true' : 'false'"
     class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-900"
     @dragover="handleDragOver"
     @drop="handleDrop"
@@ -792,6 +864,9 @@ onBeforeUnmount(() => {
     </div>
     <div class="pointer-events-none absolute left-3 top-12 z-10 max-w-[360px] truncate rounded-md bg-slate-950/70 px-2.5 py-1.5 font-mono text-[10px] text-sky-300 backdrop-blur">
       {{ selectedLabel }} · {{ editorStore.transformMode }}
+    </div>
+    <div v-if="unresolvedBindingCount" class="pointer-events-none absolute left-3 top-[84px] z-10 rounded-md bg-amber-950/80 px-2.5 py-1.5 text-[10px] text-amber-300 backdrop-blur">
+      {{ unresolvedBindingCount }} 个设备绑定未解析
     </div>
     <div class="pointer-events-none absolute bottom-3 right-3 z-10 text-[10px] text-slate-500">
       点击选择 · 左键旋转 · 右键平移 · 滚轮缩放

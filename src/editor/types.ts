@@ -7,6 +7,7 @@ export interface SceneTreeNode {
   type: string
   object: Object3D
   children: SceneTreeNode[]
+  twinBound: boolean
 }
 
 export interface Vector3FormValue {

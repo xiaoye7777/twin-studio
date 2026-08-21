@@ -5,6 +5,7 @@ import { getEditorMetadata } from '@/editor/editorMetadata'
 import { captureTransform } from '@/editor/history'
 import type { InspectorFormState, Vector3FormValue } from '@/editor/types'
 import { useEditorStore } from '@/stores/editor'
+import TwinBindingSection from './TwinBindingSection.vue'
 
 type TransformSection = 'position' | 'rotation' | 'scale'
 type Axis = keyof Vector3FormValue
@@ -125,7 +126,7 @@ watch(
     :data-asset-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.assetId : ''"
     :data-instance-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.instanceId : ''"
     :data-node-id="selectedMetadata?.kind === 'primitive' ? selectedMetadata.nodeId : ''"
-    class="w-[280px] shrink-0 border-l border-slate-700 bg-slate-800 text-slate-300"
+    class="flex w-[280px] shrink-0 flex-col border-l border-slate-700 bg-slate-800 text-slate-300"
   >
     <div class="flex h-10 items-center border-b border-slate-700 px-4 text-xs font-semibold text-slate-200">
       属性
@@ -143,7 +144,7 @@ watch(
       <p class="mt-1 text-[10px] leading-4 text-slate-600">从场景或视口中选择一个对象</p>
     </div>
 
-    <div v-else data-testid="inspector-form" class="space-y-5 p-4">
+    <div v-else data-testid="inspector-form" class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
       <label class="block">
         <span class="mb-2 block text-xs text-slate-400">名称</span>
         <el-input
@@ -194,6 +195,7 @@ watch(
         </div>
       </div>
       <el-button data-testid="reset-transform" size="small" class="w-full" @click="editorStore.resetSelectedTransform()">重置变换</el-button>
+      <TwinBindingSection />
     </div>
   </aside>
 </template>

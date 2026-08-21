@@ -1,4 +1,5 @@
 import type { SceneDocumentV1, SceneTransformV1 } from './sceneTypes'
+import { isTwinBinding } from '@/domain/twin'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -58,6 +59,7 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
   if (!Array.isArray(value.instances) || !Array.isArray(value.primitives)) return false
   if (value.sceneSettings !== undefined && !isSceneSettings(value.sceneSettings)) return false
   if (value.cameraView !== undefined && !isCameraView(value.cameraView)) return false
+  if (value.bindings !== undefined && (!Array.isArray(value.bindings) || !value.bindings.every(isTwinBinding))) return false
 
   const validInstances = value.instances.every((instance) => {
     if (

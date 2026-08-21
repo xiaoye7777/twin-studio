@@ -1,6 +1,7 @@
 import { Color, Mesh } from 'three'
 import type { Object3D } from 'three'
 import { findAssetInstanceRoot, getEditorMetadata } from '@/editor/editorMetadata'
+import type { TwinBinding } from '@/domain/twin'
 import type {
   SceneAssetInstanceV1,
   SceneCameraViewV1,
@@ -57,6 +58,7 @@ export function serializeSceneDocument(options: {
   modifiedObjects: readonly Object3D[]
   sceneSettings?: SceneSettingsV1
   cameraView?: SceneCameraViewV1
+  bindings?: TwinBinding[]
 }): SceneDocumentV1 {
   const overridesByRoot = new Map<Object3D, SceneNodeOverrideV1[]>()
 
@@ -109,5 +111,6 @@ export function serializeSceneDocument(options: {
     primitives,
     sceneSettings: options.sceneSettings,
     cameraView: options.cameraView,
+    bindings: options.bindings,
   }
 }
