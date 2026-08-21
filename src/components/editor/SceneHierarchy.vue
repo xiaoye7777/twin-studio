@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, markRaw, nextTick, ref, watch } from 'vue'
+import { Link as LinkIcon } from '@element-plus/icons-vue'
 import type { Object3D } from 'three'
 import type { SceneTreeNode } from '@/editor/types'
+import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
 import { useEditorStore } from '@/stores/editor'
+import { useTwinStore } from '@/stores/twin'
 
 interface TreeController {
   setCurrentKey(key: string | null, shouldAutoExpandParent?: boolean): void
@@ -22,6 +25,7 @@ const excludedObjectTypes = new Set([
 ])
 
 const editorStore = useEditorStore()
+const twinStore = useTwinStore()
 const treeRef = ref<TreeController | null>(null)
 
 function isEditorInfrastructure(object: Object3D): boolean {
@@ -43,6 +47,7 @@ function buildTreeNode(object: Object3D): SceneTreeNode | null {
     .map(buildTreeNode)
     .filter((child): child is SceneTreeNode => child !== null)
 
+  const target = bindingTargetFromObject(object)
   return {
     id: object.uuid,
     bid,
@@ -50,11 +55,13 @@ function buildTreeNode(object: Object3D): SceneTreeNode | null {
     type: object.type,
     object: markRaw(object),
     children,
+    twinBound: target ? twinStore.getBindingByTarget(target) !== null : false,
   }
 }
 
 const treeData = computed<SceneTreeNode[]>(() => {
   editorStore.sceneRevision
+  twinStore.bindingRevision
   return editorStore.sceneRoots
     .map(buildTreeNode)
     .filter((node): node is SceneTreeNode => node !== null)
@@ -117,7 +124,17 @@ watch(
           >
             <span class="h-3 w-3 shrink-0 rounded-sm border border-sky-400/70 bg-sky-500/20" />
             <span class="min-w-0 flex-1 truncate">{{ data.name }}</span>
+            <el-tooltip v-if="data.twinBound" content="已绑定设备" placement="top">
+              <el-icon :data-testid="`twin-binding-icon-${data.id}`" class="shrink-0 text-emerald-400"><LinkIcon /></el-icon>
+            </el-tooltip>
             <span class="shrink-0 text-[9px] text-slate-600">{{ data.type }}</span>
+            <button
+              :data-testid="`visibility-${data.id}`"
+              :aria-label="data.object.visible ? '隐藏对象' : '显示对象'"
+              class="shrink-0 rounded px-1 text-[11px] text-slate-500 hover:bg-slate-700 hover:text-white"
+              type="button"
+              @click.stop="editorStore.toggleVisibility(data.object)"
+            >{{ data.object.visible ? '◉' : '○' }}</button>
           </div>
         </template>
       </el-tree>

@@ -1,11 +1,14 @@
 import { Color, Mesh } from 'three'
 import type { Object3D } from 'three'
 import { findAssetInstanceRoot, getEditorMetadata } from '@/editor/editorMetadata'
+import type { TwinBinding } from '@/domain/twin'
 import type {
   SceneAssetInstanceV1,
+  SceneCameraViewV1,
   SceneDocumentV1,
   SceneNodeOverrideV1,
   ScenePrimitiveV1,
+  SceneSettingsV1,
   SceneTransformV1,
 } from './sceneTypes'
 
@@ -30,7 +33,7 @@ export function applySceneTransform(object: Object3D, transform: SceneTransformV
 
 function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
   const metadata = getEditorMetadata(root)
-  if (metadata?.kind !== 'primitive' || metadata.primitiveType !== 'box') return null
+  if (metadata?.kind !== 'primitive') return null
 
   const color = root instanceof Mesh && root.material && !Array.isArray(root.material)
     && 'color' in root.material && root.material.color instanceof Color
@@ -39,11 +42,12 @@ function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
 
   return {
     nodeId: metadata.nodeId,
-    type: 'box',
+    type: metadata.primitiveType,
     name: root.name,
     transform: serializeTransform(root),
     properties: { color },
     runtimeBid: runtimeBid(root),
+    visible: root.visible,
   }
 }
 
@@ -52,6 +56,9 @@ export function serializeSceneDocument(options: {
   projectName?: string
   roots: readonly Object3D[]
   modifiedObjects: readonly Object3D[]
+  sceneSettings?: SceneSettingsV1
+  cameraView?: SceneCameraViewV1
+  bindings?: TwinBinding[]
 }): SceneDocumentV1 {
   const overridesByRoot = new Map<Object3D, SceneNodeOverrideV1[]>()
 
@@ -66,6 +73,7 @@ export function serializeSceneDocument(options: {
       name: object.name,
       transform: serializeTransform(object),
       runtimeBid: runtimeBid(object),
+      visible: object.visible,
     })
     overridesByRoot.set(root, overrides)
   }
@@ -83,6 +91,8 @@ export function serializeSceneDocument(options: {
         transform: serializeTransform(root),
         nodeOverrides: overridesByRoot.get(root) ?? [],
         runtimeBid: runtimeBid(root),
+        visible: root.visible,
+        deletedAssetNodeIds: metadata.deletedAssetNodeIds,
       })
       continue
     }
@@ -99,5 +109,8 @@ export function serializeSceneDocument(options: {
     },
     instances,
     primitives,
+    sceneSettings: options.sceneSettings,
+    cameraView: options.cameraView,
+    bindings: options.bindings,
   }
 }

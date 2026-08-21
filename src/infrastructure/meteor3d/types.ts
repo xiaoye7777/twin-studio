@@ -32,3 +32,18 @@ export interface MeteorRaycastOptions {
   recursive?: boolean
   includeTileMap?: boolean
 }
+
+export interface MeteorViewPoint {
+  x: number
+  y: number
+  z: number
+}
+
+export interface MeteorCameraView {
+  position: MeteorViewPoint
+  target: MeteorViewPoint
+}
+
+export interface MeteorSetViewOptions extends MeteorCameraView {
+  duration?: number
+}

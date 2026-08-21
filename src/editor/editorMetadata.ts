@@ -5,11 +5,12 @@ export interface AssetInstanceEditorMetadata {
   assetRoot: true
   assetId: string
   instanceId: string
+  deletedAssetNodeIds: string[]
 }
 export interface PrimitiveEditorMetadata {
   kind: 'primitive'
   nodeId: string
-  primitiveType: 'box'
+  primitiveType: 'box' | 'plane' | 'cylinder'
 }
 
 export type EditorObjectMetadata = AssetInstanceEditorMetadata | PrimitiveEditorMetadata
@@ -36,7 +37,7 @@ export function getEditorMetadata(object: Object3D): EditorObjectMetadata | null
     'nodeId' in value &&
     typeof value.nodeId === 'string' &&
     'primitiveType' in value &&
-    value.primitiveType === 'box'
+    (value.primitiveType === 'box' || value.primitiveType === 'plane' || value.primitiveType === 'cylinder')
   ) {
     return value as PrimitiveEditorMetadata
   }

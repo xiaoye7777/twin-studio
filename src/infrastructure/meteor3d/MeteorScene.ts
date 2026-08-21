@@ -3,11 +3,13 @@ import type {
   SceneManager as SceneManagerType,
 } from '@meteor3d/core'
 import { Mesh, REVISION, Vector2 } from 'three'
-import type { Intersection, Object3D, PerspectiveCamera, Scene } from 'three'
+import type { Intersection, Object3D, PerspectiveCamera, Scene, Texture, Vector3 } from 'three'
 import type {
   MeteorDisposeDiagnostics,
   MeteorRaycastOptions,
   MeteorRuntimeDiagnostics,
+  MeteorCameraView,
+  MeteorSetViewOptions,
 } from './types'
 
 type MeshRaycast = Mesh['raycast']
@@ -66,6 +68,7 @@ export class MeteorScene {
   addObject<T extends Object3D>(object: T): boolean {
     return this.requireManager().addObject(object)
   }
+  removeObject(object: Object3D): void { this.requireManager().removeObject(object) }
 
   loadGLTFModel(url: string): Promise<Object3D> {
     return this.requirePersistenceManager().loadGLTFModel(url)
@@ -74,6 +77,7 @@ export class MeteorScene {
   focusObject(bid: string): Promise<void> {
     return this.requireManager().focusObject(bid)
   }
+  fitScene(): Promise<void> { return this.requireManager().fitCameraToScene() }
 
   findObjectByBid<T extends Object3D>(bid: string): T | null {
     return this.requireManager().findObjectByBid<T>(bid)
@@ -98,6 +102,10 @@ export class MeteorScene {
     return this.requireManager().raycastObjects(screenPosition, options)
   }
 
+  raycastGround(screenPosition: Vector2): Vector3 | null {
+    return this.requireManager().raycastGround(screenPosition)
+  }
+
   isCameraControlsEnabled(): boolean {
     return this.requireManager().controls.enabled
   }
@@ -120,6 +128,30 @@ export class MeteorScene {
       widthSegments,
       lengthSegments,
     )
+  }
+
+  setAxesHelper(visible: boolean, size = 10): void {
+    this.requireManager().setAxesHelper(visible, size)
+  }
+
+  loadEnvironment(url: string): Promise<Texture | null> {
+    return this.requireManager().loadEnvironment(url)
+  }
+
+  clearEnvironment(): void {
+    const scene = this.requireManager().scene
+    const environment = scene.environment
+    scene.background = null
+    scene.environment = null
+    environment?.dispose()
+  }
+
+  getView(): MeteorCameraView {
+    return this.requireManager().getView()
+  }
+
+  setView(options: MeteorSetViewOptions): Promise<void> {
+    return this.requireManager().setView(options)
   }
 
   getDiagnostics(): MeteorRuntimeDiagnostics {
