@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Aim, ArrowLeft, CirclePlus, CopyDocument, Delete, Promotion, Rank, RefreshLeft, RefreshRight, Upload, View } from '@element-plus/icons-vue'
+import { Aim, ArrowLeft, CirclePlus, Compass, CopyDocument, Delete, Promotion, Rank, RefreshLeft, RefreshRight, Setting, Upload, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { onBeforeUnmount, onMounted } from 'vue'
-import { useEditorStore, type PrimitiveType, type TransformMode } from '@/stores/editor'
+import { useEditorStore, type CommonView, type PrimitiveType, type TransformMode } from '@/stores/editor'
+import { useSceneSettingsStore } from '@/stores/sceneSettings'
 
 defineProps<{
   projectName: string
@@ -13,6 +14,7 @@ defineEmits<{
 }>()
 
 const editorStore = useEditorStore()
+const sceneSettingsStore = useSceneSettingsStore()
 
 const transformTools: Array<{
   mode: TransformMode
@@ -32,6 +34,12 @@ function showDemoMessage(action: string) {
 function addPrimitive(command: string | number | object): void {
   if (command === 'box' || command === 'plane' || command === 'cylinder') {
     editorStore.addPrimitive(command satisfies PrimitiveType)
+  }
+}
+
+function setCommonView(command: string | number | object): void {
+  if (command === 'top' || command === 'front' || command === 'right' || command === 'perspective') {
+    editorStore.setCommonView(command satisfies CommonView)
   }
 }
 
@@ -121,12 +129,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <button data-testid="delete-selected" aria-label="删除" :disabled="!editorStore.selectedObject" class="toolbar-icon" type="button" @click="editorStore.deleteSelected()"><el-icon><Delete /></el-icon></button>
       <button data-testid="focus-selected" aria-label="聚焦选中" :disabled="!editorStore.selectedObject" class="toolbar-icon" type="button" @click="editorStore.focusSelected()"><el-icon><View /></el-icon></button>
       <button data-testid="fit-scene" aria-label="适应全部" class="toolbar-icon" type="button" @click="editorStore.fitScene()"><el-icon><Aim /></el-icon></button>
+      <el-dropdown trigger="click" @command="setCommonView">
+        <button data-testid="common-view" aria-label="常用视角" :disabled="!editorStore.runtimeReady" class="toolbar-icon gap-1 px-2" type="button">
+          <el-icon><Compass /></el-icon><span class="text-[11px]">视角</span>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="top">Top 顶视图</el-dropdown-item>
+            <el-dropdown-item command="front">Front 前视图</el-dropdown-item>
+            <el-dropdown-item command="right">Right 右视图</el-dropdown-item>
+            <el-dropdown-item command="perspective">Perspective 透视图</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
       <select data-testid="transform-snap" aria-label="变换吸附" class="ml-1 h-8 rounded border border-slate-700 bg-slate-800 px-2 text-[11px] text-slate-300" @change="handleSnapChange">
         <option value="">Snap Off</option><option value="0.1">0.1</option><option value="0.5">0.5</option><option value="1">1</option><option value="15">15°</option><option value="45">45°</option>
       </select>
     </div>
 
     <div class="flex w-[320px] items-center justify-end gap-2">
+      <button data-testid="toggle-scene-settings" aria-label="场景设置" :aria-pressed="sceneSettingsStore.panelOpen" class="toolbar-icon" :class="sceneSettingsStore.panelOpen ? 'bg-slate-700 text-white' : ''" type="button" @click="sceneSettingsStore.togglePanel()"><el-icon><Setting /></el-icon></button>
       <el-button data-testid="save-scene" size="small" dark @click="editorStore.requestSceneSave()">保存{{ editorStore.isDirty ? ' *' : '' }}</el-button>
       <el-button size="small" dark @click="showDemoMessage('预览')">
         <el-icon class="mr-1"><Promotion /></el-icon>预览

@@ -3,9 +3,11 @@ import type { Object3D } from 'three'
 import { findAssetInstanceRoot, getEditorMetadata } from '@/editor/editorMetadata'
 import type {
   SceneAssetInstanceV1,
+  SceneCameraViewV1,
   SceneDocumentV1,
   SceneNodeOverrideV1,
   ScenePrimitiveV1,
+  SceneSettingsV1,
   SceneTransformV1,
 } from './sceneTypes'
 
@@ -53,6 +55,8 @@ export function serializeSceneDocument(options: {
   projectName?: string
   roots: readonly Object3D[]
   modifiedObjects: readonly Object3D[]
+  sceneSettings?: SceneSettingsV1
+  cameraView?: SceneCameraViewV1
 }): SceneDocumentV1 {
   const overridesByRoot = new Map<Object3D, SceneNodeOverrideV1[]>()
 
@@ -103,5 +107,7 @@ export function serializeSceneDocument(options: {
     },
     instances,
     primitives,
+    sceneSettings: options.sceneSettings,
+    cameraView: options.cameraView,
   }
 }

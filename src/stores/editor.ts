@@ -5,6 +5,7 @@ import type { TransformState } from '@/editor/history'
 
 export type TransformMode = 'translate' | 'rotate' | 'scale'
 export type PrimitiveType = 'box' | 'plane' | 'cylinder'
+export type CommonView = 'top' | 'front' | 'right' | 'perspective'
 export type TransformChangeSource = 'gizmo' | 'inspector'
 export interface EditorActions {
   undo(): void
@@ -20,6 +21,7 @@ export interface EditorActions {
   commitTransform(object: Object3D, before: TransformState, after: TransformState): void
   addPrimitive(type: PrimitiveType): void
   instantiateAsset(assetId: string): void
+  setCommonView(view: CommonView): void
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -122,5 +124,6 @@ export const useEditorStore = defineStore('editor', () => {
     commitTransform: (object: Object3D, before: TransformState, after: TransformState) => actions.value?.commitTransform(object, before, after),
     addPrimitive: (type: PrimitiveType) => actions.value?.addPrimitive(type),
     instantiateAsset: (assetId: string) => actions.value?.instantiateAsset(assetId),
+    setCommonView: (view: CommonView) => actions.value?.setCommonView(view),
   }
 })

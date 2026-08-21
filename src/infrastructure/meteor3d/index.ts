@@ -3,5 +3,8 @@ export type {
   MeteorDisposeDiagnostics,
   MeteorRaycastOptions,
   MeteorRuntimeDiagnostics,
+  MeteorCameraView,
+  MeteorSetViewOptions,
+  MeteorViewPoint,
   RaycastSideEffectDiagnostics,
 } from './types'

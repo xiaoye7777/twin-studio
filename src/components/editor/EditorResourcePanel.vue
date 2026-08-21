@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Box, Files, Upload } from '@element-plus/icons-vue'
+import { Box, Files, Picture, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { writeAssetDragPayload } from '@/editor/assetDrag'
 import type { AssetMetadata } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
@@ -10,6 +10,8 @@ import { useEditorStore, type PrimitiveType } from '@/stores/editor'
 const assetStore = useAssetStore()
 const editorStore = useEditorStore()
 const fileInputRef = ref<HTMLInputElement>()
+const modelAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'model'))
+const environmentAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'environment'))
 
 const primitives: Array<{ type: PrimitiveType; label: string }> = [
   { type: 'box', label: 'Box' },
@@ -104,9 +106,9 @@ onMounted(() => {
 
       <div class="min-w-0 flex-1">
         <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Models</p>
-        <div v-if="assetStore.assets.length" class="flex gap-2">
+        <div v-if="modelAssets.length" class="flex gap-2">
           <article
-            v-for="asset in assetStore.assets"
+            v-for="asset in modelAssets"
             :key="asset.id"
             :data-testid="`asset-card-${asset.id}`"
             :data-asset-id="asset.id"
@@ -128,6 +130,19 @@ onMounted(() => {
           尚无模型资产，导入 GLB 后可拖入场景。
         </div>
       </div>
+
+      <template v-if="environmentAssets.length">
+        <span class="h-20 w-px shrink-0 bg-slate-700" />
+        <div class="shrink-0">
+          <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Environments</p>
+          <div class="flex gap-2">
+            <article v-for="asset in environmentAssets" :key="asset.id" :data-testid="`environment-card-${asset.id}`" class="flex h-16 w-44 shrink-0 items-center gap-3 rounded-lg bg-slate-900/45 px-3">
+              <div class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-700 text-slate-300"><el-icon :size="19"><Picture /></el-icon></div>
+              <div class="min-w-0"><p class="truncate text-xs font-medium text-slate-200">{{ asset.name }}</p><p class="mt-1 text-[10px] uppercase text-slate-500">HDR · {{ formatSize(asset.size) }}</p></div>
+            </article>
+          </div>
+        </div>
+      </template>
     </div>
   </section>
 </template>

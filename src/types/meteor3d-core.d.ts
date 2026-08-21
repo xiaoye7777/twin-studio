@@ -6,10 +6,23 @@ declare module '@meteor3d/core' {
     Scene,
     Vector2,
     WebGLRenderer,
+    Texture,
   } from 'three'
 
   interface MeteorOrbitControls {
     enabled: boolean
+  }
+
+
+  interface MeteorViewPoint {
+    x: number
+    y: number
+    z: number
+  }
+
+  interface MeteorCameraView {
+    position: MeteorViewPoint
+    target: MeteorViewPoint
   }
 
   export class SceneManager {
@@ -39,6 +52,10 @@ declare module '@meteor3d/core' {
       widthSegments?: number,
       lengthSegments?: number,
     ): void
+    setAxesHelper(visible: boolean, size?: number): void
+    loadEnvironment(url: string): Promise<Texture | null>
+    getView(callback?: (view: MeteorCameraView) => void): MeteorCameraView
+    setView(options: MeteorCameraView & { duration?: number }): Promise<void>
     focusObject(bid: string, options?: Record<string, unknown>): Promise<void>
     fitCameraToScene(): Promise<void>
     dispose(): void

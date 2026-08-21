@@ -1,4 +1,4 @@
-import type { AssetMetadata, AssetRecord, AssetRepository } from './AssetRepository'
+import type { AssetMetadata, AssetRecord, AssetRepository, AssetType } from './AssetRepository'
 
 const DATABASE_NAME = 'digital-twin-studio-assets'
 const DATABASE_VERSION = 1
@@ -26,25 +26,28 @@ function createAssetId(): string {
 export class IndexedDbAssetRepository implements AssetRepository {
   private databasePromise: Promise<IDBDatabase> | null = null
 
-  async saveFile(file: File): Promise<AssetRecord> {
+  async saveFile(file: File, assetType: AssetType = 'model'): Promise<AssetRecord> {
     const database = await this.openDatabase()
-    const fingerprint = `${file.name}:${file.size}:${file.lastModified}`
+    const fingerprint = `${assetType}:${file.name}:${file.size}:${file.lastModified}`
 
     const readTransaction = database.transaction(STORE_NAME, 'readonly')
-    const existing = await requestResult(
-      readTransaction.objectStore(STORE_NAME).index(FINGERPRINT_INDEX).get(fingerprint),
-    ) as AssetRecord | undefined
-    if (existing) return existing
+    const fingerprintIndex = readTransaction.objectStore(STORE_NAME).index(FINGERPRINT_INDEX)
+    let existing = await requestResult(fingerprintIndex.get(fingerprint)) as AssetRecord | undefined
+    if (!existing && assetType === 'model') {
+      existing = await requestResult(fingerprintIndex.get(`${file.name}:${file.size}:${file.lastModified}`)) as AssetRecord | undefined
+    }
+    if (existing) return { ...existing, assetType: existing.assetType ?? 'model' }
 
     const record: AssetRecord = {
       id: createAssetId(),
       fingerprint,
       name: file.name,
-      mimeType: file.type || 'model/gltf-binary',
+      mimeType: file.type || (assetType === 'environment' ? 'image/vnd.radiance' : 'model/gltf-binary'),
       size: file.size,
       lastModified: file.lastModified,
       blob: file,
       createdAt: new Date().toISOString(),
+      assetType,
     }
     const writeTransaction = database.transaction(STORE_NAME, 'readwrite')
     writeTransaction.objectStore(STORE_NAME).add(record)
@@ -56,7 +59,9 @@ export class IndexedDbAssetRepository implements AssetRepository {
     const database = await this.openDatabase()
     const transaction = database.transaction(STORE_NAME, 'readonly')
     const record = await requestResult(transaction.objectStore(STORE_NAME).get(assetId))
-    return (record as AssetRecord | undefined) ?? null
+    if (!record) return null
+    const asset = record as AssetRecord
+    return { ...asset, assetType: asset.assetType ?? 'model' }
   }
 
   async listMetadata(): Promise<AssetMetadata[]> {
@@ -81,6 +86,7 @@ export class IndexedDbAssetRepository implements AssetRepository {
           mimeType: record.mimeType,
           size: record.size,
           createdAt: record.createdAt,
+          assetType: record.assetType ?? 'model',
         })
         cursor.continue()
       }

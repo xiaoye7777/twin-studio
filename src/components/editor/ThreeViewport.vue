@@ -15,8 +15,14 @@ import {
   Vector3,
 } from 'three'
 import type { Object3D } from 'three'
-import { applySceneTransform, serializeSceneDocument } from '@/domain/scene'
-import type { SceneAssetInstanceV1, SceneDocumentV1, ScenePrimitiveV1 } from '@/domain/scene'
+import { applySceneTransform, cloneSceneSettings, serializeSceneDocument } from '@/domain/scene'
+import type {
+  SceneAssetInstanceV1,
+  SceneCameraViewV1,
+  SceneDocumentV1,
+  ScenePrimitiveV1,
+  SceneSettingsV1,
+} from '@/domain/scene'
 import { ASSET_DRAG_MIME, readAssetDragPayload } from '@/editor/assetDrag'
 import { findAssetInstanceRoot, getEditorMetadata, setEditorMetadata } from '@/editor/editorMetadata'
 import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
@@ -27,7 +33,8 @@ import { TransformManager } from '@/editor/services/TransformManager'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { MeteorScene } from '@/infrastructure/meteor3d'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import { useEditorStore, type PrimitiveType } from '@/stores/editor'
+import { useEditorStore, type CommonView, type PrimitiveType } from '@/stores/editor'
+import { useSceneSettingsStore } from '@/stores/sceneSettings'
 
 const props = defineProps<{ projectId: string; projectName: string }>()
 
@@ -53,8 +60,11 @@ const assetDropLoading = ref(false)
 const lastDroppedAssetId = ref('')
 const lastDroppedInstanceId = ref('')
 const lastDroppedBottomY = ref('')
+const activeView = ref('Perspective')
+const environmentStatus = ref('None')
 
 const editorStore = useEditorStore()
+const sceneSettingsStore = useSceneSettingsStore()
 const { selectedObject } = storeToRefs(editorStore)
 const assetRepository = new IndexedDbAssetRepository()
 const sceneRepository = new LocalSceneRepository()
@@ -64,12 +74,18 @@ let meteorScene: MeteorScene | null = null
 let selectionManager: SelectionManager | null = null
 let transformManager: TransformManager | null = null
 let testCube: Mesh | null = null
+let ambientLight: AmbientLight | null = null
+let directionalLight: DirectionalLight | null = null
+let groundMesh: Mesh<PlaneGeometry, MeshStandardMaterial> | null = null
 let stopSelectionWatch: WatchStopHandle | null = null
 let stopTransformModeWatch: WatchStopHandle | null = null
 let stopTransformRevisionWatch: WatchStopHandle | null = null
 let stopSceneSaveWatch: WatchStopHandle | null = null
+let stopSceneSettingsWatch: WatchStopHandle | null = null
 let unmounted = false
 let saveQueue = Promise.resolve()
+let environmentQueue = Promise.resolve()
+let appliedEnvironmentAssetId: string | null | undefined
 let gizmoTransformBefore: TransformState | null = null
 const history = new HistoryManager(() => {
   editorStore.setHistoryState(history.canUndo, history.canRedo)
@@ -80,6 +96,20 @@ const selectedLabel = computed(() => {
   editorStore.sceneRevision
   if (!editorStore.selectedObject) return '未选择对象'
   return `${editorStore.selectedObject.name || 'Object3D'} · ${editorStore.selectedBid ?? 'No BID'}`
+})
+
+const infrastructureCounts = computed(() => {
+  sceneSettingsStore.revision
+  if (initializing.value || !editorStore.runtimeReady) {
+    return { ground: 0, ambient: 0, directional: 0 }
+  }
+  const scene = meteorScene?.getScene()
+  if (!scene) return { ground: 0, ambient: 0, directional: 0 }
+  return {
+    ground: scene.children.filter((object) => object.name === 'Editor Ground').length,
+    ambient: scene.children.filter((object) => object.name === 'Editor Ambient Light').length,
+    directional: scene.children.filter((object) => object.name === 'Editor Directional Light').length,
+  }
 })
 
 function createPlatformId(prefix: 'instance' | 'node'): string {
@@ -230,6 +260,139 @@ async function restoreScene(runtime: MeteorScene, document: SceneDocumentV1): Pr
   return roots
 }
 
+function installSceneInfrastructure(runtime: MeteorScene): void {
+  const scene = runtime.getScene()
+  ambientLight = new AmbientLight(0xffffff)
+  ambientLight.name = 'Editor Ambient Light'
+  ambientLight.userData.editorInfrastructure = true
+  directionalLight = new DirectionalLight(0xffffff)
+  directionalLight.name = 'Editor Directional Light'
+  directionalLight.userData.editorInfrastructure = true
+  scene.add(ambientLight, directionalLight)
+}
+
+function updateGround(runtime: MeteorScene, settings: SceneSettingsV1): void {
+  if (!groundMesh) {
+    const geometry = new PlaneGeometry(1, 1)
+    geometry.rotateX(-Math.PI / 2)
+    groundMesh = new Mesh(
+      geometry,
+      new MeshStandardMaterial({
+        color: settings.ground.color,
+        roughness: 0.92,
+        metalness: 0,
+      }),
+    )
+    groundMesh.name = 'Editor Ground'
+    groundMesh.position.y = -0.01
+    groundMesh.receiveShadow = true
+    groundMesh.userData.editorInfrastructure = true
+    runtime.getScene().add(groundMesh)
+  }
+  groundMesh.visible = settings.ground.enabled
+  groundMesh.scale.set(settings.ground.size, 1, settings.ground.size)
+  groundMesh.material.color.set(settings.ground.color)
+  groundMesh.updateMatrixWorld(true)
+}
+
+async function applyEnvironment(runtime: MeteorScene, assetId: string | null): Promise<void> {
+  if (appliedEnvironmentAssetId === assetId) return
+  if (!assetId) {
+    runtime.clearEnvironment()
+    appliedEnvironmentAssetId = null
+    environmentStatus.value = 'None'
+    return
+  }
+
+  const asset = await assetRepository.get(assetId)
+  if (!asset) throw new Error('保存的环境资产不存在')
+  if (asset.assetType !== 'environment') throw new Error('选择的资产不是环境贴图')
+  const resource = importedAssetResources.getOrCreate(asset)
+  const texture = await runtime.loadEnvironment(resource.objectUrl)
+  if (!texture || unmounted) return
+  appliedEnvironmentAssetId = assetId
+  environmentStatus.value = asset.name
+}
+
+function applySceneSettings(runtime: MeteorScene, settings: SceneSettingsV1): void {
+  const gridSize = Math.max(1, settings.ground.size)
+  const segments = Math.max(1, Math.min(200, Math.round(gridSize / 10)))
+  runtime.setGridHelper(settings.gridEnabled, gridSize, gridSize, segments, segments)
+  runtime.setAxesHelper(settings.axesEnabled, Math.max(5, Math.min(50, gridSize / 10)))
+  updateGround(runtime, settings)
+  if (ambientLight) ambientLight.intensity = settings.lighting.ambientIntensity
+  if (directionalLight) {
+    directionalLight.intensity = settings.lighting.directionalIntensity
+    directionalLight.position.fromArray(settings.lighting.directionalPosition)
+  }
+
+  const requestedAssetId = settings.environmentAssetId
+  environmentQueue = environmentQueue
+    .then(() => applyEnvironment(runtime, requestedAssetId))
+    .catch((error: unknown) => {
+      if (!unmounted) {
+        runtime.clearEnvironment()
+        appliedEnvironmentAssetId = null
+        environmentStatus.value = 'Fallback'
+        ElMessage.error(error instanceof Error ? error.message : '环境贴图加载失败')
+      }
+    })
+}
+
+function captureCameraView(): SceneCameraViewV1 | undefined {
+  const runtime = meteorScene
+  if (!runtime) return undefined
+  const view = runtime.getView()
+  return {
+    position: [view.position.x, view.position.y, view.position.z],
+    target: [view.target.x, view.target.y, view.target.z],
+    fov: runtime.getCamera().fov,
+  }
+}
+
+async function restoreCameraView(runtime: MeteorScene, view: SceneCameraViewV1): Promise<void> {
+  if (view.fov) {
+    runtime.getCamera().fov = view.fov
+    runtime.getCamera().updateProjectionMatrix()
+  }
+  await runtime.setView({
+    position: { x: view.position[0], y: view.position[1], z: view.position[2] },
+    target: { x: view.target[0], y: view.target[1], z: view.target[2] },
+    duration: 0,
+  })
+  activeView.value = 'Saved'
+}
+
+async function setCommonView(view: CommonView): Promise<void> {
+  const runtime = meteorScene
+  if (!runtime) return
+  const bounds = new Box3()
+  for (const root of editorStore.sceneRoots) bounds.expandByObject(root, true)
+  const center = bounds.isEmpty() ? new Vector3() : bounds.getCenter(new Vector3())
+  const size = bounds.isEmpty() ? new Vector3(10, 10, 10) : bounds.getSize(new Vector3())
+  const radius = Math.max(size.length() / 2, 1)
+  const camera = runtime.getCamera()
+  const verticalDistance = radius / Math.tan((camera.fov * Math.PI) / 360)
+  const distance = Math.max(verticalDistance, radius / Math.max(camera.aspect, 0.1)) * 1.25
+  const directions: Record<CommonView, Vector3> = {
+    top: new Vector3(0, 1, 0.001),
+    front: new Vector3(0, 0, 1),
+    right: new Vector3(1, 0, 0),
+    perspective: new Vector3(1, 0.75, 1),
+  }
+  const labels: Record<CommonView, string> = {
+    top: 'Top', front: 'Front', right: 'Right', perspective: 'Perspective',
+  }
+  camera.up.set(0, 1, 0)
+  const position = center.clone().addScaledVector(directions[view].normalize(), distance)
+  await runtime.setView({
+    position: { x: position.x, y: position.y, z: position.z },
+    target: { x: center.x, y: center.y, z: center.z },
+    duration: 350,
+  })
+  activeView.value = labels[view]
+}
+
 async function saveScene(): Promise<void> {
   try {
     const document = serializeSceneDocument({
@@ -237,6 +400,8 @@ async function saveScene(): Promise<void> {
       projectName: props.projectName,
       roots: editorStore.sceneRoots,
       modifiedObjects: editorStore.modifiedObjects,
+      sceneSettings: cloneSceneSettings(sceneSettingsStore.settings),
+      cameraView: captureCameraView(),
     })
     await sceneRepository.save(document)
     sceneDocumentDebugJson.value = JSON.stringify(document)
@@ -441,6 +606,7 @@ function installEditorActions(transforms: TransformManager): void {
     commitTransform: (object, before, after) => { void history.execute(new TransformCommand(object, before, after, notifyTransform), true) },
     addPrimitive: (type) => { void addPrimitive(type) },
     instantiateAsset: (assetId) => { void instantiateAsset(assetId, new Vector3()) },
+    setCommonView: (view) => { void setCommonView(view) },
   })
 }
 
@@ -449,10 +615,12 @@ function disposeEditorRuntime(): void {
   stopTransformModeWatch?.()
   stopTransformRevisionWatch?.()
   stopSceneSaveWatch?.()
+  stopSceneSettingsWatch?.()
   stopSelectionWatch = null
   stopTransformModeWatch = null
   stopTransformRevisionWatch = null
   stopSceneSaveWatch = null
+  stopSceneSettingsWatch = null
   selectionManager?.dispose()
   transformManager?.dispose()
   selectionManager = null
@@ -463,11 +631,26 @@ function disposeEditorRuntime(): void {
   editorStore.setActions(null)
   history.clear()
   editorStore.setDirty(false)
-  importedAssetResources.dispose()
+  if (meteorScene && (ambientLight || groundMesh)) {
+    meteorScene.clearEnvironment()
+    if (groundMesh) {
+      groundMesh.removeFromParent()
+      groundMesh.geometry.dispose()
+      groundMesh.material.dispose()
+    }
+    ambientLight?.removeFromParent()
+    directionalLight?.removeFromParent()
+  }
   meteorScene?.dispose()
   meteorScene = null
+  importedAssetResources.dispose()
+  groundMesh = null
+  ambientLight = null
+  directionalLight = null
+  appliedEnvironmentAssetId = undefined
   testCube = null
   cameraControlsEnabled.value = false
+  sceneSettingsStore.resetProject(props.projectId)
 }
 
 onMounted(async () => {
@@ -475,23 +658,23 @@ onMounted(async () => {
   if (!canvas) return
   editorStore.clearSelection()
   editorStore.clearModifiedObjects()
+  sceneSettingsStore.initializeProject(props.projectId)
   const runtime = new MeteorScene(canvas)
   meteorScene = runtime
 
   try {
     await runtime.initialize()
     if (unmounted) return
-    runtime.setGridHelper(true, 30, 30, 30, 30)
     cameraControlsEnabled.value = runtime.isCameraControlsEnabled()
-    runtime.addObject(new AmbientLight(0xffffff, 1.3))
-    const directionalLight = new DirectionalLight(0xffffff, 2.4)
-    directionalLight.position.set(5, 8, 4)
-    runtime.addObject(directionalLight)
+    installSceneInfrastructure(runtime)
 
     let roots: Object3D[] = []
+    let restoredDocument: SceneDocumentV1 | null = null
     try {
       const document = await sceneRepository.load(props.projectId)
       if (document) {
+        restoredDocument = document
+        sceneSettingsStore.initializeProject(props.projectId, document.sceneSettings)
         sceneDocumentDebugJson.value = JSON.stringify(document)
         roots = await restoreScene(runtime, document)
         sceneLoadedFromStorage.value = true
@@ -506,8 +689,10 @@ onMounted(async () => {
       testCube = cube
       roots.push(cube)
     }
+    applySceneSettings(runtime, sceneSettingsStore.settings)
     editorStore.setSceneRoots(roots)
     syncCubeTransform()
+    if (restoredDocument?.cameraView) await restoreCameraView(runtime, restoredDocument.cameraView)
 
     const transforms = new TransformManager(runtime, {
       onAxisChange: (axis) => { transformAxis.value = axis ?? '' },
@@ -539,6 +724,9 @@ onMounted(async () => {
     }, { immediate: true })
     stopTransformModeWatch = watch(() => editorStore.transformMode, (mode) => transforms.setMode(mode), { immediate: true })
     stopTransformRevisionWatch = watch(() => editorStore.transformRevision, syncCubeTransform)
+    stopSceneSettingsWatch = watch(() => sceneSettingsStore.revision, () => {
+      applySceneSettings(runtime, sceneSettingsStore.settings)
+    })
     stopSceneSaveWatch = watch(() => editorStore.sceneSaveRevision, () => {
       saveQueue = saveQueue.then(saveScene)
     })
@@ -584,6 +772,14 @@ onBeforeUnmount(() => {
     :data-last-dropped-bottom-y="lastDroppedBottomY"
     :data-scene-root-count="editorStore.sceneRoots.length"
     :data-runtime-ready="editorStore.runtimeReady ? 'true' : 'false'"
+    :data-active-view="activeView"
+    :data-grid-enabled="sceneSettingsStore.settings.gridEnabled ? 'true' : 'false'"
+    :data-axes-enabled="sceneSettingsStore.settings.axesEnabled ? 'true' : 'false'"
+    :data-ground-enabled="sceneSettingsStore.settings.ground.enabled ? 'true' : 'false'"
+    :data-environment-status="environmentStatus"
+    :data-ground-mesh-count="infrastructureCounts.ground"
+    :data-ambient-light-count="infrastructureCounts.ambient"
+    :data-directional-light-count="infrastructureCounts.directional"
     class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-900"
     @dragover="handleDragOver"
     @drop="handleDrop"
@@ -592,7 +788,7 @@ onBeforeUnmount(() => {
     <pre data-testid="scene-document-debug" class="hidden">{{ sceneDocumentDebugJson }}</pre>
 
     <div class="pointer-events-none absolute left-3 top-3 z-10 rounded-md bg-slate-950/70 px-2.5 py-1.5 text-[11px] text-slate-400 backdrop-blur">
-      透视视图 · Meteor3D Runtime
+      {{ activeView }} View · Meteor3D Runtime
     </div>
     <div class="pointer-events-none absolute left-3 top-12 z-10 max-w-[360px] truncate rounded-md bg-slate-950/70 px-2.5 py-1.5 font-mono text-[10px] text-sky-300 backdrop-blur">
       {{ selectedLabel }} · {{ editorStore.transformMode }}

@@ -3,11 +3,13 @@ import type {
   SceneManager as SceneManagerType,
 } from '@meteor3d/core'
 import { Mesh, REVISION, Vector2 } from 'three'
-import type { Intersection, Object3D, PerspectiveCamera, Scene, Vector3 } from 'three'
+import type { Intersection, Object3D, PerspectiveCamera, Scene, Texture, Vector3 } from 'three'
 import type {
   MeteorDisposeDiagnostics,
   MeteorRaycastOptions,
   MeteorRuntimeDiagnostics,
+  MeteorCameraView,
+  MeteorSetViewOptions,
 } from './types'
 
 type MeshRaycast = Mesh['raycast']
@@ -126,6 +128,30 @@ export class MeteorScene {
       widthSegments,
       lengthSegments,
     )
+  }
+
+  setAxesHelper(visible: boolean, size = 10): void {
+    this.requireManager().setAxesHelper(visible, size)
+  }
+
+  loadEnvironment(url: string): Promise<Texture | null> {
+    return this.requireManager().loadEnvironment(url)
+  }
+
+  clearEnvironment(): void {
+    const scene = this.requireManager().scene
+    const environment = scene.environment
+    scene.background = null
+    scene.environment = null
+    environment?.dispose()
+  }
+
+  getView(): MeteorCameraView {
+    return this.requireManager().getView()
+  }
+
+  setView(options: MeteorSetViewOptions): Promise<void> {
+    return this.requireManager().setView(options)
   }
 
   getDiagnostics(): MeteorRuntimeDiagnostics {

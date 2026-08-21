@@ -20,12 +20,44 @@ function isTransform(value: unknown): value is SceneTransformV1 {
   )
 }
 
+function isPositiveFinite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+}
+
+function isSceneSettings(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.gridEnabled !== 'boolean' || typeof value.axesEnabled !== 'boolean') return false
+  const ground = value.ground
+  const lighting = value.lighting
+  return (
+    isRecord(ground) &&
+    typeof ground.enabled === 'boolean' &&
+    isPositiveFinite(ground.size) &&
+    typeof ground.color === 'string' &&
+    isRecord(lighting) &&
+    typeof lighting.ambientIntensity === 'number' && Number.isFinite(lighting.ambientIntensity) && lighting.ambientIntensity >= 0 &&
+    typeof lighting.directionalIntensity === 'number' && Number.isFinite(lighting.directionalIntensity) && lighting.directionalIntensity >= 0 &&
+    isNumberTuple(lighting.directionalPosition) &&
+    (value.environmentAssetId === null || typeof value.environmentAssetId === 'string')
+  )
+}
+
+function isCameraView(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isNumberTuple(value.position) &&
+    isNumberTuple(value.target) &&
+    (value.fov === undefined || isPositiveFinite(value.fov))
+  )
+}
+
 export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
   if (!isRecord(value) || value.version !== 1 || typeof value.projectId !== 'string') {
     return false
   }
   if (!isRecord(value.metadata) || typeof value.metadata.updatedAt !== 'string') return false
   if (!Array.isArray(value.instances) || !Array.isArray(value.primitives)) return false
+  if (value.sceneSettings !== undefined && !isSceneSettings(value.sceneSettings)) return false
+  if (value.cameraView !== undefined && !isCameraView(value.cameraView)) return false
 
   const validInstances = value.instances.every((instance) => {
     if (
