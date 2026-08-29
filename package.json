@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "2.3.2",
-    "@meteor3d/core": "git+https://github.com/nikonikoCW/Meteor3DEditor.git#34cb34712ba25b09732dd646c6d1203084eb055a&path:/packages/core",
+    "@meteor3d/core": "file:./vendor/meteor3d-core",
     "element-plus": "2.11.8",
     "pinia": "3.0.4",
     "three": "0.184.0",
