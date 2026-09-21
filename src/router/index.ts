@@ -5,6 +5,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/dev/viewer',
+      name: 'twin-viewer',
+      component: () => import('@/views/dev/ViewerPreview.vue'),
+      meta: { title: 'Twin Scene Viewer' },
+    },
+    {
       path: '/',
       component: AppLayout,
       children: [

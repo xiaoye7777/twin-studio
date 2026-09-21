@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Box, Files, Picture, Upload } from '@element-plus/icons-vue'
+import EffectLibrary from './EffectLibrary.vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { writeAssetDragPayload } from '@/editor/assetDrag'
@@ -8,6 +9,7 @@ import { useAssetStore } from '@/stores/assets'
 import { useEditorStore, type PrimitiveType } from '@/stores/editor'
 
 const assetStore = useAssetStore()
+const activeTab = ref('assets')
 const editorStore = useEditorStore()
 const fileInputRef = ref<HTMLInputElement>()
 const modelAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'model'))
@@ -72,8 +74,8 @@ onMounted(() => {
   <section data-testid="asset-panel" class="h-40 shrink-0 border-t border-slate-700 bg-slate-800 text-slate-300">
     <div class="flex h-9 items-center justify-between border-b border-slate-700 px-4">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold text-slate-200">Assets</span>
-        <span class="text-[10px] text-slate-500">拖入场景以创建实例</span>
+        <button class="text-xs" :class="activeTab === 'assets' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'assets'">Assets</button>
+        <button data-testid="effects-tab" class="text-xs" :class="activeTab === 'effects' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'effects'">特效</button>
       </div>
       <div>
         <input ref="fileInputRef" data-testid="asset-file-input" class="hidden" type="file" accept=".glb,model/gltf-binary" @change="handleAssetFile" />
@@ -83,7 +85,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="flex h-[124px] min-w-0 gap-5 overflow-x-auto px-4 py-3">
+    <EffectLibrary v-if="activeTab === 'effects'" />
+    <div v-else class="flex h-[124px] min-w-0 gap-5 overflow-x-auto px-4 py-3">
       <div class="shrink-0">
         <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Primitives</p>
         <div class="flex gap-2">

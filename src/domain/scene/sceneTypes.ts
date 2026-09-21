@@ -1,4 +1,5 @@
 import type { TwinBinding } from '@/domain/twin'
+import type { EffectInstance } from '@/domain/effects'
 
 export type Vector3Tuple = [number, number, number]
 
@@ -84,4 +85,5 @@ export interface SceneDocumentV1 {
   sceneSettings?: SceneSettingsV1
   cameraView?: SceneCameraViewV1
   bindings?: TwinBinding[]
+  effects?: EffectInstance[]
 }

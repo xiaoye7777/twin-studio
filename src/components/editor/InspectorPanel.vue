@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EffectInspector from './EffectInspector.vue'
 import { computed, reactive, watch } from 'vue'
 import { MathUtils } from 'three'
 import { getEditorMetadata } from '@/editor/editorMetadata'
@@ -196,6 +197,7 @@ watch(
       </div>
       <el-button data-testid="reset-transform" size="small" class="w-full" @click="editorStore.resetSelectedTransform()">重置变换</el-button>
       <TwinBindingSection />
+      <EffectInspector />
     </div>
   </aside>
 </template>
