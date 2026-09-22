@@ -69,7 +69,15 @@ export class MeteorScene {
   addObject<T extends Object3D>(object: T): boolean {
     return this.requireManager().addObject(object)
   }
-  removeObject(object: Object3D): void { this.requireManager().removeObject(object) }
+  removeObject(object: Object3D): void {
+    const manager = this.requireManager()
+    // Core cannot disable an outline by BID after unregisterTree. Clear before removal.
+    object.traverse(node => {
+      const bid: unknown = node.userData.bid
+      if (typeof bid === 'string' && manager.findObjectByBid(bid)) manager.disableOutline(bid)
+    })
+    manager.removeObject(object)
+  }
 
   async loadGLTFModel(url: string): Promise<Object3D> {
     const persistence = this.requirePersistenceManager()
@@ -93,7 +101,7 @@ export class MeteorScene {
   setOutline(bid: string, enabled: boolean): void {
     const manager = this.requireManager()
     if (enabled) manager.enableOutline(bid, { color: 0xffb020, thickness: 1, strength: 3 })
-    else manager.disableOutline(bid)
+    else if (manager.findObjectByBid(bid)) manager.disableOutline(bid)
   }
 
   findObjectByBid<T extends Object3D>(bid: string): T | null {

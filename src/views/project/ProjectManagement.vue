@@ -10,8 +10,12 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const dialogVisible = ref(false)
 
-function openProject(project: Project) {
-  router.push(`/editor/${project.id}`)
+function editProject(project: Project) {
+  void router.push({ name: 'editor', params: { projectId: project.id } })
+}
+
+function openDashboard(project: Project) {
+  void router.push({ name: 'project-dashboard', params: { projectId: project.id } })
 }
 </script>
 
@@ -30,7 +34,8 @@ function openProject(project: Project) {
         v-for="project in projectStore.projects"
         :key="project.id"
         :project="project"
-        @open="openProject"
+        @edit="editProject"
+        @dashboard="openDashboard"
       />
 
       <button
@@ -46,6 +51,6 @@ function openProject(project: Project) {
       </button>
     </div>
 
-    <CreateProjectDialog v-model="dialogVisible" @created="openProject" />
+    <CreateProjectDialog v-model="dialogVisible" @created="editProject" />
   </section>
 </template>

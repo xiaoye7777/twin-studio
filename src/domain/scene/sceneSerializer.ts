@@ -3,6 +3,8 @@ import type { Object3D } from 'three'
 import { findAssetInstanceRoot, getEditorMetadata } from '@/editor/editorMetadata'
 import type { TwinBinding } from '@/domain/twin'
 import { cloneEffects, type EffectInstance } from '@/domain/effects'
+import { cloneRules, type VisualRule } from '@/domain/visualRules'
+import { cloneInteractions, type SceneInteraction } from '@/domain/interactions'
 import type {
   SceneAssetInstanceV1,
   SceneCameraViewV1,
@@ -32,7 +34,7 @@ export function applySceneTransform(object: Object3D, transform: SceneTransformV
   object.updateMatrixWorld(true)
 }
 
-function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
+function serializePrimitive(root: Object3D, visible: (object: Object3D) => boolean): ScenePrimitiveV1 | null {
   const metadata = getEditorMetadata(root)
   if (metadata?.kind !== 'primitive') return null
 
@@ -48,7 +50,7 @@ function serializePrimitive(root: Object3D): ScenePrimitiveV1 | null {
     transform: serializeTransform(root),
     properties: { color },
     runtimeBid: runtimeBid(root),
-    visible: root.visible,
+    visible: visible(root),
   }
 }
 
@@ -61,7 +63,11 @@ export function serializeSceneDocument(options: {
   cameraView?: SceneCameraViewV1
   bindings?: TwinBinding[]
   effects?: EffectInstance[]
+  visualRules?: VisualRule[]
+  interactions?: SceneInteraction[]
+  resolveVisibility?: (object: Object3D) => boolean
 }): SceneDocumentV1 {
+  const resolveVisibility = options.resolveVisibility ?? ((object: Object3D) => object.visible)
   const overridesByRoot = new Map<Object3D, SceneNodeOverrideV1[]>()
 
   for (const object of options.modifiedObjects) {
@@ -75,7 +81,7 @@ export function serializeSceneDocument(options: {
       name: object.name,
       transform: serializeTransform(object),
       runtimeBid: runtimeBid(object),
-      visible: object.visible,
+      visible: resolveVisibility(object),
     })
     overridesByRoot.set(root, overrides)
   }
@@ -93,12 +99,12 @@ export function serializeSceneDocument(options: {
         transform: serializeTransform(root),
         nodeOverrides: overridesByRoot.get(root) ?? [],
         runtimeBid: runtimeBid(root),
-        visible: root.visible,
+        visible: resolveVisibility(root),
         deletedAssetNodeIds: metadata.deletedAssetNodeIds,
       })
       continue
     }
-    const primitive = serializePrimitive(root)
+    const primitive = serializePrimitive(root, resolveVisibility)
     if (primitive) primitives.push(primitive)
   }
 
@@ -115,5 +121,7 @@ export function serializeSceneDocument(options: {
     cameraView: options.cameraView,
     bindings: options.bindings,
     effects: options.effects ? cloneEffects(options.effects) : undefined,
+    visualRules: options.visualRules ? cloneRules(options.visualRules) : undefined,
+    interactions: options.interactions ? cloneInteractions(options.interactions) : undefined,
   }
 }

@@ -45,6 +45,12 @@ const router = createRouter({
       meta: { title: '场景编辑器' },
     },
     {
+      path: '/projects/:projectId/dashboard',
+      name: 'project-dashboard',
+      component: () => import('@/views/dashboard/ProjectDashboard.vue'),
+      meta: { title: '数据大屏' },
+    },
+    {
       path: '/dev/meteor-sandbox',
       name: 'meteor-sandbox',
       component: () => import('@/views/dev/MeteorSandbox.vue'),

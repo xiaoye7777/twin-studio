@@ -37,8 +37,14 @@ import { createScenePrimitive } from '@/runtime/scene/createScenePrimitive'
 import { TwinDataRuntime } from '@/runtime/twin/TwinDataRuntime'
 import { EffectRuntime } from '@/runtime/effects/EffectRuntime'
 import { useEffectsStore } from '@/stores/effects'
+import { useVisualRulesStore } from '@/stores/visualRules'
+import { VisualRuleRuntime } from '@/runtime/effects/VisualRuleRuntime'
+import type { VisualRule } from '@/domain/visualRules'
 import { twinBindingTargetKey } from '@/domain/twin'
 import type { EffectInstance } from '@/domain/effects'
+import { useInteractionsStore } from '@/stores/interactions'
+import { InteractionRuntime } from '@/runtime/interactions/InteractionRuntime'
+import { ViewerPointerEvents } from '@/runtime/twin/ViewerPointerEvents'
 
 const props = defineProps<{ projectId: string; projectName: string }>()
 
@@ -71,8 +77,12 @@ const editorStore = useEditorStore()
 const sceneSettingsStore = useSceneSettingsStore()
 const twinStore = useTwinStore()
 const effectsStore = useEffectsStore()
+const rulesStore = useVisualRulesStore()
+const interactionsStore = useInteractionsStore()
+let visualRuleRuntime: VisualRuleRuntime | null = null
 let effectRuntime: EffectRuntime | null = null
-let stopEffectsWatch: WatchStopHandle | null = null
+let interactionRuntime: InteractionRuntime | null = null
+let interactionPointers: ViewerPointerEvents | null = null
 const { selectedObject } = storeToRefs(editorStore)
 const assetRepository = new IndexedDbAssetRepository()
 const sceneRepository = new LocalSceneRepository()
@@ -91,6 +101,7 @@ let stopTransformRevisionWatch: WatchStopHandle | null = null
 let stopSceneSaveWatch: WatchStopHandle | null = null
 let stopSceneSettingsWatch: WatchStopHandle | null = null
 let stopBindingWatch: WatchStopHandle | null = null
+let stopInteractionWatch: WatchStopHandle | null = null
 let unmounted = false
 let saveQueue = Promise.resolve()
 let gizmoTransformBefore: TransformState | null = null
@@ -234,6 +245,9 @@ async function saveScene(): Promise<void> {
       cameraView: captureCameraView(),
       bindings: twinStore.cloneBindings(),
       effects: effectsStore.instances,
+      visualRules: rulesStore.rules,
+      interactions: interactionsStore.interactions,
+      resolveVisibility: object => interactionRuntime?.getPersistentVisibility(object) ?? object.visible,
     })
     await sceneRepository.save(document)
     sceneDocumentDebugJson.value = JSON.stringify(document)
@@ -365,9 +379,12 @@ async function deleteSelected(): Promise<void> {
   const bindingTargets = bindingTargetsInObjectTree(object)
   let removedBindings: TwinBinding[] = []
   let removedEffects: EffectInstance[] = []
+  let removedRules: VisualRule[] = []
   const targetKeys = new Set(bindingTargets.map(twinBindingTargetKey))
 
   const remove = () => {
+    removedRules = rulesStore.rules.filter(r => targetKeys.has(twinBindingTargetKey(r.target)))
+    rulesStore.replace(rulesStore.rules.filter(r => !targetKeys.has(twinBindingTargetKey(r.target))))
     removedBindings = twinStore.removeBindingsForTargets(bindingTargets)
     removedEffects = effectsStore.instances.filter(e => targetKeys.has(twinBindingTargetKey(e.target)))
     effectsStore.replace(effectsStore.instances.filter(e => !targetKeys.has(twinBindingTargetKey(e.target))))
@@ -394,6 +411,7 @@ async function deleteSelected(): Promise<void> {
     }
     twinStore.restoreBindings(removedBindings)
     effectsStore.replace([...effectsStore.instances, ...removedEffects])
+    rulesStore.replace([...rulesStore.rules, ...removedRules])
     editorStore.selectObject(object)
   }
   await history.execute(new FunctionalCommand('Delete', remove, restore))
@@ -458,8 +476,19 @@ function disposeEditorRuntime(): void {
   stopSceneSaveWatch?.()
   stopSceneSettingsWatch?.()
   stopBindingWatch?.()
-  stopEffectsWatch?.()
-  stopEffectsWatch = null
+  stopInteractionWatch?.()
+  interactionPointers?.dispose()
+  interactionPointers = null
+  interactionRuntime?.dispose()
+  interactionRuntime = null
+  interactionsStore.configure(null)
+  interactionsStore.replace([])
+  interactionsStore.publish({ total: 0, enabled: 0, unresolved: [], hoverTarget: null, pointerActive: false })
+  visualRuleRuntime?.dispose()
+  visualRuleRuntime = null
+  rulesStore.configure(null)
+  rulesStore.replace([])
+  rulesStore.publish({})
   effectsStore.configure(null)
   effectRuntime?.dispose()
   effectRuntime = null
@@ -470,6 +499,7 @@ function disposeEditorRuntime(): void {
   stopSceneSaveWatch = null
   stopSceneSettingsWatch = null
   stopBindingWatch = null
+  stopInteractionWatch = null
   twinRuntime?.stop()
   twinRuntime = null
   twinStore.setMockRunning(false)
@@ -549,12 +579,56 @@ onMounted(async () => {
     effectsStore.configure((before, after, label) => {
       void history.execute(new FunctionalCommand(label, () => effectsStore.replace(after), () => effectsStore.replace(before)))
     })
-    stopEffectsWatch = watch([() => effectsStore.instances, () => editorStore.sceneRevision], () => {
-      effectRuntime?.setEffects(effectsStore.instances)
-    }, { immediate: true, flush: 'sync' })
     bindingTargetResolver = new BindingTargetResolver(() => editorStore.sceneRoots, runtime)
     twinRuntime = new TwinDataRuntime(twinStore, bindingTargetResolver)
     twinRuntime.initialize(props.projectId, restoredDocument?.bindings ?? [])
+    rulesStore.replace(restoredDocument?.visualRules ?? [])
+    rulesStore.configure((before, after, label) => {
+      void history.execute(new FunctionalCommand(label, () => rulesStore.replace(after), () => rulesStore.replace(before)))
+    })
+    visualRuleRuntime = new VisualRuleRuntime(effectRuntime, twinStore, bindingTargetResolver, () => rulesStore.rules, () => effectsStore.instances, () => editorStore.sceneRevision, rulesStore.publish)
+    interactionsStore.replace(restoredDocument?.interactions ?? [])
+    interactionsStore.configure((before, after, label) => {
+      void history.execute(new FunctionalCommand(label, () => interactionsStore.replace(after), () => interactionsStore.replace(before)))
+    })
+    interactionRuntime = new InteractionRuntime({
+      resolver: bindingTargetResolver,
+      effects: effectRuntime,
+      selectTarget: target => {
+        const object = bindingTargetResolver?.resolve(target)
+        if (!object) return false
+        editorStore.selectObject(object)
+        return true
+      },
+      clearSelection: () => editorStore.clearSelection(),
+      resolveDeviceId: target => twinStore.getBindingByTarget(target)?.device.id ?? null,
+      focusTarget: async target => {
+        const object = bindingTargetResolver?.resolve(target)
+        const bid: unknown = object?.userData.bid
+        if (typeof bid !== 'string') return false
+        await runtime.focusObject(bid)
+        return true
+      },
+      emit: () => {},
+      publish: interactionsStore.publish,
+    })
+    interactionRuntime.setInteractions(interactionsStore.interactions)
+    interactionRuntime.setPointerActive(true)
+    interactionPointers = new ViewerPointerEvents(
+      canvas,
+      runtime,
+      () => editorStore.sceneRoots,
+      twinStore,
+      event => { void interactionRuntime?.dispatch('click', event) },
+      () => {},
+      event => { void interactionRuntime?.dispatch('double-click', event) },
+      event => { void interactionRuntime?.dispatch('hover-enter', event) },
+      event => { void interactionRuntime?.dispatch('hover-leave', event) },
+    )
+    stopInteractionWatch = watch(
+      () => interactionsStore.interactions,
+      values => interactionRuntime?.setInteractions(values),
+    )
     stopBindingWatch = watch(
       [() => twinStore.bindingRevision, () => editorStore.sceneRevision],
       refreshBindingResolutions,

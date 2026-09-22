@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Box, Files, Picture, Upload } from '@element-plus/icons-vue'
 import EffectLibrary from './EffectLibrary.vue'
+import EffectTemplateLibrary from './EffectTemplateLibrary.vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { writeAssetDragPayload } from '@/editor/assetDrag'
@@ -76,6 +77,7 @@ onMounted(() => {
       <div class="flex items-center gap-2">
         <button class="text-xs" :class="activeTab === 'assets' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'assets'">Assets</button>
         <button data-testid="effects-tab" class="text-xs" :class="activeTab === 'effects' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'effects'">特效</button>
+        <button data-testid="templates-tab" class="text-xs" :class="activeTab === 'templates' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'templates'">模板</button>
       </div>
       <div>
         <input ref="fileInputRef" data-testid="asset-file-input" class="hidden" type="file" accept=".glb,model/gltf-binary" @change="handleAssetFile" />
@@ -86,6 +88,7 @@ onMounted(() => {
     </div>
 
     <EffectLibrary v-if="activeTab === 'effects'" />
+    <EffectTemplateLibrary v-else-if="activeTab === 'templates'" />
     <div v-else class="flex h-[124px] min-w-0 gap-5 overflow-x-auto px-4 py-3">
       <div class="shrink-0">
         <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Primitives</p>

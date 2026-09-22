@@ -20,5 +20,14 @@ export const useEffectsStore = defineStore('effects', () => {
     commit?.(cloneEffects(instances.value), cloneEffects(next), 'Edit effect')
   }
   function remove(id: string): void { commit?.(cloneEffects(instances.value), cloneEffects(instances.value.filter(e => e.id !== id)), 'Remove effect') }
-  return { instances, replace, configure, add, update, remove }
+  function applyBatch(effects: EffectInstance[]): void {
+    if (!commit) throw new Error('场景尚未就绪')
+    if (!effects.length || !effects.every(isEffectInstance)) throw new Error('特效配置无效')
+    const key = (e: EffectInstance) => `${twinBindingTargetKey(e.target)}|${e.kind}`
+    const keys = new Set(effects.map(key))
+    if (keys.size !== effects.length) throw new Error('重复的目标特效')
+    const after = [...instances.value.filter(e => !keys.has(key(e))), ...effects]
+    commit(cloneEffects(instances.value), cloneEffects(after), 'Apply effect template')
+  }
+  return { instances, replace, configure, add, update, remove, applyBatch }
 })

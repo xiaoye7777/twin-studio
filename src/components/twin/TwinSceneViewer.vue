@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, readonly, ref, shallowRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import type { TwinSceneViewerPublicApi, TwinSceneViewerEvents } from './viewerContract'
 import type { TwinBindingTarget } from '@/domain/twin'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
@@ -7,12 +8,7 @@ import { TwinSceneRuntime } from '@/runtime/twin/TwinSceneRuntime'
 import type { ViewerTargetClick } from '@/runtime/twin/ViewerPointerEvents'
 
 const props = defineProps<{ projectId: string }>()
-const emit = defineEmits<{
-  'target-click': [event: ViewerTargetClick]
-  'device-click': [event: ViewerTargetClick]
-  loaded: [info: { projectId: string; objectCount: number; bindingCount: number; warnings: string[] }]
-  error: [message: string]
-}>()
+const emit = defineEmits<TwinSceneViewerEvents>()
 const canvas = ref<HTMLCanvasElement>()
 const canvasKey = ref(0)
 const session = shallowRef<TwinSceneRuntime | null>(null)
@@ -23,6 +19,7 @@ let mounted = false
 let generation = 0
 
 async function load(): Promise<void> {
+  session.value?.clearSelection()
   const request = ++generation
   session.value?.dispose()
   session.value = null
@@ -34,8 +31,16 @@ async function load(): Promise<void> {
   warnings.value = []
   loading.value = true
   const runtime = new TwinSceneRuntime(canvas.value, new LocalSceneRepository(), new IndexedDbAssetRepository(), (event) => {
-    emit('target-click', event)
-    if (event.device) emit('device-click', event)
+    if (!mounted || request !== generation) return
+    const payload: ViewerTargetClick = { ...event, target: { ...event.target },
+      bindingTarget: event.bindingTarget ? { ...event.bindingTarget } : undefined,
+      device: event.device ? { ...event.device } : undefined }
+    emit('target-click', payload)
+    if (payload.device) emit('device-click', payload)
+  }, (selection) => {
+    if (mounted && request === generation) emit('selection-change', selection)
+  }, (event) => {
+    if (mounted && request === generation) emit('interaction-event', event)
   })
   session.value = runtime
   try {
@@ -52,11 +57,22 @@ async function load(): Promise<void> {
 onMounted(() => { mounted = true; void load() })
 watch(() => props.projectId, () => { if (mounted) void load() })
 onBeforeUnmount(() => { mounted = false; generation += 1; session.value?.dispose(); session.value = null })
-defineExpose({
+const publicApi: TwinSceneViewerPublicApi = {
   focusTarget: (target: TwinBindingTarget) => session.value?.focusTarget(target) ?? Promise.resolve(false),
   focusDevice: (deviceId: string) => session.value?.focusDevice(deviceId) ?? Promise.resolve(false),
+  selectDevice: (deviceId: string) => session.value?.selectDevice(deviceId) ?? false,
+  selectTarget: (target: TwinBindingTarget) => session.value?.selectTarget(target) ?? false,
+  clearSelection: () => session.value?.clearSelection(),
+  getSelection: () => session.value?.getSelection() ?? null,
+  getRuntimeState: () => session.value?.runtimeState ?? null,
+}
+defineExpose({
+  ...publicApi,
+  // Legacy diagnostics; excluded from the supported host integration interface.
   getRuntimeObject: (target: TwinBindingTarget) => session.value?.getRuntimeObject(target) ?? null,
-  getRuntimeState: () => session.value ? readonly(session.value.twin) : null,
+  getRuleDiagnostics: () => session.value?.visualRules?.getDiagnostics() ?? null,
+  getInteractionDiagnostics: () => session.value?.interactions?.getDiagnostics() ?? null,
+  getEffectDiagnostics: () => session.value?.effects?.getDiagnostics() ?? null,
 })
 </script>
 

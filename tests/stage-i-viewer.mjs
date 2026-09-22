@@ -1,6 +1,11 @@
 // Run with NODE_PATH pointing to a Playwright installation and Vite on :5173.
 import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
+import { testTemplates } from './stage-k1-templates.mjs'
+import { testVisualRules } from './stage-k2-rules.mjs'
+import { testDashboard } from './stage-dashboard.mjs'
+import { testViewerContract } from './stage-m-contract.mjs'
+import { testInteractions } from './stage-n-interactions.mjs'
 const { chromium } = createRequire(import.meta.url)('playwright')
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
@@ -159,6 +164,7 @@ try {
     const {getMockDataSourceDiagnostics}=await import('/src/infrastructure/data/MockDataSource.ts')
     return {roots:roots.map(snapshot),independent:a!==b&&a.getObjectByName('Body')!==b.getObjectByName('Body'),override:a.getObjectByName('Door override').position.x,deleted:!a.getObjectByName('RemovablePanel'),hidden:!b.getObjectByName('BatteryDoor').visible,bindings:state.bindings.length,values:Object.keys(state.runtimeValues).length,ticks:state.mockTickCount,transforms,timers:getMockDataSourceDiagnostics().activeTimerCount}
   },saved)
+  report.viewer=viewer
   assert(viewer.independent&&viewer.deleted&&viewer.hidden);assert.equal(viewer.override,0.25);assert.equal(viewer.transforms,0);assert.equal(viewer.timers,1);assert.equal(viewer.values,15)
   for(const [i,expected] of [...saved.instances,...saved.primitives].entries()) {assert.deepEqual(viewer.roots[i].position,expected.transform.position);assert.deepEqual(viewer.roots[i].scale,expected.transform.scale);assert.deepEqual(viewer.roots[i].rotation,expected.transform.rotation)}
   await page.waitForTimeout(1200)
@@ -251,6 +257,7 @@ try {
   })
   assert(report.effectRuntime.arrayIsolated&&report.effectRuntime.restored&&report.effectRuntime.follows&&report.effectRuntime.released)
   await page.mouse.click(runtimeDetails.click.x,runtimeDetails.click.y)
+  await page.waitForTimeout(300)
   const hit=await page.evaluate(()=>window.qaClicks[0]);assert(hit?.target);assert(hit?.device)
   const clickCount=await page.evaluate(()=>window.qaClicks.length)
   await page.mouse.move(900,400);await page.mouse.down();await page.mouse.move(1050,450,{steps:10});await page.mouse.up();await page.waitForTimeout(200)
@@ -309,6 +316,11 @@ try {
     assert.equal(await page.evaluate(async()=>{const {getEffectDiagnostics}=await import('/src/runtime/effects/EffectRuntime.ts');return getEffectDiagnostics().activeLoops}),0)
   }
   report.editorEffectLifecycle='PASS: three mount/unmount cycles, zero remaining RAF/URLs/effect loops'
+  report.templates = await testTemplates(page, projectId)
+  report.visualRules = await testVisualRules(page, projectId)
+  report.dashboard = await testDashboard(page, projectId)
+  report.integrationContract = await testViewerContract(page, projectId)
+  report.interactions = await testInteractions(page, projectId)
   assert.deepEqual(errors,[])
   console.log(JSON.stringify(report,null,2))
 } catch(error) {
