@@ -1,5 +1,8 @@
 import type { SceneDocumentV1, SceneTransformV1 } from './sceneTypes'
 import { isTwinBinding } from '@/domain/twin'
+import { isEffectInstance } from '@/domain/effects'
+import { isVisualRule } from '@/domain/visualRules'
+import { isSceneInteraction } from '@/domain/interactions'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -60,6 +63,9 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
   if (value.sceneSettings !== undefined && !isSceneSettings(value.sceneSettings)) return false
   if (value.cameraView !== undefined && !isCameraView(value.cameraView)) return false
   if (value.bindings !== undefined && (!Array.isArray(value.bindings) || !value.bindings.every(isTwinBinding))) return false
+  if (value.effects !== undefined && (!Array.isArray(value.effects) || !value.effects.every(isEffectInstance) || new Set(value.effects.map(effect => effect.id)).size !== value.effects.length)) return false
+  if (value.visualRules !== undefined && (!Array.isArray(value.visualRules) || !value.visualRules.every(isVisualRule) || new Set(value.visualRules.map(rule => rule.id)).size !== value.visualRules.length)) return false
+  if (value.interactions !== undefined && (!Array.isArray(value.interactions) || !value.interactions.every(isSceneInteraction) || new Set(value.interactions.map(item => item.id)).size !== value.interactions.length)) return false
 
   const validInstances = value.instances.every((instance) => {
     if (

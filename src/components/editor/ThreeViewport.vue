@@ -3,21 +3,14 @@ import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue'
 import {
-  AmbientLight,
   Box3,
-  BoxGeometry,
-  CylinderGeometry,
-  DirectionalLight,
   Mesh,
-  MeshStandardMaterial,
-  PlaneGeometry,
   Vector2,
   Vector3,
 } from 'three'
 import type { Object3D } from 'three'
-import { applySceneTransform, cloneSceneSettings, serializeSceneDocument } from '@/domain/scene'
+import { cloneSceneSettings, serializeSceneDocument } from '@/domain/scene'
 import type {
-  SceneAssetInstanceV1,
   SceneCameraViewV1,
   SceneDocumentV1,
   ScenePrimitiveV1,
@@ -34,11 +27,24 @@ import { TransformManager } from '@/editor/services/TransformManager'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { MeteorScene } from '@/infrastructure/meteor3d'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import { getMockDataSourceDiagnostics, MockDataSource } from '@/infrastructure/data'
+import { getMockDataSourceDiagnostics } from '@/infrastructure/data'
 import { useEditorStore, type CommonView, type PrimitiveType } from '@/stores/editor'
 import { useSceneSettingsStore } from '@/stores/sceneSettings'
 import { useTwinStore } from '@/stores/twin'
 import type { TwinBinding } from '@/domain/twin'
+import { SceneRuntimeLoader } from '@/runtime/scene/SceneRuntimeLoader'
+import { createScenePrimitive } from '@/runtime/scene/createScenePrimitive'
+import { TwinDataRuntime } from '@/runtime/twin/TwinDataRuntime'
+import { EffectRuntime } from '@/runtime/effects/EffectRuntime'
+import { useEffectsStore } from '@/stores/effects'
+import { useVisualRulesStore } from '@/stores/visualRules'
+import { VisualRuleRuntime } from '@/runtime/effects/VisualRuleRuntime'
+import type { VisualRule } from '@/domain/visualRules'
+import { twinBindingTargetKey } from '@/domain/twin'
+import type { EffectInstance } from '@/domain/effects'
+import { useInteractionsStore } from '@/stores/interactions'
+import { InteractionRuntime } from '@/runtime/interactions/InteractionRuntime'
+import { ViewerPointerEvents } from '@/runtime/twin/ViewerPointerEvents'
 
 const props = defineProps<{ projectId: string; projectName: string }>()
 
@@ -70,6 +76,13 @@ const environmentStatus = ref('None')
 const editorStore = useEditorStore()
 const sceneSettingsStore = useSceneSettingsStore()
 const twinStore = useTwinStore()
+const effectsStore = useEffectsStore()
+const rulesStore = useVisualRulesStore()
+const interactionsStore = useInteractionsStore()
+let visualRuleRuntime: VisualRuleRuntime | null = null
+let effectRuntime: EffectRuntime | null = null
+let interactionRuntime: InteractionRuntime | null = null
+let interactionPointers: ViewerPointerEvents | null = null
 const { selectedObject } = storeToRefs(editorStore)
 const assetRepository = new IndexedDbAssetRepository()
 const sceneRepository = new LocalSceneRepository()
@@ -79,21 +92,18 @@ let meteorScene: MeteorScene | null = null
 let selectionManager: SelectionManager | null = null
 let transformManager: TransformManager | null = null
 let bindingTargetResolver: BindingTargetResolver | null = null
-let mockDataSource: MockDataSource | null = null
+let twinRuntime: TwinDataRuntime | null = null
+let sceneLoader: SceneRuntimeLoader | null = null
 let testCube: Mesh | null = null
-let ambientLight: AmbientLight | null = null
-let directionalLight: DirectionalLight | null = null
-let groundMesh: Mesh<PlaneGeometry, MeshStandardMaterial> | null = null
 let stopSelectionWatch: WatchStopHandle | null = null
 let stopTransformModeWatch: WatchStopHandle | null = null
 let stopTransformRevisionWatch: WatchStopHandle | null = null
 let stopSceneSaveWatch: WatchStopHandle | null = null
 let stopSceneSettingsWatch: WatchStopHandle | null = null
 let stopBindingWatch: WatchStopHandle | null = null
+let stopInteractionWatch: WatchStopHandle | null = null
 let unmounted = false
 let saveQueue = Promise.resolve()
-let environmentQueue = Promise.resolve()
-let appliedEnvironmentAssetId: string | null | undefined
 let gizmoTransformBefore: TransformState | null = null
 const history = new HistoryManager(() => {
   editorStore.setHistoryState(history.canUndo, history.canRedo)
@@ -165,202 +175,20 @@ function uniqueModelName(preferredName: string): string {
 }
 
 function createPrimitive(type: PrimitiveType, saved?: ScenePrimitiveV1): Mesh {
-  const color = saved?.properties.color ?? (type === 'plane' ? 0x64748b : type === 'cylinder' ? 0x10b981 : 0x3b82f6)
-  let geometry: BoxGeometry | PlaneGeometry | CylinderGeometry
-  if (type === 'plane') {
-    geometry = new PlaneGeometry(saved?.properties.width ?? 10, saved?.properties.height ?? 10)
-    geometry.rotateX(-Math.PI / 2)
-  } else if (type === 'cylinder') {
-    const height = saved?.properties.height ?? 1
-    geometry = new CylinderGeometry(
-      saved?.properties.radiusTop ?? 0.5,
-      saved?.properties.radiusBottom ?? 0.5,
-      height,
-      saved?.properties.radialSegments ?? 32,
-    )
-    geometry.translate(0, height / 2, 0)
-  } else {
-    const width = saved?.properties.width ?? 1
-    const height = saved?.properties.height ?? 1
-    const depth = saved?.properties.depth ?? 1
-    geometry = new BoxGeometry(width, height, depth)
-    geometry.translate(0, height / 2, 0)
-  }
-
-  const object = new Mesh(
-    geometry,
-    new MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.05 }),
-  )
-  object.name = saved?.name ?? uniqueModelName(type === 'box' ? 'Box' : type === 'plane' ? 'Plane' : 'Cylinder')
-  setEditorMetadata(object, {
-    kind: 'primitive',
-    nodeId: saved?.nodeId ?? createPlatformId('node'),
-    primitiveType: type,
-  })
-  if (saved) {
-    applySceneTransform(object, saved.transform)
-    if (saved.runtimeBid) object.userData.bid = saved.runtimeBid
-  }
-  object.visible = saved?.visible ?? true
-  object.userData.editorInitialTransform = {
-    position: [0, 0, 0],
-    rotation: [0, 0, 0],
-    scale: [1, 1, 1],
-  } satisfies TransformState
+  const object = createScenePrimitive(type, saved)
+  if (!saved) object.name = uniqueModelName(object.name)
   return object
 }
 
-function indexAssetNodes(root: Object3D): Map<string, Object3D> {
-  const nodes = new Map<string, Object3D>()
-  root.traverse((node) => {
-    if (typeof node.userData.assetNodeId === 'string') {
-      nodes.set(node.userData.assetNodeId, node)
+function applySceneSettings(_runtime: MeteorScene, settings: SceneSettingsV1): void {
+  void sceneLoader?.applySettings(settings).then(() => {
+    if (!unmounted) environmentStatus.value = sceneLoader?.environmentStatus ?? 'None'
+  }).catch((error: unknown) => {
+    if (!unmounted) {
+      environmentStatus.value = 'Fallback'
+      ElMessage.error(error instanceof Error ? error.message : '环境贴图加载失败')
     }
   })
-  return nodes
-}
-
-async function restoreAssetInstance(
-  runtime: MeteorScene,
-  instance: SceneAssetInstanceV1,
-): Promise<Object3D | null> {
-  const asset = await assetRepository.get(instance.assetId)
-  if (!asset) {
-    console.warn(`Scene restore skipped missing asset: ${instance.assetId}`)
-    return null
-  }
-
-  const resource = importedAssetResources.getOrCreate(asset)
-  const model = await runtime.loadGLTFModel(resource.objectUrl)
-  model.name = instance.name
-  setEditorMetadata(model, {
-    kind: 'assetInstance',
-    assetRoot: true,
-    assetId: instance.assetId,
-    instanceId: instance.instanceId,
-    deletedAssetNodeIds: [...(instance.deletedAssetNodeIds ?? [])],
-  })
-  captureInitialTransforms(model)
-  applySceneTransform(model, instance.transform)
-  if (instance.runtimeBid) model.userData.bid = instance.runtimeBid
-
-  const nodes = indexAssetNodes(model)
-  for (const override of instance.nodeOverrides) {
-    const node = nodes.get(override.assetNodeId)
-    if (!node) {
-      console.warn(`Scene restore skipped missing asset node: ${override.assetNodeId}`)
-      continue
-    }
-    node.name = override.name
-    applySceneTransform(node, override.transform)
-    node.visible = override.visible ?? true
-    if (override.runtimeBid) node.userData.bid = override.runtimeBid
-    editorStore.markObjectModified(node)
-  }
-  for (const assetNodeId of instance.deletedAssetNodeIds ?? []) nodes.get(assetNodeId)?.removeFromParent()
-  model.visible = instance.visible ?? true
-
-  if (!runtime.addObject(model)) throw new Error(`Meteor3D 无法恢复模型 ${instance.name}`)
-  importedModelCount.value += 1
-  return model
-}
-
-async function restoreScene(runtime: MeteorScene, document: SceneDocumentV1): Promise<Object3D[]> {
-  const roots: Object3D[] = []
-  for (const primitive of document.primitives) {
-    const object = createPrimitive(primitive.type, primitive)
-    if (!runtime.addObject(object)) throw new Error(`Meteor3D 无法恢复 Primitive ${primitive.name}`)
-    roots.push(object)
-    if (!testCube && object instanceof Mesh) testCube = object
-  }
-  for (const instance of document.instances) {
-    try {
-      const object = await restoreAssetInstance(runtime, instance)
-      if (object) roots.push(object)
-    } catch (error) {
-      console.warn(`Scene instance restore failed: ${instance.instanceId}`, error)
-    }
-  }
-  return roots
-}
-
-function installSceneInfrastructure(runtime: MeteorScene): void {
-  const scene = runtime.getScene()
-  ambientLight = new AmbientLight(0xffffff)
-  ambientLight.name = 'Editor Ambient Light'
-  ambientLight.userData.editorInfrastructure = true
-  directionalLight = new DirectionalLight(0xffffff)
-  directionalLight.name = 'Editor Directional Light'
-  directionalLight.userData.editorInfrastructure = true
-  scene.add(ambientLight, directionalLight)
-}
-
-function updateGround(runtime: MeteorScene, settings: SceneSettingsV1): void {
-  if (!groundMesh) {
-    const geometry = new PlaneGeometry(1, 1)
-    geometry.rotateX(-Math.PI / 2)
-    groundMesh = new Mesh(
-      geometry,
-      new MeshStandardMaterial({
-        color: settings.ground.color,
-        roughness: 0.92,
-        metalness: 0,
-      }),
-    )
-    groundMesh.name = 'Editor Ground'
-    groundMesh.position.y = -0.01
-    groundMesh.receiveShadow = true
-    groundMesh.userData.editorInfrastructure = true
-    runtime.getScene().add(groundMesh)
-  }
-  groundMesh.visible = settings.ground.enabled
-  groundMesh.scale.set(settings.ground.size, 1, settings.ground.size)
-  groundMesh.material.color.set(settings.ground.color)
-  groundMesh.updateMatrixWorld(true)
-}
-
-async function applyEnvironment(runtime: MeteorScene, assetId: string | null): Promise<void> {
-  if (appliedEnvironmentAssetId === assetId) return
-  if (!assetId) {
-    runtime.clearEnvironment()
-    appliedEnvironmentAssetId = null
-    environmentStatus.value = 'None'
-    return
-  }
-
-  const asset = await assetRepository.get(assetId)
-  if (!asset) throw new Error('保存的环境资产不存在')
-  if (asset.assetType !== 'environment') throw new Error('选择的资产不是环境贴图')
-  const resource = importedAssetResources.getOrCreate(asset)
-  const texture = await runtime.loadEnvironment(resource.objectUrl)
-  if (!texture || unmounted) return
-  appliedEnvironmentAssetId = assetId
-  environmentStatus.value = asset.name
-}
-
-function applySceneSettings(runtime: MeteorScene, settings: SceneSettingsV1): void {
-  const gridSize = Math.max(1, settings.ground.size)
-  const segments = Math.max(1, Math.min(200, Math.round(gridSize / 10)))
-  runtime.setGridHelper(settings.gridEnabled, gridSize, gridSize, segments, segments)
-  runtime.setAxesHelper(settings.axesEnabled, Math.max(5, Math.min(50, gridSize / 10)))
-  updateGround(runtime, settings)
-  if (ambientLight) ambientLight.intensity = settings.lighting.ambientIntensity
-  if (directionalLight) {
-    directionalLight.intensity = settings.lighting.directionalIntensity
-    directionalLight.position.fromArray(settings.lighting.directionalPosition)
-  }
-
-  const requestedAssetId = settings.environmentAssetId
-  environmentQueue = environmentQueue
-    .then(() => applyEnvironment(runtime, requestedAssetId))
-    .catch((error: unknown) => {
-      if (!unmounted) {
-        runtime.clearEnvironment()
-        appliedEnvironmentAssetId = null
-        environmentStatus.value = 'Fallback'
-        ElMessage.error(error instanceof Error ? error.message : '环境贴图加载失败')
-      }
-    })
 }
 
 function captureCameraView(): SceneCameraViewV1 | undefined {
@@ -372,19 +200,6 @@ function captureCameraView(): SceneCameraViewV1 | undefined {
     target: [view.target.x, view.target.y, view.target.z],
     fov: runtime.getCamera().fov,
   }
-}
-
-async function restoreCameraView(runtime: MeteorScene, view: SceneCameraViewV1): Promise<void> {
-  if (view.fov) {
-    runtime.getCamera().fov = view.fov
-    runtime.getCamera().updateProjectionMatrix()
-  }
-  await runtime.setView({
-    position: { x: view.position[0], y: view.position[1], z: view.position[2] },
-    target: { x: view.target[0], y: view.target[1], z: view.target[2] },
-    duration: 0,
-  })
-  activeView.value = 'Saved'
 }
 
 async function setCommonView(view: CommonView): Promise<void> {
@@ -417,18 +232,7 @@ async function setCommonView(view: CommonView): Promise<void> {
   activeView.value = labels[view]
 }
 
-function refreshBindingResolutions(): void {
-  const resolver = bindingTargetResolver
-  if (!resolver) return
-  for (const binding of twinStore.bindings) {
-    const status = resolver.resolve(binding.target) ? 'resolved' : 'unresolved'
-    const previousStatus = twinStore.resolutionByBindingId[binding.id]
-    twinStore.setResolutionStatus(binding.id, status)
-    if (status === 'unresolved' && previousStatus !== 'unresolved') {
-      console.warn(`Twin binding target unresolved: ${binding.id}`)
-    }
-  }
-}
+function refreshBindingResolutions(): void { twinRuntime?.refresh() }
 
 async function saveScene(): Promise<void> {
   try {
@@ -440,6 +244,10 @@ async function saveScene(): Promise<void> {
       sceneSettings: cloneSceneSettings(sceneSettingsStore.settings),
       cameraView: captureCameraView(),
       bindings: twinStore.cloneBindings(),
+      effects: effectsStore.instances,
+      visualRules: rulesStore.rules,
+      interactions: interactionsStore.interactions,
+      resolveVisibility: object => interactionRuntime?.getPersistentVisibility(object) ?? object.visible,
     })
     await sceneRepository.save(document)
     sceneDocumentDebugJson.value = JSON.stringify(document)
@@ -570,9 +378,16 @@ async function deleteSelected(): Promise<void> {
   const assetNodeId = typeof object.userData.assetNodeId === 'string' ? object.userData.assetNodeId : null
   const bindingTargets = bindingTargetsInObjectTree(object)
   let removedBindings: TwinBinding[] = []
+  let removedEffects: EffectInstance[] = []
+  let removedRules: VisualRule[] = []
+  const targetKeys = new Set(bindingTargets.map(twinBindingTargetKey))
 
   const remove = () => {
+    removedRules = rulesStore.rules.filter(r => targetKeys.has(twinBindingTargetKey(r.target)))
+    rulesStore.replace(rulesStore.rules.filter(r => !targetKeys.has(twinBindingTargetKey(r.target))))
     removedBindings = twinStore.removeBindingsForTargets(bindingTargets)
+    removedEffects = effectsStore.instances.filter(e => targetKeys.has(twinBindingTargetKey(e.target)))
+    effectsStore.replace(effectsStore.instances.filter(e => !targetKeys.has(twinBindingTargetKey(e.target))))
     runtime.removeObject(object)
     if (isRoot) editorStore.setSceneRoots(editorStore.sceneRoots.filter((item) => item !== object))
     else if (metadata?.kind === 'assetInstance' && assetNodeId && !metadata.deletedAssetNodeIds.includes(assetNodeId)) metadata.deletedAssetNodeIds.push(assetNodeId)
@@ -595,6 +410,8 @@ async function deleteSelected(): Promise<void> {
       editorStore.notifySceneChanged()
     }
     twinStore.restoreBindings(removedBindings)
+    effectsStore.replace([...effectsStore.instances, ...removedEffects])
+    rulesStore.replace([...rulesStore.rules, ...removedRules])
     editorStore.selectObject(object)
   }
   await history.execute(new FunctionalCommand('Delete', remove, restore))
@@ -659,14 +476,32 @@ function disposeEditorRuntime(): void {
   stopSceneSaveWatch?.()
   stopSceneSettingsWatch?.()
   stopBindingWatch?.()
+  stopInteractionWatch?.()
+  interactionPointers?.dispose()
+  interactionPointers = null
+  interactionRuntime?.dispose()
+  interactionRuntime = null
+  interactionsStore.configure(null)
+  interactionsStore.replace([])
+  interactionsStore.publish({ total: 0, enabled: 0, unresolved: [], hoverTarget: null, pointerActive: false })
+  visualRuleRuntime?.dispose()
+  visualRuleRuntime = null
+  rulesStore.configure(null)
+  rulesStore.replace([])
+  rulesStore.publish({})
+  effectsStore.configure(null)
+  effectRuntime?.dispose()
+  effectRuntime = null
+  effectsStore.replace([])
   stopSelectionWatch = null
   stopTransformModeWatch = null
   stopTransformRevisionWatch = null
   stopSceneSaveWatch = null
   stopSceneSettingsWatch = null
   stopBindingWatch = null
-  mockDataSource?.stop()
-  mockDataSource = null
+  stopInteractionWatch = null
+  twinRuntime?.stop()
+  twinRuntime = null
   twinStore.setMockRunning(false)
   bindingTargetResolver = null
   selectionManager?.dispose()
@@ -679,23 +514,11 @@ function disposeEditorRuntime(): void {
   editorStore.setActions(null)
   history.clear()
   editorStore.setDirty(false)
-  if (meteorScene && (ambientLight || groundMesh)) {
-    meteorScene.clearEnvironment()
-    if (groundMesh) {
-      groundMesh.removeFromParent()
-      groundMesh.geometry.dispose()
-      groundMesh.material.dispose()
-    }
-    ambientLight?.removeFromParent()
-    directionalLight?.removeFromParent()
-  }
+  sceneLoader?.dispose()
+  sceneLoader = null
   meteorScene?.dispose()
   meteorScene = null
   importedAssetResources.dispose()
-  groundMesh = null
-  ambientLight = null
-  directionalLight = null
-  appliedEnvironmentAssetId = undefined
   testCube = null
   cameraControlsEnabled.value = false
   sceneSettingsStore.resetProject(props.projectId)
@@ -716,7 +539,7 @@ onMounted(async () => {
     await runtime.initialize()
     if (unmounted) return
     cameraControlsEnabled.value = runtime.isCameraControlsEnabled()
-    installSceneInfrastructure(runtime)
+    sceneLoader = new SceneRuntimeLoader(runtime, assetRepository, importedAssetResources)
 
     let roots: Object3D[] = []
     let restoredDocument: SceneDocumentV1 | null = null
@@ -725,38 +548,93 @@ onMounted(async () => {
       if (document) {
         restoredDocument = document
         sceneSettingsStore.initializeProject(props.projectId, document.sceneSettings)
-        twinStore.initializeProject(props.projectId, document.bindings ?? [])
         sceneDocumentDebugJson.value = JSON.stringify(document)
-        roots = await restoreScene(runtime, document)
+        const restored = await sceneLoader.restore(document)
+        if (unmounted) return
+        roots = restored.roots
+        restored.modifiedObjects.forEach((object) => editorStore.markObjectModified(object))
+        importedModelCount.value = roots.filter((root) => getEditorMetadata(root)?.kind === 'assetInstance').length
+        testCube = roots.find((root): root is Mesh => root instanceof Mesh) ?? null
+        if (restored.warnings.length) ElMessage.warning(restored.warnings.join('; '))
+        environmentStatus.value = sceneLoader.environmentStatus
+        if (document.cameraView) activeView.value = 'Saved'
         sceneLoadedFromStorage.value = true
       }
     } catch (error) {
+      if (unmounted) return
       ElMessage.error(error instanceof Error ? error.message : '本地场景恢复失败')
     }
 
+    if (unmounted) return
     if (!sceneLoadedFromStorage.value) {
       const cube = createPrimitive('box')
       if (!runtime.addObject(cube)) throw new Error('Meteor3D rejected the demo cube')
       testCube = cube
       roots.push(cube)
     }
-    applySceneSettings(runtime, sceneSettingsStore.settings)
+    if (!restoredDocument) applySceneSettings(runtime, sceneSettingsStore.settings)
     editorStore.setSceneRoots(roots)
-    bindingTargetResolver = new BindingTargetResolver(() => editorStore.sceneRoots, runtime)
-    stopBindingWatch = watch(() => twinStore.bindingRevision, refreshBindingResolutions, { immediate: true })
-    mockDataSource = new MockDataSource({
-      getBindings: () => twinStore.bindings.filter(
-        (binding) => twinStore.resolutionByBindingId[binding.id] === 'resolved',
-      ),
-      setRuntimeValue: (bindingId, variableKey, value) => {
-        twinStore.setRuntimeValue(bindingId, variableKey, value)
-      },
-      onTick: () => twinStore.recordMockTick(),
+    effectRuntime = new EffectRuntime(runtime, () => editorStore.sceneRoots)
+    effectsStore.replace(restoredDocument?.effects ?? [])
+    effectsStore.configure((before, after, label) => {
+      void history.execute(new FunctionalCommand(label, () => effectsStore.replace(after), () => effectsStore.replace(before)))
     })
-    mockDataSource.start()
-    twinStore.setMockRunning(true)
+    bindingTargetResolver = new BindingTargetResolver(() => editorStore.sceneRoots, runtime)
+    twinRuntime = new TwinDataRuntime(twinStore, bindingTargetResolver)
+    twinRuntime.initialize(props.projectId, restoredDocument?.bindings ?? [])
+    rulesStore.replace(restoredDocument?.visualRules ?? [])
+    rulesStore.configure((before, after, label) => {
+      void history.execute(new FunctionalCommand(label, () => rulesStore.replace(after), () => rulesStore.replace(before)))
+    })
+    visualRuleRuntime = new VisualRuleRuntime(effectRuntime, twinStore, bindingTargetResolver, () => rulesStore.rules, () => effectsStore.instances, () => editorStore.sceneRevision, rulesStore.publish)
+    interactionsStore.replace(restoredDocument?.interactions ?? [])
+    interactionsStore.configure((before, after, label) => {
+      void history.execute(new FunctionalCommand(label, () => interactionsStore.replace(after), () => interactionsStore.replace(before)))
+    })
+    interactionRuntime = new InteractionRuntime({
+      resolver: bindingTargetResolver,
+      effects: effectRuntime,
+      selectTarget: target => {
+        const object = bindingTargetResolver?.resolve(target)
+        if (!object) return false
+        editorStore.selectObject(object)
+        return true
+      },
+      clearSelection: () => editorStore.clearSelection(),
+      resolveDeviceId: target => twinStore.getBindingByTarget(target)?.device.id ?? null,
+      focusTarget: async target => {
+        const object = bindingTargetResolver?.resolve(target)
+        const bid: unknown = object?.userData.bid
+        if (typeof bid !== 'string') return false
+        await runtime.focusObject(bid)
+        return true
+      },
+      emit: () => {},
+      publish: interactionsStore.publish,
+    })
+    interactionRuntime.setInteractions(interactionsStore.interactions)
+    interactionRuntime.setPointerActive(true)
+    interactionPointers = new ViewerPointerEvents(
+      canvas,
+      runtime,
+      () => editorStore.sceneRoots,
+      twinStore,
+      event => { void interactionRuntime?.dispatch('click', event) },
+      () => {},
+      event => { void interactionRuntime?.dispatch('double-click', event) },
+      event => { void interactionRuntime?.dispatch('hover-enter', event) },
+      event => { void interactionRuntime?.dispatch('hover-leave', event) },
+    )
+    stopInteractionWatch = watch(
+      () => interactionsStore.interactions,
+      values => interactionRuntime?.setInteractions(values),
+    )
+    stopBindingWatch = watch(
+      [() => twinStore.bindingRevision, () => editorStore.sceneRevision],
+      refreshBindingResolutions,
+    )
+    twinRuntime.start()
     syncCubeTransform()
-    if (restoredDocument?.cameraView) await restoreCameraView(runtime, restoredDocument.cameraView)
 
     const transforms = new TransformManager(runtime, {
       onAxisChange: (axis) => { transformAxis.value = axis ?? '' },

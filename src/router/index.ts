@@ -5,6 +5,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/dev/viewer',
+      name: 'twin-viewer',
+      component: () => import('@/views/dev/ViewerPreview.vue'),
+      meta: { title: 'Twin Scene Viewer' },
+    },
+    {
       path: '/',
       component: AppLayout,
       children: [
@@ -37,6 +43,12 @@ const router = createRouter({
       name: 'editor',
       component: () => import('@/views/editor/SceneEditor.vue'),
       meta: { title: '场景编辑器' },
+    },
+    {
+      path: '/projects/:projectId/dashboard',
+      name: 'project-dashboard',
+      component: () => import('@/views/dashboard/ProjectDashboard.vue'),
+      meta: { title: '数据大屏' },
     },
     {
       path: '/dev/meteor-sandbox',

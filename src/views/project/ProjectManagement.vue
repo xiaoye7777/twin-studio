@@ -1,17 +1,58 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import CreateProjectDialog from '@/components/project/CreateProjectDialog.vue'
 import ProjectCard from '@/components/project/ProjectCard.vue'
 import { useProjectStore, type Project } from '@/stores/project'
+import { IndexedDbAssetRepository } from '@/infrastructure/assets'
+import { LocalSceneRepository } from '@/infrastructure/scenes'
+import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageService'
 
 const router = useRouter()
 const projectStore = useProjectStore()
 const dialogVisible = ref(false)
+const packageInput = ref<HTMLInputElement>()
+const importing = ref(false)
+const exportingId = ref('')
+const packages = new ProjectPackageService(new LocalSceneRepository(), new IndexedDbAssetRepository(), projectStore)
 
-function openProject(project: Project) {
-  router.push(`/editor/${project.id}`)
+async function exportProject(project: Project): Promise<void> {
+  if (exportingId.value) return
+  exportingId.value = project.id
+  try {
+    const blob = await packages.exportProject(project)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${project.name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').slice(0, 100) || 'project'}.twin.zip`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    ElMessage.success('项目包已导出（当前已保存版本）')
+  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '项目导出失败') }
+  finally { exportingId.value = '' }
+}
+
+async function importProject(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || importing.value) return
+  importing.value = true
+  try {
+    const project = await packages.importProject(file)
+    ElMessage.success(`已导入：${project.name}`)
+  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '项目导入失败') }
+  finally { importing.value = false }
+}
+
+function editProject(project: Project) {
+  void router.push({ name: 'editor', params: { projectId: project.id } })
+}
+
+function openDashboard(project: Project) {
+  void router.push({ name: 'project-dashboard', params: { projectId: project.id } })
 }
 </script>
 
@@ -22,7 +63,11 @@ function openProject(project: Project) {
         <h1 class="text-2xl font-semibold tracking-tight text-slate-900">项目管理</h1>
         <p class="mt-2 text-sm text-slate-500">创建和管理数字孪生项目</p>
       </div>
-      <p class="text-sm text-slate-400">共 {{ projectStore.projectCount }} 个项目</p>
+      <div class="flex items-center gap-4">
+        <p class="text-sm text-slate-400">共 {{ projectStore.projectCount }} 个项目</p>
+        <el-button data-testid="import-project" :loading="importing" @click="packageInput?.click()">导入项目</el-button>
+        <input ref="packageInput" data-testid="project-package-input" class="hidden" type="file" accept=".zip,application/zip" @change="importProject" />
+      </div>
     </div>
 
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -30,7 +75,10 @@ function openProject(project: Project) {
         v-for="project in projectStore.projects"
         :key="project.id"
         :project="project"
-        @open="openProject"
+        :exporting="!!exportingId"
+        @edit="editProject"
+        @dashboard="openDashboard"
+        @export="exportProject"
       />
 
       <button
@@ -46,6 +94,6 @@ function openProject(project: Project) {
       </button>
     </div>
 
-    <CreateProjectDialog v-model="dialogVisible" @created="openProject" />
+    <CreateProjectDialog v-model="dialogVisible" @created="editProject" />
   </section>
 </template>

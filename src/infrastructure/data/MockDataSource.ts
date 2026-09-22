@@ -20,8 +20,9 @@ function randomBetween(min: number, max: number): number {
 
 function generateNumber(variable: TwinVariableDefinition): number {
   const key = variable.key.toLowerCase()
-  if (key === 'soc' || key.includes('stateofcharge')) return randomBetween(70, 90)
-  if (key.includes('temp')) return randomBetween(25, 45)
+  // Demo range crosses the visual-rule examples (SOC < 20, temperature > 60).
+  if (key === 'soc' || key.includes('stateofcharge')) return randomBetween(10, 90)
+  if (key.includes('temp')) return randomBetween(25, 75)
   if (key.includes('power')) return randomBetween(100, 250)
   return randomBetween(0, 100)
 }

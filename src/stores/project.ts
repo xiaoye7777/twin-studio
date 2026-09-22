@@ -72,6 +72,14 @@ export const useProjectStore = defineStore('project', () => {
     return projects.value.find((project) => project.id === id)
   }
 
+  function addImportedProject(project: Project): void {
+    if (getProjectById(project.id)) throw new Error('导入项目 ID 已存在')
+    const next = [...projects.value, project]
+    // Persist before publishing the card, so quota failures can roll back the import.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    projects.value = next
+  }
+
   watch(
     projects,
     (value) => {
@@ -80,5 +88,5 @@ export const useProjectStore = defineStore('project', () => {
     { deep: true },
   )
 
-  return { projects, projectCount, createProject, getProjectById }
+  return { projects, projectCount, createProject, getProjectById, addImportedProject }
 })

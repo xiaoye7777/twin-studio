@@ -39,6 +39,7 @@ export class MeteorScene {
   private persistenceManager: PersistenceManagerType | null = null
   private resizeObserver: ResizeObserver | null = null
   private disposed = false
+  private pendingModelLoads = 0
   private resizeObserverDisconnected = false
   private raycastBeforeCoreImport: MeshRaycast = Mesh.prototype.raycast
   private raycastAfterCoreImport: MeshRaycast = Mesh.prototype.raycast
@@ -68,16 +69,40 @@ export class MeteorScene {
   addObject<T extends Object3D>(object: T): boolean {
     return this.requireManager().addObject(object)
   }
-  removeObject(object: Object3D): void { this.requireManager().removeObject(object) }
+  removeObject(object: Object3D): void {
+    const manager = this.requireManager()
+    // Core cannot disable an outline by BID after unregisterTree. Clear before removal.
+    object.traverse(node => {
+      const bid: unknown = node.userData.bid
+      if (typeof bid === 'string' && manager.findObjectByBid(bid)) manager.disableOutline(bid)
+    })
+    manager.removeObject(object)
+  }
 
-  loadGLTFModel(url: string): Promise<Object3D> {
-    return this.requirePersistenceManager().loadGLTFModel(url)
+  async loadGLTFModel(url: string): Promise<Object3D> {
+    const persistence = this.requirePersistenceManager()
+    this.pendingModelLoads += 1
+    try {
+      const model = await persistence.loadGLTFModel(url)
+      if (this.disposed) throw new DOMException('Model loading cancelled', 'AbortError')
+      return model
+    } finally {
+      this.pendingModelLoads -= 1
+      // Core's asynchronous loader can populate its cache after scene teardown.
+      // Keep cache ownership until all pending loads settle, then free it once.
+      if (this.disposed && this.pendingModelLoads === 0) persistence.dispose()
+    }
   }
 
   focusObject(bid: string): Promise<void> {
     return this.requireManager().focusObject(bid)
   }
   fitScene(): Promise<void> { return this.requireManager().fitCameraToScene() }
+  setOutline(bid: string, enabled: boolean): void {
+    const manager = this.requireManager()
+    if (enabled) manager.enableOutline(bid, { color: 0xffb020, thickness: 1, strength: 3 })
+    else if (manager.findObjectByBid(bid)) manager.disableOutline(bid)
+  }
 
   findObjectByBid<T extends Object3D>(bid: string): T | null {
     return this.requireManager().findObjectByBid<T>(bid)
@@ -199,7 +224,11 @@ export class MeteorScene {
 
     const manager = this.manager
     const webglContext = manager?.renderer.getContext()
-    this.persistenceManager?.dispose()
+    // Core releases the composer targets but not the passes it owns.
+    manager?.outlineManager.outlinePass.dispose()
+    manager?.outlineManager.outputPass.dispose()
+    manager?.outlineManager.renderPass.dispose()
+    if (this.pendingModelLoads === 0) this.persistenceManager?.dispose()
     this.persistenceManager = null
     manager?.dispose()
     this.manager = null
@@ -222,6 +251,7 @@ export class MeteorScene {
     manager.camera.aspect = width / height
     manager.camera.updateProjectionMatrix()
     manager.renderer.setSize(width, height, false)
+    manager.outlineManager.resize(width, height)
   }
 
   private requireManager(): SceneManagerType {

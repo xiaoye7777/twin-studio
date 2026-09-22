@@ -36,6 +36,14 @@ declare module '@meteor3d/core' {
     controls: MeteorOrbitControls
     gridHelper: Object3D | null
     gridVisible: boolean
+    outlineManager: {
+      resize(width: number, height: number): void
+      outlinePass: { dispose(): void }
+      outputPass: { dispose(): void }
+      renderPass: { dispose(): void }
+    }
+    enableOutline(bid: string, options?: { color?: number; thickness?: number; strength?: number }): boolean
+    disableOutline(bid?: string): boolean
 
     addObject<T extends Object3D>(object: T): boolean
     removeObject(object: Object3D): void

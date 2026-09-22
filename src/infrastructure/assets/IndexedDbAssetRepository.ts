@@ -26,6 +26,30 @@ function createAssetId(): string {
 export class IndexedDbAssetRepository implements AssetRepository {
   private databasePromise: Promise<IDBDatabase> | null = null
 
+  /** Package import owns these fresh IDs; all records commit in one IDB transaction. */
+  async addBatch(records: readonly AssetRecord[]): Promise<void> {
+    const database = await this.openDatabase()
+    const transaction = database.transaction(STORE_NAME, 'readwrite')
+    const complete = transactionComplete(transaction)
+    try {
+      for (const record of records) transaction.objectStore(STORE_NAME).add(record)
+    } catch (error) {
+      transaction.abort()
+      await complete.catch(() => {})
+      throw error
+    }
+    await complete
+  }
+
+  /** Rollback only IDs allocated by the current package import. */
+  async removeBatch(ids: readonly string[]): Promise<void> {
+    const database = await this.openDatabase()
+    const transaction = database.transaction(STORE_NAME, 'readwrite')
+    const complete = transactionComplete(transaction)
+    for (const id of ids) transaction.objectStore(STORE_NAME).delete(id)
+    await complete
+  }
+
   async saveFile(file: File, assetType: AssetType = 'model'): Promise<AssetRecord> {
     const database = await this.openDatabase()
     const fingerprint = `${assetType}:${file.name}:${file.size}:${file.lastModified}`
