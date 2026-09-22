@@ -6,6 +6,7 @@ import { testVisualRules } from './stage-k2-rules.mjs'
 import { testDashboard } from './stage-dashboard.mjs'
 import { testViewerContract } from './stage-m-contract.mjs'
 import { testInteractions } from './stage-n-interactions.mjs'
+import { testProjectPackage } from './stage-o-package.mjs'
 const { chromium } = createRequire(import.meta.url)('playwright')
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
@@ -321,6 +322,7 @@ try {
   report.dashboard = await testDashboard(page, projectId)
   report.integrationContract = await testViewerContract(page, projectId)
   report.interactions = await testInteractions(page, projectId)
+  report.projectPackage = await testProjectPackage(page, projectId)
   assert.deepEqual(errors,[])
   console.log(JSON.stringify(report,null,2))
 } catch(error) {

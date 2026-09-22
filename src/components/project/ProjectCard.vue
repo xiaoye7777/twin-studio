@@ -4,11 +4,13 @@ import type { Project } from '@/stores/project'
 
 defineProps<{
   project: Project
+  exporting?: boolean
 }>()
 
 defineEmits<{
   edit: [project: Project]
   dashboard: [project: Project]
+  export: [project: Project]
 }>()
 
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -72,7 +74,10 @@ function formatDate(value: string) {
           更新于 {{ formatDate(project.updatedAt) }}
         </p>
       </div>
-      <el-icon class="mt-1 shrink-0 text-slate-400"><MoreFilled /></el-icon>
+      <el-dropdown trigger="click" @command="$emit('export', project)">
+        <button :disabled="exporting" data-testid="project-menu" class="mt-1 shrink-0 text-slate-400" aria-label="项目操作"><el-icon><MoreFilled /></el-icon></button>
+        <template #dropdown><el-dropdown-menu><el-dropdown-item command="export" :disabled="exporting" data-testid="export-project">{{ exporting ? '正在导出…' : '导出项目' }}</el-dropdown-item></el-dropdown-menu></template>
+      </el-dropdown>
     </div>
   </article>
 </template>

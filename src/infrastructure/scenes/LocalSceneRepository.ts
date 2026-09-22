@@ -7,6 +7,10 @@ const STORAGE_PREFIX = 'digital-twin-studio:scene:v1:'
 export class SceneDocumentError extends Error {}
 
 export class LocalSceneRepository implements SceneRepository {
+  async remove(projectId: string): Promise<void> {
+    localStorage.removeItem(this.key(projectId))
+  }
+
   async save(document: SceneDocumentV1): Promise<void> {
     localStorage.setItem(this.key(document.projectId), JSON.stringify(document))
   }
