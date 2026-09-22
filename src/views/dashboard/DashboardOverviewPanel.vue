@@ -11,6 +11,17 @@ const props = defineProps<{
 
 const alarmCount = computed(() => props.devices.filter((device) => device.alarm).length)
 const normalCount = computed(() => props.devices.filter((device) => device.resolved && !device.alarm).length)
+const energy = computed(() => {
+  const values = (key: string) => props.devices.flatMap(device => {
+    const value = device.variables.find(variable => variable.key === key)?.value
+    return typeof value === 'number' && Number.isFinite(value) ? [value] : []
+  })
+  const display = (key: string, average: boolean) => {
+    const numbers = values(key)
+    return numbers.length ? (numbers.reduce((sum, value) => sum + value, 0) / (average ? numbers.length : 1)).toFixed(1) : '—'
+  }
+  return { soc: display('soc', true), temperature: display('temperature', true), power: display('power', false) }
+})
 </script>
 
 <template>
@@ -40,6 +51,12 @@ const normalCount = computed(() => props.devices.filter((device) => device.resol
       </div>
     </div>
 
+    <div class="mt-4 space-y-3 rounded-lg border border-white/10 bg-slate-950/20 p-3 text-xs text-slate-400">
+      <p class="text-[10px] uppercase tracking-widest">全场实时汇总 · Mock</p>
+      <p class="flex justify-between">平均 SOC <strong data-testid="dashboard-average-soc" class="text-emerald-300">{{ energy.soc }} %</strong></p>
+      <p class="flex justify-between">平均温度 <strong data-testid="dashboard-average-temperature" class="text-white">{{ energy.temperature }} ℃</strong></p>
+      <p class="flex justify-between">总功率 <strong data-testid="dashboard-total-power" class="text-cyan-300">{{ energy.power }} kW</strong></p>
+    </div>
     <div class="mt-4 rounded-lg border border-white/10 bg-slate-950/20 p-3 text-[11px] leading-5 text-slate-400">
       <div class="flex items-center justify-between">
         <span>数据来源</span>

@@ -35,6 +35,23 @@ export function createScenePrimitive(type: ScenePrimitiveV1['type'], saved?: Sce
     nodeId: saved?.nodeId ?? `node_${globalThis.crypto.randomUUID()}`,
     primitiveType: type,
   })
+  object.userData.primitiveProperties = {
+    color: typeof color === 'number' ? `#${color.toString(16).padStart(6, '0')}` : color,
+    ...(type === 'plane'
+      ? { width: saved?.properties.width ?? 10, height: saved?.properties.height ?? 10 }
+      : type === 'cylinder'
+        ? {
+            height: saved?.properties.height ?? 1,
+            radiusTop: saved?.properties.radiusTop ?? 0.5,
+            radiusBottom: saved?.properties.radiusBottom ?? 0.5,
+            radialSegments: saved?.properties.radialSegments ?? 32,
+          }
+        : {
+            width: saved?.properties.width ?? 1,
+            height: saved?.properties.height ?? 1,
+            depth: saved?.properties.depth ?? 1,
+          }),
+  }
   if (saved) {
     applySceneTransform(object, saved.transform)
     if (saved.runtimeBid) object.userData.bid = saved.runtimeBid

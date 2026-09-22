@@ -17,6 +17,7 @@ import type {
   SceneSettingsV1,
 } from '@/domain/scene'
 import { ASSET_DRAG_MIME, readAssetDragPayload } from '@/editor/assetDrag'
+import { getPrimitivePreset } from '@/editor/primitivePresets'
 import { findAssetInstanceRoot, getEditorMetadata, setEditorMetadata } from '@/editor/editorMetadata'
 import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
 import type { TransformState } from '@/editor/history'
@@ -279,8 +280,22 @@ async function addRootWithHistory(object: Object3D, label: string): Promise<void
   }))
 }
 
-async function addPrimitive(type: PrimitiveType): Promise<void> {
-  const object = createPrimitive(type)
+async function addPrimitive(type: PrimitiveType, presetId?: string, groundPoint = new Vector3()): Promise<void> {
+  const preset = presetId ? getPrimitivePreset(presetId) : null
+  const saved = preset ? {
+    nodeId: createPlatformId('node'),
+    type: preset.type,
+    name: preset.label,
+    transform: {
+      position: [0, 0, 0] as [number, number, number],
+      rotation: preset.rotation ?? [0, 0, 0],
+      scale: [1, 1, 1] as [number, number, number],
+    },
+    properties: { ...preset.properties },
+  } satisfies ScenePrimitiveV1 : undefined
+  const object = createPrimitive(type, saved)
+  object.name = uniqueModelName(preset?.label ?? object.name)
+  placeObjectOnGround(object, groundPoint)
   await addRootWithHistory(object, `Add ${type}`)
   if (type === 'box' && !testCube) testCube = object
 }
@@ -357,7 +372,16 @@ function handleDrop(event: DragEvent): void {
     ElMessage.warning('无法确定放置位置')
     return
   }
-  void instantiateAsset(payload.assetId, groundPoint)
+  if (payload.type === 'asset') {
+    void instantiateAsset(payload.assetId, groundPoint)
+  } else {
+    const preset = getPrimitivePreset(payload.presetId)
+    if (!preset) {
+      ElMessage.warning('内置资源不存在或已更新')
+      return
+    }
+    void addPrimitive(preset.type, preset.id, groundPoint)
+  }
 }
 
 function refreshRootRegistration(root: Object3D): void {
@@ -463,7 +487,7 @@ function installEditorActions(transforms: TransformManager): void {
     fitScene: () => { void meteorScene?.fitScene() }, setSnap: (value) => transforms.setSnap(value),
     commitRename: (object, before, after) => { if (before !== after) void history.execute(new PropertyCommand('Rename', before, after, (value) => { object.name = value; editorStore.notifySceneChanged(object) }), true) },
     commitTransform: (object, before, after) => { void history.execute(new TransformCommand(object, before, after, notifyTransform), true) },
-    addPrimitive: (type) => { void addPrimitive(type) },
+    addPrimitive: (type, presetId) => { void addPrimitive(type, presetId) },
     instantiateAsset: (assetId) => { void instantiateAsset(assetId, new Vector3()) },
     setCommonView: (view) => { void setCommonView(view) },
   })

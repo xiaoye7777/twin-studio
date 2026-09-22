@@ -1,186 +1,133 @@
-# TwinSceneViewer 接入说明
+# TwinSceneViewer SDK 接入说明
 
-## 1. Viewer 是什么
+`@twin-studio/viewer` 是独立 Vue 3 Viewer SDK。它直接加载 Twin Studio 导出的 `.twin.zip`，恢复 SceneDocument、GLB/HDR、Binding、Mock RuntimeValue、Effect、Visual Rule 和 Interaction。Dashboard 不需要 Editor 的 Store、Repository 或源码，也不需要了解 Three.js / Meteor3D 内部对象。
 
-`TwinSceneViewer` 根据 `projectId` 恢复已保存的 SceneDocument、模型、相机、Binding、Rule 和 Effect，并运行实时数据源。宿主页面只需了解设备 ID、稳定业务 Target 和下面的公共类型，无需操作 Three.js / Meteor3D。
+## 1. 安装
 
-组件：`src/components/twin/TwinSceneViewer.vue`。公共类型：`src/components/twin/viewerContract.ts`。
+当前离线交付包：
 
-## 2. 最小接入示例
+```text
+/Users/xiaoye/codexfolder/twin-viewer-sdk/twin-studio-viewer-0.1.0.tgz
+```
+
+把 tgz 放入 Dashboard 的 `vendor/` 后安装：
+
+```bash
+pnpm add ./vendor/twin-studio-viewer-0.1.0.tgz
+```
+
+Dashboard 需要安装 SDK 的 peer dependencies：`vue@^3.5` 与 `three@0.184.0`。Meteor3D、ZIP Loader 和 Runtime 已打进 SDK，不会再请求本地 Meteor3D package。请通过 Vite `resolve.dedupe: ['three', 'vue']` 保证单实例。
+
+## 2. 最小 Vue 3 接入
+
+把 Editor 导出的项目包放在 `public/demo.twin.zip`：
 
 ```vue
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue'
-import TwinSceneViewer from '@/components/twin/TwinSceneViewer.vue'
-import type {
-  TwinSceneViewerPublicApi, ViewerInteractionEvent, ViewerSelection, ViewerRuntimeState,
-} from '@/components/twin/viewerContract'
+import { ref, shallowRef } from 'vue'
+import {
+  TwinSceneViewer,
+  type TwinSceneViewerPublicApi,
+  type ViewerRuntimeState,
+  type ViewerSelection,
+  type ViewerInteractionEvent,
+} from '@twin-studio/viewer'
+import '@twin-studio/viewer/style.css'
 
-const props = defineProps<{ projectId: string }>()
 const viewerRef = ref<TwinSceneViewerPublicApi | null>(null)
 const runtime = shallowRef<ViewerRuntimeState | null>(null)
 const selectedDeviceId = ref<string | null>(null)
 
-function handleSelection(selection: ViewerSelection) {
-  selectedDeviceId.value = selection?.deviceId ?? null
-}
-function handleLoaded() {
-  runtime.value = viewerRef.value?.getRuntimeState() ?? null
-}
+function handleLoaded() { runtime.value = viewerRef.value?.getRuntimeState() ?? null }
+function handleSelection(selection: ViewerSelection) { selectedDeviceId.value = selection?.deviceId ?? null }
 function handleInteraction(event: ViewerInteractionEvent) {
-  if (event.eventName === 'open-device-detail') {
-    // 由 Dashboard 决定打开抽屉、切换图表或跳转；Viewer 不控制宿主 UI。
-    console.info(event.deviceId, event.metadata)
-  }
+  if (event.eventName === 'open-device-detail') console.info(event.deviceId, event.metadata)
 }
 async function chooseDevice(deviceId: string) {
-  if (viewerRef.value?.selectDevice(deviceId)) {
-    await viewerRef.value.focusDevice(deviceId)
-  }
+  if (viewerRef.value?.selectDevice(deviceId)) await viewerRef.value.focusDevice(deviceId)
 }
-watch(() => props.projectId, () => {
-  runtime.value = null
-  selectedDeviceId.value = null
-})
-
-// 同一 deviceId 可有多个 Binding；变量通过 bindingId + key 查询，避免混淆。
-const variables = computed(() => {
-  const state = runtime.value
-  if (!state || selectedDeviceId.value === null) return []
-  return state.bindings
-    .filter(binding => binding.device.id === selectedDeviceId.value)
-    .flatMap(binding => binding.variables.map(definition => ({
-      id: `${binding.id}:${definition.key}`,
-      name: definition.name,
-      unit: definition.unit,
-      value: state.getRuntimeValue(binding.id, definition.key)?.value,
-    })))
-})
 </script>
 
 <template>
-  <div style="height: 600px; position: relative">
-    <TwinSceneViewer
-      ref="viewerRef"
-      :project-id="props.projectId"
-      @loaded="handleLoaded"
-      @selection-change="handleSelection"
-      @interaction-event="handleInteraction"
-      @error="message => console.error(message)"
-    />
+  <div style="height: 600px">
+    <TwinSceneViewer ref="viewerRef" source="/demo.twin.zip" @loaded="handleLoaded"
+      @selection-change="handleSelection" @interaction-event="handleInteraction" />
   </div>
   <button @click="chooseDevice('ESS-002')">定位 ESS-002</button>
-  <div v-for="variable in variables" :key="variable.id">
-    {{ variable.name }}：{{ variable.value ?? '—' }} {{ variable.unit }}
-  </div>
 </template>
 ```
 
-容器必须有实际高度。Viewer 自动观察尺寸变化。先在 Editor 保存项目，收到 `loaded` 后再读取数据、选择或聚焦。
+Viewer 容器必须有实际高度。`source` 支持 URL 字符串、`URL`、`Blob`、`ArrayBuffer` 和 `Uint8Array`。切换 `source` 会先 dispose 旧 Runtime 与 Object URL，再加载新项目。
 
-## 3. Viewer → Dashboard 事件
+## 3. Portable Package Loader
 
-主要选择事件：`selection-change`，参数是 `ViewerSelection`：
-
-```ts
-type ViewerSelection = Readonly<{
-  target: Readonly<TwinBindingTarget>
-  bindingTarget: Readonly<TwinBindingTarget> | null
-  bindingId: string | null
-  deviceId: string | null
-  deviceName: string | null
-}> | null
-```
-
-- 点击设备：`target` 是实际点击的业务节点；`bindingTarget` 是最近祖先（含自身）的绑定节点，包含设备信息。
-- 点击无 Binding 的业务对象：`target` 有值，设备相关字段为 `null`。
-- 点击空白（包括非业务网格、地面）：整个 payload 为 `null`。
-- 拖动相机不会产生点击选择。相同选择不重复发送。Host 调用选择 API 也触发这个事件。
-
-其他事件：
-
-| 事件 | 参数 | 用途 |
-| --- | --- | --- |
-| `loaded` | `{ projectId, objectCount, bindingCount, warnings: string[] }` | 场景与数据已启动；warnings 表示可恢复的问题 |
-| `error` | `string` | 加载失败 |
-| `target-click` | `{ target, bindingTarget?, bindingId?, device? }` | 兼容旧调用；只在真实业务对象点击时发送 |
-| `device-click` | 同上，含 `device: { id, name, type? }` | 兼容旧调用；只在点击解析到设备时发送 |
-| `interaction-event` | `ViewerInteractionEvent` | Scene Interaction 的 `emit-event` Action 发出的业务事件 |
-
-新宿主优先监听 `selection-change`。兼容点击事件可重复发送，但不会重复发送相同 selection。公共事件不包含 Object3D、uuid、BID、相机或内部 Store。
-
-`interaction-event` 是配置驱动的宿主业务事件：
+组件内部使用同一个公开 Loader，也可以单独做预检：
 
 ```ts
-interface ViewerInteractionEvent {
-  eventName: string
-  interactionId: string
-  trigger: 'click' | 'double-click' | 'hover-enter' | 'hover-leave'
-  sourceTarget: Readonly<TwinBindingTarget>
-  triggerTarget: Readonly<TwinBindingTarget>
-  actionTarget: Readonly<TwinBindingTarget>
-  deviceId: string | null
-  metadata: Readonly<Record<string, JSONValue>>
-}
+import { loadTwinPackage } from '@twin-studio/viewer'
+const portable = await loadTwinPackage(fileOrUrl)
+console.log(portable.projectId, portable.projectName, portable.document)
+portable.dispose()
 ```
 
-其中 `metadata` 来自 Editor 中保存的 JSON 配置，`deviceId` 解析自 Interaction 配置的 `sourceTarget` Binding。Host 必须按 `eventName` 白名单处理；它不是脚本，不会执行任意 JavaScript。Interaction 还支持 `select`、`clear-selection`、`focus`、`show`、`hide` 和 Hover `highlight`。`show/hide/highlight` 仅改变当前 Runtime，不写回 SceneDocument。
+Loader 使用 Stage O 的 Package Format v1，不重新定义格式；它校验 manifest、SceneDocument、SHA-256、资产依赖、GLB/HDR 和 ZIP 路径。运行时资产保存在内存 Blob Repository 中，Viewer dispose 时回收全部 Object URL。
 
-## 4. Dashboard → Viewer API
+## 4. Viewer → Dashboard
 
-使用 `ref<TwinSceneViewerPublicApi | null>` 获取类型提示。
+- `selection-change`：点击设备返回稳定 `deviceId` / `TwinBindingTarget`；点击无绑定对象时 `deviceId` 为 null；点击空白时 payload 为 null。
+- `interaction-event`：Interaction 的 `emit-event` Action，包含 `eventName`、稳定 Target、`deviceId` 和 JSON metadata。
+- `loaded`：项目包与 Runtime 已就绪，随后可读取 Runtime State。
+- `error`：下载、校验或运行失败信息。
 
-| 方法 | 返回值 | 语义 |
-| --- | --- | --- |
-| `focusDevice(deviceId)` | `Promise<boolean>` | 聚焦该设备第一个可解析 Binding，不改变选择 |
-| `focusTarget(target)` | `Promise<boolean>` | 聚焦指定稳定 Target，不改变选择 |
-| `selectDevice(deviceId)` | `boolean` | 选择设备第一个可解析 Binding；不移动相机 |
-| `selectTarget(target)` | `boolean` | 选择目标，并解析最近祖先 Binding；不移动相机 |
-| `clearSelection()` | `void` | 清空选择；已为空时不再通知 |
-| `getSelection()` | `ViewerSelection` | 冻结的稳定身份快照；初始/清空后为 null |
-| `getRuntimeState()` | `ViewerRuntimeState \| null` | 当前 session 的只读响应式视图 |
+兼容事件 `target-click` / `device-click` 仍保留。Dashboard 收到 selection 后只更新 UI，不必再次调用选择方法，避免事件回环。
+
+## 5. Dashboard → Viewer
+
+| API | 作用 |
+| --- | --- |
+| `selectDevice(deviceId)` | 选择设备，不移动相机 |
+| `focusDevice(deviceId)` | 聚焦设备，不改变选择 |
+| `selectTarget(target)` | 使用稳定 Target 选择对象 |
+| `focusTarget(target)` | 使用稳定 Target 聚焦对象 |
+| `clearSelection()` | 回到全场上下文 |
+| `getSelection()` | 当前稳定选择快照 |
+| `getRuntimeState()` | 当前只读响应式 Runtime |
+
+常用组合：先 `selectDevice()`，成功后再 `focusDevice()`。不存在或未解析的目标返回 `false`。
+
+## 6. Runtime Data
+
+`getRuntimeState()` 是 Viewer 内唯一实时数据源，包含 `bindings`、`runtimeValues`、`resolutionByBindingId`、`mockRunning`、`mockTickCount` 和 `getRuntimeValue()`。
 
 ```ts
-viewerRef.value?.selectTarget({ type: 'primitive', nodeId: 'node_xxx' })
-await viewerRef.value?.focusTarget({
-  type: 'asset-node', instanceId: 'instance_xxx', assetNodeId: 'node_path',
-})
-viewerRef.value?.clearSelection()
-const selection = viewerRef.value?.getSelection() ?? null
+const state = viewerRef.value?.getRuntimeState()
+const binding = state?.bindings.find(item => item.device.id === selectedDeviceId.value)
+const soc = binding ? state?.getRuntimeValue(binding.id, 'soc')?.value : undefined
 ```
 
-不存在、未解析、未就绪或已销毁的对象返回 `false`，保留原选择。`true` 表示目标已解析并接受操作，包括重复选择同一目标。选择是业务状态，本阶段不增加选择描边，不覆盖用户配置的 Rule/Effect。
+不要在 Dashboard 创建第二个 MockDataSource，也不要把 RuntimeValue 写回 SceneDocument。
 
-## 5. Runtime Data
+## 7. 生命周期
 
-`getRuntimeState()` 在同一 session 中返回相同的只读响应式对象；它通过 getter 读取原 Twin Runtime，无独立 Device/RuntimeValue Store。字段包括 `projectId`、`bindings`、`runtimeValues`、`resolutionByBindingId`、三类 revision、`mockRunning` 和 `mockTickCount`。
+组件卸载、`source` 切换或加载中止时，SDK 会停止 MockDataSource 和 Rule/Interaction Runtime，移除 Pointer Listener、停止 RAF、释放 Three 资源并 revoke GLB/HDR Object URL。宿主只需按普通 Vue 组件挂载与卸载。
 
-查询：`state.getRuntimeValue(bindingId, variableKey)` 返回只读 `{ bindingId, variableKey, value, updatedAt }` 或 `null`。定义来自 `binding.variables`，设备来自 `binding.device`。上面的 `variables` computed 可直接随数据变化更新 UI。
+## 8. 业务身份边界
 
-不要启动第二份 MockDataSource，也不要修改返回数据。公共视图不提供 set/reset/start/stop 方法。重载/切换项目后须在新的 `loaded` 中重新取得视图；旧视图在 dispose 后被清空，不再更新。组件内的 watch/computed 会随 Vue 卸载清理；宿主自行创建的外部订阅须自行停止。
+Dashboard 只使用 `deviceId`、`TwinBindingTarget`、`bindingId + variableKey`。不要使用 Object3D、Three uuid 或 Meteor BID，也不要从 SDK 内部 Scene 查找对象。
 
-## 6. 典型双向联动
+## 9. Reference Dashboard Demo
 
-3D 点击 ESS-001 → `selection-change` → 宿主更新 `selectedDeviceId` → 图表/表格切换设备。
+完整独立参考工程：
 
-宿主点击 ESS-002 → `selectDevice('ESS-002')` → 同一个选择事件更新宿主 → `focusDevice('ESS-002')` 移动相机。
+```text
+/Users/xiaoye/codexfolder/dashboard-viewer-demo
+```
 
-事件处理函数只更新 UI 状态即可，不必再调用选择 API。即使重复调用相同 Target，Viewer 也不会重复通知。设备根节点与子节点是不同 Target，切换它们会产生一次真实状态变化。
+重点文件：
 
-## 7. 全场 / 单设备上下文
+- `src/App.vue`：Viewer 放入大屏、事件监听与设备列表联动。
+- `src/useTwinDashboard.ts`：Viewer Contract、Runtime State 和 KPI 投影。
+- `public/zero-carbon-demo.twin.zip`：可直接运行的园区项目包。
+- `vendor/twin-studio-viewer-0.1.0.tgz`：真实安装的 SDK 包。
 
-`selectedDeviceId === null` 时宿主展示全场聚合上下文；非 null 时展示指定设备。未绑定对象可以有 Target selection，但仍处于无设备上下文。Viewer 不决定 KPI、表格或图表内容。
-
-## 8. 注意事项
-
-- Dashboard 业务身份使用 `deviceId` / `TwinBindingTarget`。禁止使用 Three uuid、Meteor BID 或 Object3D 作为业务主键。
-- Target：资产根节点用 `{ type: 'asset-instance', instanceId }`；子节点用 `{ type: 'asset-node', instanceId, assetNodeId }`；Primitive 用 `{ type: 'primitive', nodeId }`。
-- RuntimeValue 与 selection 都是运行态，不写回 SceneDocument，不进入 History/Dirty。
-- Interaction 配置保存在 SceneDocument；Interaction 触发状态、Hover 高亮和运行时显隐不保存。无配置时仍保持“单击选择、空白清除”的默认行为。
-- 单击 Action 会等待短暂的双击判定窗口；识别为双击后只执行 `double-click` Action，不再执行前置 `click` Action。
-- 切换同一个组件的 projectId 会清空选择并通知 null（若原先非空）；卸载静默销毁，不再发送选择事件。Host 使用 `:key` 重新挂载时应在自身项目切换逻辑中清空 UI。
-- `getRuntimeObject` / `getRuleDiagnostics` 为已有开发诊断入口，保留兼容但不属于 `TwinSceneViewerPublicApi`，业务宿主不要依赖。
-
-## 9. 当前限制
-
-当前使用本浏览器 SceneRepository / IndexedDB Assets 和 MockDataSource，无历史时序数据。API 面向同一个 Vue 应用的组件引用，尚无 iframe/postMessage SDK。多个 Binding 可指向同一 deviceId；设备级 select/focus 按存档顺序取第一个可解析目标，精确定位请使用 Target API。Selection 提供业务状态与事件，暂不额外创建视觉高亮。Interaction 第一版仅支持单个 Trigger → 单个 Action，不包含条件表达式、动作链或任意脚本。
+运行 `pnpm install && pnpm dev`。当前数据源仍为 MockDataSource；无历史时序数据，也未提供 iframe/postMessage。

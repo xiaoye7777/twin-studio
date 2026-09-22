@@ -3,7 +3,7 @@ import { ArrowLeft, EditPen, Monitor } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TwinSceneViewer from '@/components/twin/TwinSceneViewer.vue'
-import type { ViewerSelection, ViewerRuntimeState, TwinSceneViewerPublicApi } from '@/components/twin/viewerContract'
+import type { ViewerSelection, ViewerRuntimeState, TwinSceneViewerPublicApi, ViewerInteractionEvent } from '@/components/twin/viewerContract'
 import { useProjectStore } from '@/stores/project'
 import DashboardDevicePanel from './DashboardDevicePanel.vue'
 import DashboardOverviewPanel from './DashboardOverviewPanel.vue'
@@ -18,6 +18,7 @@ const status = ref('正在加载场景…')
 const viewer = ref<TwinSceneViewerPublicApi | null>(null)
 const runtime = shallowRef<ViewerRuntimeState | null>(null)
 const selectedDeviceId = ref('')
+const lastInteraction = shallowRef<ViewerInteractionEvent | null>(null)
 
 const devices = computed(() => {
   const state = runtime.value
@@ -49,6 +50,7 @@ async function selectDevice(deviceId: string): Promise<void> {
 }
 
 watch(projectId, () => {
+  lastInteraction.value = null
   runtime.value = null
   selectedDeviceId.value = ''
   status.value = '正在加载场景…'
@@ -75,6 +77,7 @@ onBeforeUnmount(() => { runtime.value = null })
         :project-id="projectId"
         @loaded="handleLoaded"
         @selection-change="handleSelection"
+        @interaction-event="lastInteraction = $event"
         @error="status = $event"
       />
     </section>
@@ -102,6 +105,13 @@ onBeforeUnmount(() => { runtime.value = null })
           :binding-count="bindingCount"
           :resolved-binding-count="resolvedBindingCount"
         />
+        <div class="mt-4 space-y-2 text-[11px] leading-5 text-slate-400">
+          <p>单击设备查看数据 · 双击聚焦<br />悬停高亮 · 拖动旋转 · 滚轮缩放</p>
+          <p>点击空白返回全场上下文。设备列表可选中并定位设备。</p>
+          <p v-if="lastInteraction" data-testid="dashboard-interaction-event" aria-live="polite" class="rounded-lg border border-cyan-400/20 bg-cyan-950/30 p-2 text-cyan-200">
+            场景业务事件<br />{{ lastInteraction.eventName }}<br />{{ lastInteraction.deviceId ?? '场景对象' }}
+          </p>
+        </div>
       </aside>
 
       <aside data-testid="dashboard-right-panel" class="pointer-events-auto w-[320px] shrink-0 overflow-auto rounded-xl border border-white/10 bg-slate-950/45 p-4 shadow-2xl shadow-black/20 backdrop-blur-md">

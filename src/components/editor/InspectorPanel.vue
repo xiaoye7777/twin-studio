@@ -129,7 +129,7 @@ watch(
     :data-asset-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.assetId : ''"
     :data-instance-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.instanceId : ''"
     :data-node-id="selectedMetadata?.kind === 'primitive' ? selectedMetadata.nodeId : ''"
-    class="flex w-[280px] shrink-0 flex-col border-l border-slate-700 bg-slate-800 text-slate-300"
+    class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-800 text-slate-300"
   >
     <div class="flex h-10 items-center border-b border-slate-700 px-4 text-xs font-semibold text-slate-200">
       属性

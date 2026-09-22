@@ -92,13 +92,13 @@ watch(
     data-testid="scene-hierarchy"
     :data-selected-bid="editorStore.selectedBid ?? ''"
     :data-node-count="treeData.length"
-    class="w-60 shrink-0 border-r border-slate-700 bg-slate-800 text-slate-300"
+    class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-800 text-slate-300"
   >
     <div class="flex h-10 items-center border-b border-slate-700 px-4 text-xs font-semibold text-slate-200">
       场景
     </div>
 
-    <div class="p-2 text-xs">
+    <div class="min-h-0 flex-1 overflow-y-auto p-2 text-xs [scrollbar-color:#475569_transparent] [scrollbar-width:thin]">
       <div class="mb-1 flex h-8 items-center gap-2 rounded-md px-2 font-medium text-slate-300">
         <span class="text-[10px] text-slate-500">▼</span>
         <span>Scene</span>
@@ -151,6 +151,18 @@ watch(
   height: 32px;
   border-radius: 6px;
   color: rgb(148 163 184);
+  background: transparent;
+}
+
+.scene-tree {
+  --el-tree-text-color: rgb(148 163 184);
+  --el-tree-node-hover-bg-color: rgb(51 65 85);
+  color: rgb(148 163 184);
+  background: transparent !important;
+}
+
+.scene-tree :deep(.el-tree-node),
+.scene-tree :deep(.el-tree-node__children) {
   background: transparent;
 }
 

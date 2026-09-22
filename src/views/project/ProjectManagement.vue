@@ -9,12 +9,23 @@ import { useProjectStore, type Project } from '@/stores/project'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageService'
+import { createZeroCarbonPark } from '@/demo/zeroCarbonPark'
 
 const router = useRouter()
 const projectStore = useProjectStore()
 const dialogVisible = ref(false)
 const packageInput = ref<HTMLInputElement>()
 const importing = ref(false)
+const creatingDemo = ref(false)
+async function createDemo(): Promise<void> {
+  if (creatingDemo.value) return
+  creatingDemo.value = true
+  try {
+    await createZeroCarbonPark(projectStore.addImportedProject)
+    ElMessage.success('零碳智慧园区 Demo 已创建，可从项目卡片进入编辑器或数据大屏；再次创建将生成独立副本。')
+  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '创建示例失败') }
+  finally { creatingDemo.value = false }
+}
 const exportingId = ref('')
 const packages = new ProjectPackageService(new LocalSceneRepository(), new IndexedDbAssetRepository(), projectStore)
 
@@ -65,6 +76,7 @@ function openDashboard(project: Project) {
       </div>
       <div class="flex items-center gap-4">
         <p class="text-sm text-slate-400">共 {{ projectStore.projectCount }} 个项目</p>
+        <el-button data-testid="create-park-demo" :loading="creatingDemo" @click="createDemo">创建园区示例</el-button>
         <el-button data-testid="import-project" :loading="importing" @click="packageInput?.click()">导入项目</el-button>
         <input ref="packageInput" data-testid="project-package-input" class="hidden" type="file" accept=".zip,application/zip" @change="importProject" />
       </div>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Aim, ArrowLeft, CirclePlus, Compass, CopyDocument, Delete, Promotion, Rank, RefreshLeft, RefreshRight, Setting, Upload, View } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { Aim, ArrowLeft, CirclePlus, Compass, CopyDocument, Delete, Rank, RefreshLeft, RefreshRight, Setting, View } from '@element-plus/icons-vue'
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useEditorStore, type CommonView, type PrimitiveType, type TransformMode } from '@/stores/editor'
 import { useSceneSettingsStore } from '@/stores/sceneSettings'
@@ -26,10 +25,6 @@ const transformTools: Array<{
   { mode: 'rotate', name: '旋转', shortcut: 'E', icon: RefreshRight },
   { mode: 'scale', name: '缩放', shortcut: 'R', icon: Aim },
 ]
-
-function showDemoMessage(action: string) {
-  ElMessage.info(`${action}功能将在后续版本中接入`)
-}
 
 function addPrimitive(command: string | number | object): void {
   if (command === 'box' || command === 'plane' || command === 'cylinder') {
@@ -150,12 +145,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
     <div class="flex w-[320px] items-center justify-end gap-2">
       <button data-testid="toggle-scene-settings" aria-label="场景设置" :aria-pressed="sceneSettingsStore.panelOpen" class="toolbar-icon" :class="sceneSettingsStore.panelOpen ? 'bg-slate-700 text-white' : ''" type="button" @click="sceneSettingsStore.togglePanel()"><el-icon><Setting /></el-icon></button>
       <el-button data-testid="save-scene" size="small" dark @click="editorStore.requestSceneSave()">保存{{ editorStore.isDirty ? ' *' : '' }}</el-button>
-      <el-button size="small" dark @click="showDemoMessage('预览')">
-        <el-icon class="mr-1"><Promotion /></el-icon>预览
-      </el-button>
-      <el-button size="small" type="primary" @click="showDemoMessage('发布')">
-        <el-icon class="mr-1"><Upload /></el-icon>发布
-      </el-button>
     </div>
   </header>
 </template>

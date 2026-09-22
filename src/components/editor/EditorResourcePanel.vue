@@ -4,7 +4,8 @@ import EffectLibrary from './EffectLibrary.vue'
 import EffectTemplateLibrary from './EffectTemplateLibrary.vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
-import { writeAssetDragPayload } from '@/editor/assetDrag'
+import { writeAssetDragPayload, writePrimitiveDragPayload } from '@/editor/assetDrag'
+import { primitivePresets, type PrimitivePreset } from '@/editor/primitivePresets'
 import type { AssetMetadata } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
 import { useEditorStore, type PrimitiveType } from '@/stores/editor'
@@ -16,11 +17,7 @@ const fileInputRef = ref<HTMLInputElement>()
 const modelAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'model'))
 const environmentAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'environment'))
 
-const primitives: Array<{ type: PrimitiveType; label: string }> = [
-  { type: 'box', label: 'Box' },
-  { type: 'plane', label: 'Plane' },
-  { type: 'cylinder', label: 'Cylinder' },
-]
+const primitiveGroups = ['基础几何', '园区构件'] as const
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -55,8 +52,13 @@ function handleAssetDragStart(event: DragEvent, asset: AssetMetadata): void {
   writeAssetDragPayload(event.dataTransfer, asset.id)
 }
 
-function addPrimitive(type: PrimitiveType): void {
-  editorStore.addPrimitive(type)
+function addPrimitive(preset: PrimitivePreset): void {
+  editorStore.addPrimitive(preset.type satisfies PrimitiveType, preset.id)
+}
+
+function handlePrimitiveDragStart(event: DragEvent, preset: PrimitivePreset): void {
+  if (!event.dataTransfer) return
+  writePrimitiveDragPayload(event.dataTransfer, preset.id)
 }
 
 function instantiateAsset(assetId: string): void {
@@ -72,7 +74,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section data-testid="asset-panel" class="h-40 shrink-0 border-t border-slate-700 bg-slate-800 text-slate-300">
+  <section data-testid="asset-panel" class="flex h-full min-h-0 flex-col bg-slate-800 text-slate-300">
     <div class="flex h-9 items-center justify-between border-b border-slate-700 px-4">
       <div class="flex items-center gap-2">
         <button class="text-xs" :class="activeTab === 'assets' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'assets'">Assets</button>
@@ -89,21 +91,29 @@ onMounted(() => {
 
     <EffectLibrary v-if="activeTab === 'effects'" />
     <EffectTemplateLibrary v-else-if="activeTab === 'templates'" />
-    <div v-else class="flex h-[124px] min-w-0 gap-5 overflow-x-auto px-4 py-3">
-      <div class="shrink-0">
-        <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Primitives</p>
+    <div v-else class="flex min-h-0 min-w-0 flex-1 gap-5 overflow-auto px-4 py-3">
+      <div v-for="group in primitiveGroups" :key="group" class="shrink-0">
+        <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">{{ group }}</p>
         <div class="flex gap-2">
           <button
-            v-for="primitive in primitives"
-            :key="primitive.type"
-            :data-testid="`asset-primitive-${primitive.type}`"
+            v-for="preset in primitivePresets.filter((item) => item.category === group)"
+            :key="preset.id"
+            :data-testid="`asset-primitive-${preset.id}`"
             :disabled="!editorStore.runtimeReady"
-            class="flex h-16 w-24 items-center gap-2 rounded-lg bg-slate-900/45 px-3 text-left text-xs text-slate-400 transition hover:bg-slate-700 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            :draggable="editorStore.runtimeReady"
+            class="group flex h-16 w-32 cursor-grab items-center gap-2 rounded-lg bg-slate-900/45 px-3 text-left transition hover:bg-slate-700 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
             type="button"
-            @click="addPrimitive(primitive.type)"
+            :title="`${preset.label}：拖入场景自由放置，点击放到中心`"
+            @click="addPrimitive(preset)"
+            @dragstart="handlePrimitiveDragStart($event, preset)"
           >
-            <el-icon :size="18"><Box /></el-icon>
-            <span>{{ primitive.label }}</span>
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-slate-700/70 text-slate-300 group-hover:bg-slate-600">
+              <el-icon :size="17"><Box /></el-icon>
+            </span>
+            <span class="min-w-0">
+              <span class="block truncate text-xs text-slate-200">{{ preset.label }}</span>
+              <span class="mt-1 block truncate text-[9px] text-slate-500">{{ preset.description }}</span>
+            </span>
           </button>
         </div>
       </div>
@@ -111,7 +121,7 @@ onMounted(() => {
       <span class="h-20 w-px shrink-0 bg-slate-700" />
 
       <div class="min-w-0 flex-1">
-        <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Models</p>
+        <p class="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-500">Models · 拖入场景自由放置</p>
         <div v-if="modelAssets.length" class="flex gap-2">
           <article
             v-for="asset in modelAssets"

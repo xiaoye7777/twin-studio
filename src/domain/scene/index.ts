@@ -4,6 +4,7 @@ export { cloneSceneSettings, createDefaultSceneSettings } from './sceneSettings'
 export type {
   SceneCameraViewV1,
   SceneAssetInstanceV1,
+  SceneBoxPropertiesV1,
   SceneDocumentV1,
   SceneGroundSettingsV1,
   SceneLightingSettingsV1,
