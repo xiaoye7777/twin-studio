@@ -50,7 +50,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <aside data-testid="scene-settings-panel" class="flex w-72 shrink-0 flex-col border-l border-slate-700 bg-slate-800 text-slate-300">
+  <aside data-testid="scene-settings-panel" class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-800 text-slate-300">
     <header class="flex h-10 items-center justify-between border-b border-slate-700 px-3">
       <span class="text-xs font-semibold text-slate-100">场景设置</span>
       <button data-testid="close-scene-settings" class="toolbar-icon" type="button" aria-label="关闭场景设置" @click="sceneSettingsStore.closePanel()">

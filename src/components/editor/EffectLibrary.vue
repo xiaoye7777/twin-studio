@@ -12,7 +12,7 @@ const definitions = computed(() => effectDefinitions.filter(d => category.value 
 </script>
 
 <template>
-  <div data-testid="effect-library" class="h-[124px] overflow-auto px-4 py-2">
+  <div data-testid="effect-library" class="min-h-0 flex-1 overflow-auto px-4 py-2">
     <div class="mb-2 flex gap-3 text-xs">
       <button v-for="item in ['全部', '告警', '高亮', '标注']" :key="item" :class="category === item ? 'text-blue-400' : 'text-slate-400'" @click="category = item">{{ item }}</button>
       <span v-if="!target" class="text-slate-500">请先选择场景对象</span>

@@ -66,7 +66,7 @@ onMounted(() => { void run(templates.refresh) })
 </script>
 
 <template>
-  <div data-testid="template-library" class="h-[124px] overflow-auto px-4 py-2">
+  <div data-testid="template-library" class="min-h-0 flex-1 overflow-auto px-4 py-2">
     <div class="mb-2 flex items-center gap-3 text-xs">
       <button data-testid="new-template" class="text-blue-400" @click="edit()">+ 新建模板</button>
       <span class="text-slate-500">本地资源 · 跨项目复用 · 应用将替换同目标同类型特效</span>

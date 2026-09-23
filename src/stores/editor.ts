@@ -19,7 +19,7 @@ export interface EditorActions {
   setSnap(value: number | null): void
   commitRename(object: Object3D, before: string, after: string): void
   commitTransform(object: Object3D, before: TransformState, after: TransformState): void
-  addPrimitive(type: PrimitiveType): void
+  addPrimitive(type: PrimitiveType, presetId?: string): void
   instantiateAsset(assetId: string): void
   setCommonView(view: CommonView): void
 }
@@ -122,7 +122,7 @@ export const useEditorStore = defineStore('editor', () => {
     setSnap: (value: number | null) => { snapValue.value = value; actions.value?.setSnap(value) },
     commitRename: (object: Object3D, before: string, after: string) => actions.value?.commitRename(object, before, after),
     commitTransform: (object: Object3D, before: TransformState, after: TransformState) => actions.value?.commitTransform(object, before, after),
-    addPrimitive: (type: PrimitiveType) => actions.value?.addPrimitive(type),
+    addPrimitive: (type: PrimitiveType, presetId?: string) => actions.value?.addPrimitive(type, presetId),
     instantiateAsset: (assetId: string) => actions.value?.instantiateAsset(assetId),
     setCommonView: (view: CommonView) => actions.value?.setCommonView(view),
   }

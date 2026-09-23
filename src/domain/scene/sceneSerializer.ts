@@ -43,12 +43,16 @@ function serializePrimitive(root: Object3D, visible: (object: Object3D) => boole
     ? `#${root.material.color.getHexString()}`
     : '#3b82f6'
 
+  const storedProperties = typeof root.userData.primitiveProperties === 'object' && root.userData.primitiveProperties !== null
+    ? root.userData.primitiveProperties as Partial<ScenePrimitiveV1['properties']>
+    : {}
+
   return {
     nodeId: metadata.nodeId,
     type: metadata.primitiveType,
     name: root.name,
     transform: serializeTransform(root),
-    properties: { color },
+    properties: { ...storedProperties, color },
     runtimeBid: runtimeBid(root),
     visible: visible(root),
   }
