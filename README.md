@@ -4,6 +4,8 @@
 
 ## 开发
 
+运行环境：Node.js `20.16.0+`、pnpm `10.20.0`。
+
 ```bash
 pnpm install
 pnpm dev
