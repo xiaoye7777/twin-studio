@@ -1,4 +1,4 @@
-# @twin-studio/viewer 0.2.0
+# @twin-studio/viewer 0.2.1
 
 Vue 3 项目运行组件。支持 Node 20.16+ 和 pnpm 10.20.0；加载 Editor 导出的 .twin.zip，恢复模型、绑定、实时数据、规则、特效和交互。
 
@@ -35,3 +35,11 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 宿主通过 getRuntimeState() 读取只读响应式数据，包括 dataSourceType、dataSourceStatus、dataSourceMessageCount、dataSourceError；通过 getDiagnostics() 查看规则和特效计数。selection-change、interaction-event 以及 selectDevice/focusDevice 等 API 保持不变。
 
 切换 source 或卸载组件会关闭旧连接、停止 Mock，并清理场景资源。SDK 不依赖测试 server；server 只是 demo 的外部数据服务。
+
+## 更新记录
+
+### 0.2.1
+
+- 包体积从约 2.2 MB 降到约 0.37 MB：移除了 Viewer 用不到的 Gaussian Splat 渲染库（项目包只包含 GLB/HDR）。
+- 内部改为与 Editor 共享同一份运行时代码，同一项目包的渲染、数据、规则、特效与交互行为与 Editor 预览一致。
+- 公开 API、事件、类型与 0.2.0 相同，升级无需修改代码：替换 tgz 后重新执行 `pnpm add ./vendor/twin-studio-viewer-0.2.1.tgz`。
