@@ -81,6 +81,8 @@ const activeView = ref('Perspective')
 const environmentStatus = ref('None')
 
 const editorStore = useEditorStore()
+const viewLabels: Record<string, string> = { Perspective: '透视', Top: '顶视图', Front: '前视图', Right: '右视图', Saved: '已保存视角' }
+const transformLabels = { translate: '移动', rotate: '旋转', scale: '缩放' } as const
 const sceneSettingsStore = useSceneSettingsStore()
 const dataSourcesStore = useDataSourcesStore()
 let stopDataSourcesWatch: WatchStopHandle | null = null
@@ -772,31 +774,67 @@ onBeforeUnmount(() => {
     :data-binding-platform-lookups="bindingResolverDiagnostics.platformLookupCount"
     :data-binding-meteor-lookups="bindingResolverDiagnostics.meteorLookupCount"
     :data-scene-dirty="editorStore.isDirty ? 'true' : 'false'"
-    class="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-900"
+    class="viewport relative min-h-0 min-w-0 flex-1 overflow-hidden"
     @dragover="handleDragOver"
     @drop="handleDrop"
   >
     <canvas ref="canvasRef" class="block h-full w-full" />
     <pre data-testid="scene-document-debug" class="hidden">{{ sceneDocumentDebugJson }}</pre>
 
-    <div class="pointer-events-none absolute left-3 top-3 z-10 rounded-md bg-slate-950/70 px-2.5 py-1.5 text-[11px] text-slate-400 backdrop-blur">
-      {{ activeView }} View · Meteor3D Runtime
+    <div class="pointer-events-none absolute left-2.5 top-2.5 z-10 flex max-w-[60%] items-center gap-1.5">
+      <span class="chip">{{ viewLabels[activeView] ?? activeView }}</span>
+      <span v-if="editorStore.selectedObject" class="chip min-w-0">
+        <span class="truncate text-fg">{{ editorStore.selectedObject.name || 'Object3D' }}</span>
+        <span class="text-fg-3">{{ transformLabels[editorStore.transformMode] }}</span>
+      </span>
+      <span v-if="unresolvedBindingCount" class="chip chip--warn">{{ unresolvedBindingCount }} 个设备绑定未解析</span>
     </div>
-    <div class="pointer-events-none absolute left-3 top-12 z-10 max-w-[360px] truncate rounded-md bg-slate-950/70 px-2.5 py-1.5 font-mono text-[10px] text-sky-300 backdrop-blur">
-      {{ selectedLabel }} · {{ editorStore.transformMode }}
-    </div>
-    <div v-if="unresolvedBindingCount" class="pointer-events-none absolute left-3 top-[84px] z-10 rounded-md bg-amber-950/80 px-2.5 py-1.5 text-[10px] text-amber-300 backdrop-blur">
-      {{ unresolvedBindingCount }} 个设备绑定未解析
-    </div>
-    <div class="pointer-events-none absolute bottom-3 right-3 z-10 text-[10px] text-slate-500">
-      点击选择 · 左键旋转 · 右键平移 · 滚轮缩放
+    <p class="sr-only">{{ selectedLabel }}</p>
+    <div class="pointer-events-none absolute bottom-2.5 right-3 z-10 flex items-center gap-3 text-[11px] text-fg-3">
+      <span><kbd>左键</kbd> 旋转</span><span><kbd>右键</kbd> 平移</span><span><kbd>滚轮</kbd> 缩放</span><span><kbd>F</kbd> 聚焦</span>
     </div>
 
-    <div v-if="initializing" class="absolute inset-0 z-20 grid place-items-center bg-slate-950/70 text-xs text-slate-300">
-      正在初始化 Meteor3D Runtime…
+    <div v-if="initializing" class="absolute inset-0 z-20 grid place-items-center bg-app/80 text-xs text-fg-2">
+      正在初始化场景…
     </div>
-    <div v-else-if="initializationError" class="absolute inset-0 z-20 grid place-items-center bg-slate-950/85 px-8 text-center text-sm text-rose-300">
+    <div v-else-if="initializationError" class="absolute inset-0 z-20 grid place-items-center bg-app/90 px-8 text-center text-sm text-danger">
       {{ initializationError }}
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Neutral studio backdrop: shows through the transparent canvas when no HDR environment is set. */
+.viewport {
+  background:
+    radial-gradient(ellipse at 50% 42%, #33343a 0%, #26272b 55%, #1d1e21 100%);
+}
+
+.chip {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  border-radius: 4px;
+  background: rgb(26 27 29 / 0.72);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--color-fg-2);
+  backdrop-filter: blur(6px);
+}
+
+.chip--warn {
+  color: var(--color-warn);
+}
+
+kbd {
+  border: 1px solid var(--color-line-strong);
+  border-radius: 3px;
+  background: rgb(26 27 29 / 0.6);
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--color-fg-2);
+}
+</style>

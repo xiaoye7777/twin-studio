@@ -9,6 +9,8 @@ import { captureTransform } from '@/editor/history'
 import type { InspectorFormState, Vector3FormValue } from '@/editor/types'
 import { useEditorStore } from '@/stores/editor'
 import TwinBindingSection from './TwinBindingSection.vue'
+import InspectorSection from './InspectorSection.vue'
+import { Pointer, RefreshLeft } from '@element-plus/icons-vue'
 
 type TransformSection = 'position' | 'rotation' | 'scale'
 type Axis = keyof Vector3FormValue
@@ -24,15 +26,22 @@ interface TransformField {
 
 const axes: readonly Axis[] = ['x', 'y', 'z']
 const transformFields: readonly TransformField[] = [
-  { key: 'position', label: 'Position', step: 0.1, precision: 3 },
-  { key: 'rotation', label: 'Rotation', step: 1, precision: 2, unit: '°' },
-  { key: 'scale', label: 'Scale', step: 0.1, precision: 3, min: 0.001 },
+  { key: 'position', label: '位置', step: 0.1, precision: 3 },
+  { key: 'rotation', label: '旋转', step: 1, precision: 2, unit: '°' },
+  { key: 'scale', label: '缩放', step: 0.1, precision: 3, min: 0.001 },
 ]
 
 const editorStore = useEditorStore()
 const selectedMetadata = computed(() =>
   editorStore.selectedObject ? getEditorMetadata(editorStore.selectedObject) : null,
 )
+const kindLabel = computed(() => {
+  const object = editorStore.selectedObject
+  if (!object) return ''
+  if (selectedMetadata.value?.kind === 'assetInstance') return '模型实例'
+  if (selectedMetadata.value?.kind === 'primitive') return '几何体'
+  return typeof object.userData.assetNodeId === 'string' ? '模型节点' : object.type
+})
 const form = reactive<InspectorFormState>({
   name: '',
   position: { x: 0, y: 0, z: 0 },
@@ -129,75 +138,71 @@ watch(
     :data-asset-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.assetId : ''"
     :data-instance-id="selectedMetadata?.kind === 'assetInstance' ? selectedMetadata.instanceId : ''"
     :data-node-id="selectedMetadata?.kind === 'primitive' ? selectedMetadata.nodeId : ''"
-    class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-800 text-slate-300"
+    class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-panel text-fg-2"
   >
-    <div class="flex h-10 items-center border-b border-slate-700 px-4 text-xs font-semibold text-slate-200">
-      属性
+    <div class="st-panel-header">
+      <span>属性</span>
+      <span v-if="kindLabel" class="ml-auto rounded-sm bg-raised px-1.5 py-px text-[10.5px] font-medium text-fg-2">{{ kindLabel }}</span>
     </div>
 
     <div
       v-if="!editorStore.selectedObject"
       data-testid="inspector-empty"
-      class="flex h-[260px] flex-col items-center justify-center px-6 text-center"
+      class="flex flex-1 flex-col items-center justify-center px-8 pb-16 text-center"
     >
-      <div class="mb-3 grid h-10 w-10 place-items-center rounded-lg border border-slate-700 bg-slate-900 text-lg text-slate-600">
-        ◇
+      <div class="mb-3 grid h-10 w-10 place-items-center rounded-lg border border-line bg-field text-fg-3">
+        <el-icon :size="18"><Pointer /></el-icon>
       </div>
-      <p class="text-xs text-slate-400">未选择对象</p>
-      <p class="mt-1 text-[10px] leading-4 text-slate-600">从场景或视口中选择一个对象</p>
+      <p class="text-[12px] text-fg-2">未选择对象</p>
+      <p class="mt-1 text-[11px] leading-5 text-fg-3">在场景列表或视口中点击对象，<br />即可编辑其属性、绑定与规则</p>
     </div>
 
-    <div v-else data-testid="inspector-form" class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-      <label class="block">
-        <span class="mb-2 block text-xs text-slate-400">名称</span>
+    <div v-else data-testid="inspector-form" class="min-h-0 flex-1 overflow-y-auto">
+      <div class="border-b border-line px-3 py-3">
         <el-input
           data-testid="inspector-name"
+          aria-label="对象名称"
           :model-value="form.name"
           size="small"
           @update:model-value="updateName"
           @focus="nameEditBefore = editorStore.selectedObject?.name ?? ''"
           @change="commitName"
         />
-      </label>
-
-      <div class="rounded-md border border-slate-700 bg-slate-900/40 px-3 py-2">
-        <p class="text-[10px] uppercase tracking-wide text-slate-500">BID</p>
-        <p data-testid="inspector-bid" class="mt-1 truncate font-mono text-[10px] text-sky-300">
-          {{ editorStore.selectedBid ?? '—' }}
-        </p>
       </div>
 
-      <div class="rounded-md border border-slate-700 bg-slate-900/40 px-3 py-2">
-        <p class="text-[10px] uppercase tracking-wide text-slate-500">Asset Node ID</p>
-        <p data-testid="inspector-asset-node-id" class="mt-1 truncate font-mono text-[10px] text-slate-300">
-          {{ editorStore.selectedObject.userData.assetNodeId ?? '—' }}
-        </p>
-      </div>
-
-      <div v-for="field in transformFields" :key="field.key">
-        <p class="mb-2 flex items-center justify-between text-xs font-medium text-slate-300">
-          <span>{{ field.label }}</span>
-          <span v-if="field.unit" class="text-[10px] font-normal text-slate-600">{{ field.unit }}</span>
-        </p>
-        <div class="grid grid-cols-3 gap-1.5">
-          <label v-for="axis in axes" :key="axis" class="min-w-0">
-            <span class="mb-1 block text-[10px] font-medium uppercase text-slate-500">{{ axis }}</span>
-            <el-input-number
-              :data-testid="`inspector-${field.key}-${axis}`"
-              :aria-label="`${field.label} ${axis.toUpperCase()}`"
-              :model-value="form[field.key][axis]"
-              :controls="false"
-              :step="field.step"
-              :precision="field.precision"
-              :min="field.min"
-              size="small"
-              class="w-full!"
-              @update:model-value="(value: number | undefined) => updateTransformValue(field.key, axis, value)"
-            />
-          </label>
+      <InspectorSection title="变换">
+        <template #actions>
+          <button data-testid="reset-transform" class="st-link flex items-center gap-1" type="button" title="恢复初始变换" @click="editorStore.resetSelectedTransform()">
+            <el-icon><RefreshLeft /></el-icon>重置
+          </button>
+        </template>
+        <div v-for="field in transformFields" :key="field.key" class="grid grid-cols-[40px_1fr] items-center gap-2">
+          <span class="text-[12px] text-fg-2">{{ field.label }}</span>
+          <div class="grid grid-cols-3 gap-1">
+            <label v-for="axis in axes" :key="axis" class="axis-field" :class="`axis-field--${axis}`">
+              <span class="axis-field__tag">{{ axis.toUpperCase() }}</span>
+              <el-input-number
+                :data-testid="`inspector-${field.key}-${axis}`"
+                :aria-label="`${field.label} ${axis.toUpperCase()}`"
+                :model-value="form[field.key][axis]"
+                :controls="false"
+                :step="field.step"
+                :precision="field.precision"
+                :min="field.min"
+                size="small"
+                class="w-full!"
+                @update:model-value="(value: number | undefined) => updateTransformValue(field.key, axis, value)"
+              />
+            </label>
+          </div>
         </div>
-      </div>
-      <el-button data-testid="reset-transform" size="small" class="w-full" @click="editorStore.resetSelectedTransform()">重置变换</el-button>
+      </InspectorSection>
+
+      <InspectorSection title="标识">
+        <div class="id-row"><span>BID</span><code data-testid="inspector-bid" :title="editorStore.selectedBid ?? ''">{{ editorStore.selectedBid ?? '—' }}</code></div>
+        <div class="id-row"><span>节点 ID</span><code data-testid="inspector-asset-node-id">{{ editorStore.selectedObject.userData.assetNodeId ?? '—' }}</code></div>
+      </InspectorSection>
+
       <TwinBindingSection />
       <VisualRuleSection />
       <EffectInspector />
@@ -205,3 +210,59 @@ watch(
     </div>
   </aside>
 </template>
+
+<style scoped>
+.axis-field {
+  position: relative;
+  min-width: 0;
+}
+
+.axis-field__tag {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  bottom: 1px;
+  z-index: 1;
+  display: grid;
+  width: 16px;
+  place-items: center;
+  border-radius: 3px 0 0 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.axis-field--x .axis-field__tag { color: var(--color-axis-x); background: rgb(208 103 92 / 0.12); }
+.axis-field--y .axis-field__tag { color: var(--color-axis-y); background: rgb(134 179 108 / 0.12); }
+.axis-field--z .axis-field__tag { color: var(--color-axis-z); background: rgb(106 147 207 / 0.12); }
+
+.axis-field :deep(.el-input__wrapper) {
+  padding-left: 20px;
+  padding-right: 6px;
+}
+
+.axis-field :deep(.el-input__inner) {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.id-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-fg-2);
+}
+
+.id-row code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-fg-2);
+  user-select: all;
+}
+</style>

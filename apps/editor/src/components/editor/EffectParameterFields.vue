@@ -10,9 +10,9 @@ function change(field: keyof EffectParameters, event: Event): void {
 </script>
 
 <template>
-  <p v-if="kind === 'outline'" class="text-[10px] text-slate-500">Meteor3D 统一琥珀色描边（颜色不随模板变化）</p>
-  <label v-for="field in effectDefinitions.find(d => d.kind === kind)?.fields" :key="field" class="flex items-center justify-between gap-2 text-xs text-slate-400">
+  <p v-if="kind === 'outline'" class="st-hint">描边使用统一的琥珀色样式，颜色不随参数变化</p>
+  <label v-for="field in effectDefinitions.find(d => d.kind === kind)?.fields" :key="field" class="grid grid-cols-[40px_1fr] items-center gap-2 text-[12px] text-fg-2">
     {{ labels[field] }}
-    <input :data-testid="`${testPrefix ?? `effect-${kind}`}-${field}`" :aria-label="labels[field]" :type="field === 'color' ? 'color' : field === 'text' ? 'text' : 'number'" :value="parameters[field]" min="0" :max="field === 'opacity' ? 1 : field === 'speed' ? 10 : field === 'padding' ? 100 : undefined" :step="0.1" maxlength="200" class="w-36 rounded bg-slate-700 p-1 text-slate-100" @change="change(field, $event)" />
+    <input :data-testid="`${testPrefix ?? `effect-${kind}`}-${field}`" :aria-label="labels[field]" :type="field === 'color' ? 'color' : field === 'text' ? 'text' : 'number'" :value="parameters[field]" min="0" :max="field === 'opacity' ? 1 : field === 'speed' ? 10 : field === 'padding' ? 100 : undefined" :step="0.1" maxlength="200" class="st-input" :class="field === 'color' ? '' : 'w-full'" @change="change(field, $event)" />
   </label>
 </template>

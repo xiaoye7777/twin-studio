@@ -73,43 +73,63 @@ onMounted(() => { void run(templates.refresh) })
 </script>
 
 <template>
-  <div data-testid="template-library" class="min-h-0 flex-1 overflow-auto px-4 py-2">
-    <div class="mb-2 flex items-center gap-3 text-xs">
-      <button data-testid="new-template" class="text-blue-400" @click="edit()">+ 新建模板</button>
-      <span class="text-slate-500">本地资源 · 跨项目复用 · 应用将替换同目标同类型特效</span>
-      <span v-if="error" class="text-red-400">{{ error }}</span>
-    </div>
-    <div class="flex gap-3">
-      <article v-for="template in templates.templates" :key="template.id" :data-template-id="template.id" class="w-64 shrink-0 rounded-lg bg-slate-900/45 px-3 py-2 text-xs">
-        <div class="flex justify-between gap-2"><span class="truncate font-medium" :title="template.description">{{ template.name }}</span><span class="shrink-0 text-slate-500">{{ template.origin === 'builtin' ? '内置' : '自定义' }} · {{ template.category }}</span></div>
-        <p class="my-1 truncate text-[10px] text-slate-500" :title="template.effects.map(e => effectDefinitions.find(d => d.kind === e.kind)?.name).join(' / ')">{{ template.effects.length }} 个特效 · {{ template.description }}</p>
-        <div class="flex gap-3">
-          <button data-testid="apply-template" :disabled="!editor.runtimeReady || !editor.selectedObject" class="text-blue-400 disabled:opacity-40" @click="apply(template)">应用</button>
-          <button data-testid="edit-template" @click="edit(template)">{{ template.origin === 'builtin' ? '查看' : '编辑' }}</button>
-          <button data-testid="copy-template" @click="run(() => templates.duplicate(template))">{{ template.origin === 'builtin' ? '复制为自定义' : '复制' }}</button>
-          <button v-if="template.origin === 'local'" data-testid="delete-template" class="text-red-400" @click="remove(template)">删除</button>
-        </div>
-      </article>
+  <div data-testid="template-library" class="flex min-h-0 flex-1 flex-col">
+    <nav class="flex h-8 shrink-0 items-center gap-3 px-3">
+      <button data-testid="new-template" class="st-link st-link--accent" type="button" @click="edit()">+ 新建模板</button>
+      <span class="text-[11px] text-fg-3">本地模板，可跨项目复用；应用时替换同目标同类型的特效</span>
+      <span v-if="error" class="text-[11px] text-danger">{{ error }}</span>
+    </nav>
+    <div class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
+      <div class="flex min-w-max gap-2">
+        <article v-for="template in templates.templates" :key="template.id" :data-template-id="template.id" class="card w-64">
+          <div class="flex items-center justify-between gap-2">
+            <span class="truncate text-[12px] font-medium text-fg" :title="template.description">{{ template.name }}</span>
+            <span class="shrink-0 rounded-sm bg-raised px-1.5 py-px text-[10.5px] text-fg-3">{{ template.origin === 'builtin' ? '内置' : '自定义' }} · {{ template.category }}</span>
+          </div>
+          <p class="truncate text-[11px] text-fg-3" :title="template.effects.map(e => effectDefinitions.find(d => d.kind === e.kind)?.name).join(' / ')">{{ template.effects.length }} 个特效 · {{ template.description }}</p>
+          <div class="flex gap-3">
+            <button data-testid="apply-template" :disabled="!editor.runtimeReady || !editor.selectedObject" class="st-link st-link--accent" type="button" @click="apply(template)">应用</button>
+            <button data-testid="edit-template" class="st-link" type="button" @click="edit(template)">{{ template.origin === 'builtin' ? '查看' : '编辑' }}</button>
+            <button data-testid="copy-template" class="st-link" type="button" @click="run(() => templates.duplicate(template))">{{ template.origin === 'builtin' ? '复制为自定义' : '复制' }}</button>
+            <button v-if="template.origin === 'local'" data-testid="delete-template" class="st-link st-link--danger" type="button" @click="remove(template)">删除</button>
+          </div>
+        </article>
+      </div>
     </div>
     <el-dialog v-model="dialogOpen" :title="draft?.origin === 'builtin' ? '查看内置模板（只读）' : '编辑特效模板'" width="680px" append-to-body destroy-on-close :close-on-click-modal="false">
       <div v-if="draft" data-testid="template-editor" @keydown.stop>
         <fieldset :disabled="draft.origin === 'builtin' || saving" class="space-y-3">
-          <label class="block">名称<input v-model="draft.name" data-testid="template-name" maxlength="80" class="ml-3 rounded bg-slate-700 p-2 text-white" /></label>
-          <label class="block">分类<input v-model="draft.category" data-testid="template-category" maxlength="40" class="ml-3 rounded bg-slate-700 p-2 text-white" /></label>
-          <label class="block">描述<input v-model="draft.description" data-testid="template-description" maxlength="500" class="ml-3 w-4/5 rounded bg-slate-700 p-2 text-white" /></label>
-          <p class="text-xs text-slate-500">相对目标不保存具体实例。指定节点需输入稳定 assetNodeId（可在 Inspector 查看），不是节点名称。应用失败不会生成部分特效。</p>
-          <div class="max-h-[42vh] space-y-3 overflow-y-auto">
-            <section v-for="(atom, index) in draft.effects" :key="atom.id" :data-template-atom="index" class="space-y-2 rounded bg-slate-800 p-3 text-slate-200">
-              <div class="flex justify-between text-sm"><span>{{ index + 1 }}. {{ effectDefinitions.find(d => d.kind === atom.kind)?.name }}</span><div class="flex gap-3"><button :disabled="index === 0" @click="move(index, -1)">上移</button><button :disabled="index === draft.effects.length - 1" @click="move(index, 1)">下移</button><button data-testid="remove-template-atom" class="text-red-400" @click="draft.effects.splice(index, 1)">移除</button></div></div>
-              <label class="block text-xs">目标 <select data-testid="template-target-mode" :value="atom.target.mode" class="rounded bg-slate-700 p-1" @change="setTarget(index, $event)"><option value="current-target">当前对象</option><option value="root-instance">所属模型根</option><option value="asset-node">指定模型节点</option></select></label>
-              <input v-if="atom.target.mode === 'asset-node'" v-model="atom.target.assetNodeId" data-testid="template-asset-node-id" placeholder="assetNodeId" class="w-full rounded bg-slate-700 p-1 text-xs" />
+          <label class="st-form-row"><span>名称</span><input v-model="draft.name" data-testid="template-name" maxlength="80" class="st-input w-full" /></label>
+          <label class="st-form-row"><span>分类</span><input v-model="draft.category" data-testid="template-category" maxlength="40" class="st-input w-48" /></label>
+          <label class="st-form-row"><span>描述</span><input v-model="draft.description" data-testid="template-description" maxlength="500" class="st-input w-full" /></label>
+          <p class="st-hint rounded-[5px] bg-field px-3 py-2">目标为相对目标，不保存具体实例。“指定模型节点”需要填写稳定的 assetNodeId（可在属性面板“标识”中查看），不是节点名称。应用失败时不会生成部分特效。</p>
+          <div class="max-h-[42vh] space-y-2 overflow-y-auto pr-1">
+            <section v-for="(atom, index) in draft.effects" :key="atom.id" :data-template-atom="index" class="st-item space-y-2">
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="font-medium text-fg"><span class="mr-1.5 text-fg-3">{{ index + 1 }}</span>{{ effectDefinitions.find(d => d.kind === atom.kind)?.name }}</span>
+                <div class="flex gap-3">
+                  <button class="st-link" type="button" :disabled="index === 0" @click="move(index, -1)">上移</button>
+                  <button class="st-link" type="button" :disabled="index === draft.effects.length - 1" @click="move(index, 1)">下移</button>
+                  <button data-testid="remove-template-atom" class="st-link st-link--danger" type="button" @click="draft.effects.splice(index, 1)">移除</button>
+                </div>
+              </div>
+              <label class="grid grid-cols-[40px_1fr] items-center gap-2 text-[12px] text-fg-2">目标 <select data-testid="template-target-mode" :value="atom.target.mode" class="st-select" @change="setTarget(index, $event)"><option value="current-target">当前对象</option><option value="root-instance">所属模型根</option><option value="asset-node">指定模型节点</option></select></label>
+              <input v-if="atom.target.mode === 'asset-node'" v-model="atom.target.assetNodeId" data-testid="template-asset-node-id" placeholder="assetNodeId" class="st-input st-input--mono w-full" />
               <EffectParameterFields :kind="atom.kind" :parameters="atom.parameters" :test-prefix="`template-atom-${index}`" @change="parameters => atom.parameters = parameters" />
             </section>
           </div>
-          <div class="flex gap-3"><select v-model="newKind" data-testid="template-new-kind" class="rounded bg-slate-700 p-2 text-white"><option v-for="definition in effectDefinitions" :key="definition.kind" :value="definition.kind">{{ definition.name }}</option></select><el-button data-testid="add-template-atom" :disabled="draft.origin === 'builtin' || draft.effects.length >= 50" @click="draft.effects.push(createTemplateEffect(newKind))">添加特效</el-button></div>
+          <div class="flex gap-2">
+            <select v-model="newKind" data-testid="template-new-kind" class="st-select w-40"><option v-for="definition in effectDefinitions" :key="definition.kind" :value="definition.kind">{{ definition.name }}</option></select>
+            <el-button data-testid="add-template-atom" :disabled="draft.origin === 'builtin' || draft.effects.length >= 50" @click="draft.effects.push(createTemplateEffect(newKind))">添加特效</el-button>
+          </div>
         </fieldset>
       </div>
       <template #footer><el-button @click="dialogOpen = false">取消</el-button><el-button v-if="draft?.origin === 'local'" data-testid="save-template" type="primary" :loading="saving" @click="save">保存模板</el-button></template>
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.card { display:flex; flex-shrink:0; flex-direction:column; gap:6px; border:1px solid var(--color-line); border-radius:6px; background:var(--color-field); padding:8px 10px; }
+.card:hover { border-color:var(--color-line-strong); }
+</style>

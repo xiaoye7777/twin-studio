@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InspectorSection from './InspectorSection.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
@@ -62,28 +63,50 @@ function label(rule: VisualRule): string {
   const definition = twin.getBindingById(rule.bindingId)?.variables.find(v => v.key === rule.variableKey)
   return `${definition?.name ?? rule.variableKey} ${rule.condition.operator} ${rule.condition.value} ${definition?.unit ?? ''}`
 }
+const statusLabels: Record<string, string> = { active: '生效中', inactive: '未触发', unresolved: '未解析', disabled: '已禁用', stopped: '无实时数据' }
+function statusText(status?: string): string { return statusLabels[status ?? 'inactive'] ?? status ?? '' }
+function statusClass(status?: string): string {
+  return status === 'active' ? 'st-pill--ok' : status === 'unresolved' || status === 'stopped' ? 'st-pill--warn' : 'st-pill--muted'
+}
 watch(() => editor.selectedObject, () => { open.value = false })
 </script>
 
 <template>
-  <section data-testid="visual-rule-section" class="space-y-3 border-t border-slate-700 pt-3">
-    <div class="flex justify-between text-xs"><h3 class="font-semibold text-slate-200">可视化规则</h3><button data-testid="add-visual-rule" :disabled="!binding?.variables.length || !editor.runtimeReady" class="text-blue-400 disabled:opacity-40" @click="edit()">添加规则</button></div>
-    <p v-if="!binding" class="text-xs text-slate-500">请先绑定设备并配置变量</p>
-    <p v-else-if="!selectedRules.length" class="text-xs text-slate-500">一个变量条件 → 一个特效模板</p>
-    <div v-for="rule in selectedRules" :key="rule.id" :data-rule-id="rule.id" :data-status="rules.diagnostics[rule.id]?.status" class="space-y-2 rounded bg-slate-900/40 p-2 text-xs">
-      <p>{{ label(rule) }}</p><p class="text-slate-400">→ {{ rule.template?.name ?? '缺少模板快照' }} · 优先级 {{ rule.priority }}</p>
-      <p data-testid="rule-status" class="text-[10px] text-sky-400">{{ rules.diagnostics[rule.id]?.status ?? 'inactive' }} · 生效 {{ rules.diagnostics[rule.id]?.visibleEffects ?? 0 }}/{{ rules.diagnostics[rule.id]?.effects ?? 0 }} {{ rules.diagnostics[rule.id]?.reason }}</p>
-      <div class="flex gap-3"><button data-testid="toggle-visual-rule" @click="rules.save({ ...rule, enabled: !rule.enabled })">{{ rule.enabled ? '禁用' : '启用' }}</button><button data-testid="edit-visual-rule" :disabled="!binding" @click="edit(rule)">编辑</button><button data-testid="delete-visual-rule" class="text-red-400" @click="rules.remove(rule.id)">删除</button></div>
+  <InspectorSection title="可视化规则" :meta="selectedRules.length || ''" data-testid="visual-rule-section">
+    <template #actions>
+      <button data-testid="add-visual-rule" :disabled="!binding?.variables.length || !editor.runtimeReady" class="st-link st-link--accent" type="button" @click="edit()">+ 添加</button>
+    </template>
+    <p v-if="!binding" class="st-hint">请先绑定设备并配置变量</p>
+    <p v-else-if="!selectedRules.length" class="st-hint">当变量满足条件时，自动为对象叠加特效模板</p>
+    <div v-for="rule in selectedRules" :key="rule.id" :data-rule-id="rule.id" :data-status="rules.diagnostics[rule.id]?.status" class="st-item space-y-1.5" :class="{ 'opacity-55': !rule.enabled }">
+      <div class="flex items-start justify-between gap-2">
+        <p class="min-w-0 text-[12px] text-fg"><span class="font-mono text-[11.5px]">{{ label(rule) }}</span></p>
+        <span class="st-pill shrink-0" :class="statusClass(rules.diagnostics[rule.id]?.status)">{{ statusText(rules.diagnostics[rule.id]?.status) }}</span>
+      </div>
+      <p class="truncate text-[11px] text-fg-2">→ {{ rule.template?.name ?? '缺少模板快照' }} <span class="text-fg-3">· 优先级 {{ rule.priority }}</span></p>
+      <p data-testid="rule-status" class="text-[10.5px] text-fg-3">{{ rules.diagnostics[rule.id]?.status ?? 'inactive' }} · 生效 {{ rules.diagnostics[rule.id]?.visibleEffects ?? 0 }}/{{ rules.diagnostics[rule.id]?.effects ?? 0 }} {{ rules.diagnostics[rule.id]?.reason }}</p>
+      <div class="flex gap-3 pt-0.5">
+        <button data-testid="toggle-visual-rule" class="st-link" type="button" @click="rules.save({ ...rule, enabled: !rule.enabled })">{{ rule.enabled ? '禁用' : '启用' }}</button>
+        <button data-testid="edit-visual-rule" :disabled="!binding" class="st-link" type="button" @click="edit(rule)">编辑</button>
+        <button data-testid="delete-visual-rule" class="st-link st-link--danger" type="button" @click="rules.remove(rule.id)">删除</button>
+      </div>
     </div>
     <el-dialog v-model="open" title="可视化规则" width="520px" append-to-body destroy-on-close :close-on-click-modal="false">
-      <div class="space-y-4" @keydown.stop>
-        <label class="block">变量 <select v-model="form.variableKey" data-testid="rule-variable" class="rounded bg-slate-100 p-2" @change="variableChanged"><option v-for="v in binding?.variables" :key="v.key" :value="v.key">{{ v.name }} ({{ v.key }})</option></select></label>
-        <div class="flex gap-3"><select v-model="form.operator" data-testid="rule-operator" aria-label="条件" class="rounded bg-slate-100 p-2"><option v-for="op in operators" :key="op" :value="op">{{ op }}</option></select><select v-if="variable?.dataType === 'boolean'" v-model="form.operand" data-testid="rule-operand" class="rounded bg-slate-100 p-2"><option value="true">true</option><option value="false">false</option></select><input v-else v-model="form.operand" data-testid="rule-operand" aria-label="阈值" :type="variable?.dataType === 'number' ? 'number' : 'text'" class="min-w-0 flex-1 rounded bg-slate-100 p-2" /></div>
-        <label class="block">模板 <select v-model="form.templateId" data-testid="rule-template" class="max-w-full rounded bg-slate-100 p-2"><option value="" disabled>选择模板</option><option v-if="savedSnapshot" value="@snapshot">保留已保存快照：{{ savedSnapshot.name }}</option><option v-for="t in templates.templates" :key="t.id" :value="t.id">{{ t.name }}</option></select></label>
-        <label class="block">优先级 <input v-model.number="form.priority" data-testid="rule-priority" type="number" min="0" max="100" step="1" class="w-24 rounded bg-slate-100 p-2" /></label>
-        <p class="text-xs text-slate-500">保存独立模板快照，不自动同步模板库。相同目标与类型：优先级高的规则覆盖低优先级与手工特效；条件解除后恢复。相同优先级按规则 ID 排序。</p>
+      <div class="space-y-3" @keydown.stop>
+        <label class="st-form-row"><span>变量</span><select v-model="form.variableKey" data-testid="rule-variable" class="st-select w-full" @change="variableChanged"><option v-for="v in binding?.variables" :key="v.key" :value="v.key">{{ v.name }} ({{ v.key }})</option></select></label>
+        <div class="st-form-row"><span>条件</span>
+          <div class="flex gap-2">
+            <select v-model="form.operator" data-testid="rule-operator" aria-label="条件" class="st-select w-20"><option v-for="op in operators" :key="op" :value="op">{{ op }}</option></select>
+            <select v-if="variable?.dataType === 'boolean'" v-model="form.operand" data-testid="rule-operand" class="st-select flex-1"><option value="true">true</option><option value="false">false</option></select>
+            <input v-else v-model="form.operand" data-testid="rule-operand" aria-label="阈值" :type="variable?.dataType === 'number' ? 'number' : 'text'" class="st-input flex-1" />
+            <span v-if="variable?.unit" class="self-center text-fg-3">{{ variable.unit }}</span>
+          </div>
+        </div>
+        <label class="st-form-row"><span>特效模板</span><select v-model="form.templateId" data-testid="rule-template" class="st-select w-full"><option value="" disabled>选择模板</option><option v-if="savedSnapshot" value="@snapshot">保留已保存快照：{{ savedSnapshot.name }}</option><option v-for="t in templates.templates" :key="t.id" :value="t.id">{{ t.name }}</option></select></label>
+        <label class="st-form-row"><span>优先级</span><input v-model.number="form.priority" data-testid="rule-priority" type="number" min="0" max="100" step="1" class="st-input w-24" /></label>
+        <p class="st-hint rounded-[5px] bg-field px-3 py-2">规则保存独立的模板快照，模板库修改不会影响已有规则。同一目标、同类特效由优先级高的规则覆盖；条件解除后自动恢复。</p>
       </div>
       <template #footer><el-button @click="open = false">取消</el-button><el-button data-testid="save-visual-rule" type="primary" @click="save">保存规则</el-button></template>
     </el-dialog>
-  </section>
+  </InspectorSection>
 </template>

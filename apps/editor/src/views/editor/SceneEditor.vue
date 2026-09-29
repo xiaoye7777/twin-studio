@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EditorResourcePanel from '@/components/editor/EditorResourcePanel.vue'
 import EditorToolbar from '@/components/editor/EditorToolbar.vue'
@@ -68,11 +68,16 @@ function startResize(panel: ResizablePanel, event: PointerEvent): void {
   window.addEventListener('pointercancel', stopResize)
 }
 
-onBeforeUnmount(stopResize)
+// Dialogs, dropdowns and messages are teleported to <body>; the dark Element Plus theme follows the editor.
+onMounted(() => document.documentElement.classList.add('dark'))
+onBeforeUnmount(() => {
+  stopResize()
+  document.documentElement.classList.remove('dark')
+})
 </script>
 
 <template>
-  <div class="flex h-screen min-w-[1200px] flex-col overflow-hidden bg-slate-900">
+  <div class="studio flex h-screen min-w-[1200px] flex-col overflow-hidden">
     <EditorToolbar :project-name="projectName" @back="router.push('/projects')" />
     <div ref="editorAreaRef" class="flex min-h-0 flex-1 flex-col">
       <div class="flex min-h-0 flex-1">
@@ -118,12 +123,13 @@ onBeforeUnmount(stopResize)
 </template>
 
 <style scoped>
+/* Hairline splitters with a generous invisible hit area. */
 .panel-resizer {
   position: relative;
   z-index: 30;
   flex: none;
-  background: rgb(51 65 85 / 0.72);
-  transition: background-color 150ms ease;
+  background: var(--color-line);
+  transition: background-color 120ms ease;
   touch-action: none;
 }
 
@@ -133,17 +139,18 @@ onBeforeUnmount(stopResize)
   inset: -3px;
 }
 
-.panel-resizer:hover {
-  background: rgb(56 189 248 / 0.8);
+.panel-resizer:hover,
+.panel-resizer:active {
+  background: var(--color-accent);
 }
 
 .panel-resizer--vertical {
-  width: 3px;
+  width: 1px;
   cursor: col-resize;
 }
 
 .panel-resizer--horizontal {
-  height: 3px;
+  height: 1px;
   cursor: row-resize;
 }
 </style>

@@ -1,13 +1,47 @@
 @import "tailwindcss";
 
+/*
+ * Studio design tokens (scene editor). Warm graphite surfaces with a single ember accent;
+ * every editor surface uses these instead of raw palette colours.
+ */
+@theme {
+  --color-app: #1a1b1d;
+  --color-panel: #232426;
+  --color-raised: #2a2b2e;
+  --color-field: #1c1d1f;
+  --color-hover: #313235;
+  --color-active: #393a3e;
+  --color-line: #2f3033;
+  --color-line-strong: #3d3e42;
+
+  --color-fg: #e6e4df;
+  --color-fg-2: #a9a7a1;
+  --color-fg-3: #74726d;
+
+  --color-accent: #e08a45;
+  --color-accent-fg: #f2b27c;
+  --color-accent-soft: rgb(224 138 69 / 0.14);
+
+  --color-ok: #7db584;
+  --color-warn: #d6b04e;
+  --color-danger: #e06a5f;
+
+  --color-axis-x: #d0675c;
+  --color-axis-y: #86b36c;
+  --color-axis-z: #6a93cf;
+
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
 :root {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Microsoft YaHei", sans-serif;
+    "PingFang SC", "Microsoft YaHei", sans-serif;
   color: #172033;
   background: #f5f7fa;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -38,4 +72,326 @@ input {
 
 .el-dialog {
   border-radius: 14px;
+}
+
+/* ───────────────────────── Studio (editor) ───────────────────────── */
+
+.studio {
+  font-size: 12px;
+  color: var(--color-fg);
+  background: var(--color-app);
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
+}
+
+.studio ::selection {
+  background: rgb(224 138 69 / 0.35);
+}
+
+.studio *,
+html.dark .el-dialog * {
+  scrollbar-width: thin;
+  scrollbar-color: #45464a transparent;
+}
+
+/* Panel chrome: a quiet title strip, like a docked tool window. */
+.st-panel-header {
+  display: flex;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 12px;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-panel);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-fg-2);
+}
+
+.st-label {
+  font-size: 11px;
+  color: var(--color-fg-3);
+}
+
+.st-mono {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+/* Inputs and selects that are not Element Plus components. */
+.st-input,
+.st-select {
+  height: 26px;
+  min-width: 0;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 4px;
+  background: var(--color-field);
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--color-fg);
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.st-select {
+  appearance: none;
+  padding-right: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2374726d' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.st-input--mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+textarea.st-input {
+  height: auto;
+  padding: 6px 8px;
+  line-height: 1.5;
+}
+
+.st-input:hover,
+.st-select:hover {
+  border-color: #4b4c51;
+}
+
+.st-input:focus,
+.st-select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgb(224 138 69 / 0.18);
+}
+
+.st-input[type="color"] {
+  width: 44px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* Buttons */
+.st-btn {
+  display: inline-flex;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 4px;
+  background: var(--color-raised);
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--color-fg);
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.st-btn:hover:not(:disabled) {
+  background: var(--color-hover);
+  border-color: #4b4c51;
+}
+
+.st-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.st-btn--primary {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: #1a1b1d;
+  font-weight: 600;
+}
+
+.st-btn--primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: #e99a5b;
+}
+
+.st-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-fg-2);
+}
+
+.st-btn--ghost:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-hover);
+  color: var(--color-fg);
+}
+
+/* Inline text actions inside list items (编辑 / 禁用 / 删除 …). */
+.st-link {
+  font-size: 11px;
+  color: var(--color-fg-2);
+  transition: color 120ms ease;
+}
+
+.st-link:hover:not(:disabled) {
+  color: var(--color-fg);
+}
+
+.st-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.st-link--accent {
+  color: var(--color-accent-fg);
+}
+
+.st-link--accent:hover:not(:disabled) {
+  color: #f7c79f;
+}
+
+.st-link--danger:hover:not(:disabled) {
+  color: var(--color-danger);
+}
+
+/* List items inside inspector sections. */
+.st-item {
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-field);
+  padding: 8px 10px;
+}
+
+/* Status pill: dot + text. */
+.st-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.st-pill::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.st-pill--ok {
+  background: rgb(125 181 132 / 0.12);
+  color: var(--color-ok);
+}
+
+.st-pill--warn {
+  background: rgb(214 176 78 / 0.12);
+  color: var(--color-warn);
+}
+
+.st-pill--muted {
+  background: rgb(169 167 161 / 0.1);
+  color: var(--color-fg-2);
+}
+
+/* Form layout used in dialogs and settings. */
+.st-form-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.st-form-row > span:first-child {
+  font-size: 12px;
+  color: var(--color-fg-2);
+}
+
+.st-hint {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--color-fg-3);
+}
+
+/* ───────────────── Element Plus, dark (active while the editor is open) ───────────────── */
+
+html.dark {
+  --el-color-primary: #e08a45;
+  --el-color-primary-light-3: #e99a5b;
+  --el-color-primary-light-5: #a86c3d;
+  --el-color-primary-light-7: #6b4a31;
+  --el-color-primary-light-8: #533d2c;
+  --el-color-primary-light-9: #3a3029;
+  --el-color-primary-dark-2: #c7773a;
+  --el-color-danger: #e06a5f;
+  --el-color-success: #7db584;
+  --el-color-warning: #d6b04e;
+
+  --el-bg-color: #232426;
+  --el-bg-color-page: #1a1b1d;
+  --el-bg-color-overlay: #2a2b2e;
+  --el-fill-color-blank: #1c1d1f;
+  --el-fill-color: #2a2b2e;
+  --el-fill-color-light: #313235;
+  --el-fill-color-lighter: #2a2b2e;
+  --el-mask-color: rgb(12 12 13 / 0.6);
+
+  --el-border-color: #3d3e42;
+  --el-border-color-light: #37383c;
+  --el-border-color-lighter: #2f3033;
+  --el-border-color-hover: #4b4c51;
+
+  --el-text-color-primary: #e6e4df;
+  --el-text-color-regular: #c9c7c1;
+  --el-text-color-secondary: #a9a7a1;
+  --el-text-color-placeholder: #74726d;
+  --el-text-color-disabled: #5d5c58;
+
+  --el-border-radius-base: 4px;
+  --el-font-size-base: 12px;
+  --el-box-shadow-light: 0 8px 24px rgb(0 0 0 / 0.45);
+}
+
+html.dark .el-button {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+html.dark .el-button--primary {
+  --el-button-text-color: #1a1b1d;
+  --el-button-hover-text-color: #1a1b1d;
+  --el-button-active-text-color: #1a1b1d;
+  font-weight: 600;
+}
+
+html.dark .el-dialog {
+  border: 1px solid #3d3e42;
+  border-radius: 8px;
+  --el-dialog-bg-color: #232426;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.55);
+}
+
+html.dark .el-dialog__header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2f3033;
+}
+
+html.dark .el-dialog__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html.dark .el-dialog__footer {
+  border-top: 1px solid #2f3033;
+  padding-top: 12px;
+}
+
+html.dark .el-message-box {
+  --el-messagebox-border-radius: 8px;
+  border: 1px solid #3d3e42;
+}
+
+html.dark .el-tooltip__popper.is-dark {
+  border: 1px solid #3d3e42;
+  background: #2f3033;
+  color: #e6e4df;
 }

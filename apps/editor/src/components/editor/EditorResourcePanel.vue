@@ -79,58 +79,33 @@ onMounted(() => {
 </script>
 
 <template>
-  <section data-testid="asset-panel" class="flex h-full min-h-0 flex-col bg-slate-800 text-slate-300">
-    <div class="flex h-9 shrink-0 items-center justify-between border-b border-slate-700 px-4">
-      <div class="flex items-center gap-2">
-        <button class="text-xs" :class="activeTab === 'assets' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'assets'">Assets</button>
-        <button data-testid="effects-tab" class="text-xs" :class="activeTab === 'effects' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'effects'">特效</button>
-        <button data-testid="templates-tab" class="text-xs" :class="activeTab === 'templates' ? 'text-blue-400' : 'text-slate-400'" @click="activeTab = 'templates'">模板</button>
+  <section data-testid="asset-panel" class="flex h-full min-h-0 flex-col bg-panel text-fg-2">
+    <div class="flex h-[30px] shrink-0 items-stretch justify-between border-b border-line pr-2">
+      <div class="flex items-stretch" role="tablist">
+        <button class="res-tab" :class="{ 'is-active': activeTab === 'assets' }" role="tab" :aria-selected="activeTab === 'assets'" type="button" @click="activeTab = 'assets'">资源</button>
+        <button data-testid="effects-tab" class="res-tab" :class="{ 'is-active': activeTab === 'effects' }" role="tab" :aria-selected="activeTab === 'effects'" type="button" @click="activeTab = 'effects'">特效</button>
+        <button data-testid="templates-tab" class="res-tab" :class="{ 'is-active': activeTab === 'templates' }" role="tab" :aria-selected="activeTab === 'templates'" type="button" @click="activeTab = 'templates'">特效模板</button>
       </div>
-      <div>
+      <div class="flex items-center">
         <input ref="fileInputRef" data-testid="asset-file-input" class="hidden" type="file" accept=".glb,model/gltf-binary" @change="handleAssetFile" />
-        <el-button data-testid="import-asset" size="small" dark :loading="assetStore.loading" @click="openAssetPicker">
-          <el-icon class="mr-1"><Upload /></el-icon>导入资产
-        </el-button>
+        <button data-testid="import-asset" class="st-btn h-6! px-2!" type="button" :disabled="assetStore.loading" @click="openAssetPicker">
+          <el-icon><Upload /></el-icon>导入 GLB
+        </button>
       </div>
     </div>
 
     <EffectLibrary v-if="activeTab === 'effects'" />
     <EffectTemplateLibrary v-else-if="activeTab === 'templates'" />
     <div v-else class="flex min-h-0 flex-1 flex-col">
-      <nav class="flex h-8 shrink-0 items-center gap-1 border-b border-slate-700/70 px-3" aria-label="资产分类">
-        <button
-          data-testid="asset-category-models"
-          class="asset-category"
-          :class="activeAssetCategory === 'models' ? 'asset-category--active' : ''"
-          type="button"
-          @click="activeAssetCategory = 'models'"
-        >模型 <span>{{ modelAssets.length }}</span></button>
-        <button
-          data-testid="asset-category-basic"
-          class="asset-category"
-          :class="activeAssetCategory === 'basic' ? 'asset-category--active' : ''"
-          type="button"
-          @click="activeAssetCategory = 'basic'"
-        >基础几何</button>
-        <button
-          data-testid="asset-category-park"
-          class="asset-category"
-          :class="activeAssetCategory === 'park' ? 'asset-category--active' : ''"
-          type="button"
-          @click="activeAssetCategory = 'park'"
-        >园区构件</button>
-        <button
-          v-if="environmentAssets.length"
-          data-testid="asset-category-environments"
-          class="asset-category"
-          :class="activeAssetCategory === 'environments' ? 'asset-category--active' : ''"
-          type="button"
-          @click="activeAssetCategory = 'environments'"
-        >环境 <span>{{ environmentAssets.length }}</span></button>
-        <span class="ml-auto text-[10px] text-slate-500">拖到视口自由放置</span>
+      <nav class="flex h-8 shrink-0 items-center gap-1 px-3" aria-label="资产分类">
+        <button data-testid="asset-category-models" class="chip" :class="{ 'is-active': activeAssetCategory === 'models' }" type="button" @click="activeAssetCategory = 'models'">模型 <span>{{ modelAssets.length }}</span></button>
+        <button data-testid="asset-category-basic" class="chip" :class="{ 'is-active': activeAssetCategory === 'basic' }" type="button" @click="activeAssetCategory = 'basic'">基础几何</button>
+        <button data-testid="asset-category-park" class="chip" :class="{ 'is-active': activeAssetCategory === 'park' }" type="button" @click="activeAssetCategory = 'park'">园区构件</button>
+        <button v-if="environmentAssets.length" data-testid="asset-category-environments" class="chip" :class="{ 'is-active': activeAssetCategory === 'environments' }" type="button" @click="activeAssetCategory = 'environments'">环境 <span>{{ environmentAssets.length }}</span></button>
+        <span class="ml-auto text-[11px] text-fg-3">拖入视口放置 · 双击放到中心</span>
       </nav>
 
-      <div v-if="activeAssetCategory === 'models'" class="min-h-0 flex-1 overflow-auto px-3 py-2">
+      <div v-if="activeAssetCategory === 'models'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
         <div v-if="modelAssets.length" class="flex min-w-max gap-2">
           <article
             v-for="asset in modelAssets"
@@ -138,33 +113,32 @@ onMounted(() => {
             :data-testid="`asset-card-${asset.id}`"
             :data-asset-id="asset.id"
             :draggable="editorStore.runtimeReady"
-            class="group flex h-16 w-64 shrink-0 cursor-grab items-center gap-3 rounded-lg border border-transparent bg-slate-900/50 px-3 transition hover:border-sky-500/30 hover:bg-slate-700 active:cursor-grabbing"
+            class="tile group w-60 cursor-grab active:cursor-grabbing"
             @dragstart="handleAssetDragStart($event, asset)"
             @dblclick="instantiateAsset(asset.id)"
           >
-            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-sky-500/10 text-sky-300">
-              <el-icon :size="19"><Files /></el-icon>
-            </div>
+            <span class="tile__icon"><el-icon :size="17"><Files /></el-icon></span>
             <div class="min-w-0 flex-1">
-              <p class="truncate text-xs font-medium text-slate-100">{{ asset.name }}</p>
-              <p class="mt-1 truncate text-[10px] uppercase text-slate-500">GLB · {{ formatSize(asset.size) }}</p>
+              <p class="truncate text-[12px] font-medium text-fg">{{ asset.name }}</p>
+              <p class="mt-0.5 truncate text-[11px] text-fg-3">GLB · {{ formatSize(asset.size) }}</p>
             </div>
             <button
               :data-testid="`add-asset-${asset.id}`"
               :disabled="!editorStore.runtimeReady"
-              class="shrink-0 rounded-md bg-slate-700 px-2 py-1 text-[10px] text-slate-200 transition hover:bg-sky-600 hover:text-white disabled:opacity-40"
+              class="st-btn h-6! px-2! opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
               type="button"
               title="添加到场景中心"
               @click.stop="instantiateAsset(asset.id)"
             >添加</button>
           </article>
         </div>
-        <div v-else class="flex h-full min-h-14 items-center justify-center rounded-lg border border-dashed border-slate-700/80 text-xs text-slate-500">
-          暂无模型资产，点击右上角“导入资产”添加 GLB
+        <div v-else class="flex h-full min-h-14 items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[12px] text-fg-3">
+          暂无模型资产
+          <button class="st-link st-link--accent" type="button" @click="openAssetPicker">导入 GLB</button>
         </div>
       </div>
 
-      <div v-else-if="activeAssetCategory === 'basic' || activeAssetCategory === 'park'" class="min-h-0 flex-1 overflow-auto px-3 py-2">
+      <div v-else-if="activeAssetCategory === 'basic' || activeAssetCategory === 'park'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
         <div class="flex min-w-max gap-2">
           <button
             v-for="preset in visiblePrimitivePresets"
@@ -172,28 +146,26 @@ onMounted(() => {
             :data-testid="`asset-primitive-${preset.id}`"
             :disabled="!editorStore.runtimeReady"
             :draggable="editorStore.runtimeReady"
-            class="group flex h-16 w-32 cursor-grab items-center gap-2 rounded-lg bg-slate-900/45 px-3 text-left transition hover:bg-slate-700 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+            class="tile w-36 cursor-grab text-left active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
             type="button"
             :title="`${preset.label}：拖入场景自由放置，点击放到中心`"
             @click="addPrimitive(preset)"
             @dragstart="handlePrimitiveDragStart($event, preset)"
           >
-            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-slate-700/70 text-slate-300 group-hover:bg-slate-600">
-              <el-icon :size="17"><Box /></el-icon>
-            </span>
+            <span class="tile__icon"><el-icon :size="16"><Box /></el-icon></span>
             <span class="min-w-0">
-              <span class="block truncate text-xs text-slate-200">{{ preset.label }}</span>
-              <span class="mt-1 block truncate text-[9px] text-slate-500">{{ preset.description }}</span>
+              <span class="block truncate text-[12px] text-fg">{{ preset.label }}</span>
+              <span class="mt-0.5 block truncate text-[11px] text-fg-3">{{ preset.description }}</span>
             </span>
           </button>
         </div>
       </div>
 
-      <div v-else class="min-h-0 flex-1 overflow-auto px-3 py-2">
+      <div v-else class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
         <div class="flex min-w-max gap-2">
-          <article v-for="asset in environmentAssets" :key="asset.id" :data-testid="`environment-card-${asset.id}`" class="flex h-16 w-56 shrink-0 items-center gap-3 rounded-lg bg-slate-900/50 px-3">
-            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-700 text-slate-300"><el-icon :size="19"><Picture /></el-icon></div>
-            <div class="min-w-0"><p class="truncate text-xs font-medium text-slate-200">{{ asset.name }}</p><p class="mt-1 text-[10px] uppercase text-slate-500">HDR · {{ formatSize(asset.size) }}</p></div>
+          <article v-for="asset in environmentAssets" :key="asset.id" :data-testid="`environment-card-${asset.id}`" class="tile w-56">
+            <span class="tile__icon"><el-icon :size="17"><Picture /></el-icon></span>
+            <div class="min-w-0"><p class="truncate text-[12px] font-medium text-fg">{{ asset.name }}</p><p class="mt-0.5 text-[11px] text-fg-3">HDR · {{ formatSize(asset.size) }}</p></div>
           </article>
         </div>
       </div>
@@ -202,29 +174,89 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.asset-category {
+.res-tab {
+  position: relative;
+  padding: 0 14px;
+  font-size: 12px;
+  color: var(--color-fg-3);
+  transition: color 120ms ease;
+}
+
+.res-tab:hover {
+  color: var(--color-fg);
+}
+
+.res-tab.is-active {
+  color: var(--color-fg);
+  background: var(--color-raised);
+}
+
+.res-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--color-accent);
+}
+
+.chip {
   display: inline-flex;
-  height: 1.5rem;
+  height: 22px;
   align-items: center;
-  gap: .3rem;
-  border-radius: .375rem;
-  padding: 0 .6rem;
-  font-size: .6875rem;
-  color: rgb(148 163 184);
-  transition: color 150ms ease, background-color 150ms ease;
+  gap: 5px;
+  border-radius: 4px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  color: var(--color-fg-2);
+  transition: color 120ms ease, background-color 120ms ease;
 }
 
-.asset-category:hover {
-  color: rgb(226 232 240);
-  background: rgb(51 65 85 / .72);
+.chip:hover {
+  background: var(--color-hover);
+  color: var(--color-fg);
 }
 
-.asset-category--active {
-  color: rgb(125 211 252);
-  background: rgb(14 165 233 / .12);
+.chip.is-active {
+  background: var(--color-active);
+  color: var(--color-fg);
 }
 
-.asset-category span {
-  color: rgb(100 116 139);
+.chip span {
+  color: var(--color-fg-3);
+}
+
+.tile {
+  display: flex;
+  height: 56px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-field);
+  padding: 0 10px;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.tile:hover:not(:disabled) {
+  border-color: var(--color-line-strong);
+  background: var(--color-raised);
+}
+
+.tile__icon {
+  display: grid;
+  height: 34px;
+  width: 34px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--color-raised);
+  color: var(--color-fg-2);
+}
+
+.tile:hover .tile__icon {
+  color: var(--color-accent-fg);
 }
 </style>

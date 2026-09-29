@@ -30,16 +30,22 @@ function apply() {
 }
 </script>
 <template>
-  <section class="space-y-3" data-testid="data-source-settings">
-    <p class="text-xs font-semibold">实时数据源（WebSocket）</p>
-    <input v-model="name" data-testid="data-source-name" aria-label="数据源名称" class="w-full rounded bg-slate-900 p-2" placeholder="数据源名称" />
-    <input v-model="url" data-testid="data-source-url" aria-label="WebSocket URL" class="w-full rounded bg-slate-900 p-2" placeholder="ws://host:port/realtime" />
-    <label class="flex gap-2"><input v-model="enabled" type="checkbox" data-testid="data-source-enabled" />启用数据源</label>
-    <el-button data-testid="data-source-apply" size="small" @click="apply">应用数据源</el-button>
-    <p data-testid="data-source-status" :data-status="twin.dataSourceStatus" :class="twin.dataSourceStatus === 'connected' ? 'text-emerald-400' : 'text-amber-400'">
-      {{ statusLabel }} · {{ twin.dataSourceMessageCount }} 条消息
-    </p>
-    <p v-if="twin.dataSourceError" class="text-amber-400">{{ twin.dataSourceError }}</p>
-    <p class="text-slate-500">所有实时值只来自此 WebSocket；未连接时不显示任何数据。配置随项目保存、导出，请勿在地址中放入密钥。</p>
+  <section class="space-y-2.5" data-testid="data-source-settings">
+    <label class="field"><span>名称</span><input v-model="name" data-testid="data-source-name" aria-label="数据源名称" class="st-input w-full" placeholder="数据源名称" /></label>
+    <label class="field"><span>地址</span><input v-model="url" data-testid="data-source-url" aria-label="WebSocket URL" class="st-input st-input--mono w-full" placeholder="ws://host:port/realtime" /></label>
+    <div class="flex items-center justify-between">
+      <label class="flex items-center gap-2 text-[12px] text-fg-2"><input v-model="enabled" type="checkbox" data-testid="data-source-enabled" class="accent-[var(--color-accent)]" />启用数据源</label>
+      <button data-testid="data-source-apply" class="st-btn" type="button" @click="apply">应用</button>
+    </div>
+    <div class="flex items-center justify-between rounded-[5px] border border-line bg-field px-2.5 py-2">
+      <p data-testid="data-source-status" :data-status="twin.dataSourceStatus" class="st-pill px-0!" :class="twin.dataSourceStatus === 'connected' ? 'text-ok' : 'text-warn'">{{ statusLabel }}</p>
+      <span class="text-[11px] text-fg-3">{{ twin.dataSourceMessageCount }} 条消息</span>
+    </div>
+    <p v-if="twin.dataSourceError" class="text-[11px] text-warn">{{ twin.dataSourceError }}</p>
+    <p class="st-hint">界面上的实时值只来自此 WebSocket，未连接时不显示任何数据。应用后需保存场景，配置才会写入项目并随导出生效。请勿在地址中放入密钥。</p>
   </section>
 </template>
+
+<style scoped>
+.field { display:grid; grid-template-columns:40px minmax(0,1fr); align-items:center; gap:8px; font-size:12px; color:var(--color-fg-2); }
+</style>

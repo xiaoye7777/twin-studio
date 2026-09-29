@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, markRaw, nextTick, ref, watch } from 'vue'
-import { Link as LinkIcon } from '@element-plus/icons-vue'
+import { Box, Files, FolderOpened, Hide, Link as LinkIcon, Search, View } from '@element-plus/icons-vue'
 import type { Object3D } from 'three'
 import type { SceneTreeNode } from '@/editor/types'
-import { bindingTargetFromObject } from '@twin-studio/core'
+import { bindingTargetFromObject, getEditorMetadata } from '@twin-studio/core'
 import { useEditorStore } from '@/stores/editor'
 import { useTwinStore } from '@/stores/twin'
 
 interface TreeController {
   setCurrentKey(key: string | null, shouldAutoExpandParent?: boolean): void
+  filter(value: string): void
 }
 
 type ObjectWithLightFlag = Object3D & { isLight?: boolean }
@@ -27,6 +28,20 @@ const excludedObjectTypes = new Set([
 const editorStore = useEditorStore()
 const twinStore = useTwinStore()
 const treeRef = ref<TreeController | null>(null)
+const query = ref('')
+watch(query, value => treeRef.value?.filter(value.trim()))
+
+function filterNode(value: string, data: unknown): boolean {
+  return !value || (isSceneTreeNode(data) && data.name.toLowerCase().includes(value.toLowerCase()))
+}
+
+/** Icon by editor identity: model instance root, primitive, or a node inside a model. */
+function nodeIcon(node: SceneTreeNode) {
+  const kind = getEditorMetadata(node.object)?.kind
+  if (kind === 'assetInstance') return Files
+  if (kind === 'primitive' || node.type === 'Mesh') return Box
+  return FolderOpened
+}
 
 function isEditorInfrastructure(object: Object3D): boolean {
   const objectWithLightFlag = object as ObjectWithLightFlag
@@ -92,18 +107,21 @@ watch(
     data-testid="scene-hierarchy"
     :data-selected-bid="editorStore.selectedBid ?? ''"
     :data-node-count="treeData.length"
-    class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-slate-800 text-slate-300"
+    class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-panel text-fg-2"
   >
-    <div class="flex h-10 items-center border-b border-slate-700 px-4 text-xs font-semibold text-slate-200">
-      场景
+    <div class="st-panel-header">
+      <span>场景</span>
+      <span class="font-normal text-fg-3">{{ treeData.length }}</span>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto p-2 text-xs [scrollbar-color:#475569_transparent] [scrollbar-width:thin]">
-      <div class="mb-1 flex h-8 items-center gap-2 rounded-md px-2 font-medium text-slate-300">
-        <span class="text-[10px] text-slate-500">▼</span>
-        <span>Scene</span>
-      </div>
+    <div class="border-b border-line px-2 py-1.5">
+      <label class="search">
+        <el-icon class="text-fg-3"><Search /></el-icon>
+        <input v-model="query" aria-label="搜索场景对象" placeholder="搜索对象" class="min-w-0 flex-1 bg-transparent outline-none placeholder:text-fg-3" />
+      </label>
+    </div>
 
+    <div class="min-h-0 flex-1 overflow-y-auto py-1">
       <el-tree
         ref="treeRef"
         :data="treeData"
@@ -111,35 +129,38 @@ watch(
         :props="{ children: 'children', label: 'name' }"
         :current-node-key="selectedNodeKey"
         :expand-on-click-node="false"
+        :filter-node-method="filterNode"
+        :indent="14"
         default-expand-all
         highlight-current
-        class="scene-tree bg-transparent"
+        class="scene-tree"
         @node-click="handleNodeClick"
       >
         <template #default="{ data }">
           <div
             :data-testid="`hierarchy-node-${data.id}`"
             :data-bid="data.bid ?? ''"
-            class="flex min-w-0 flex-1 items-center gap-2"
+            :title="data.type"
+            class="row flex min-w-0 flex-1 items-center gap-1.5 pr-1"
+            :class="{ 'is-hidden': !data.object.visible }"
           >
-            <span class="h-3 w-3 shrink-0 rounded-sm border border-sky-400/70 bg-sky-500/20" />
+            <el-icon class="row__icon shrink-0"><component :is="nodeIcon(data)" /></el-icon>
             <span class="min-w-0 flex-1 truncate">{{ data.name }}</span>
-            <el-tooltip v-if="data.twinBound" content="已绑定设备" placement="top">
-              <el-icon :data-testid="`twin-binding-icon-${data.id}`" class="shrink-0 text-emerald-400"><LinkIcon /></el-icon>
+            <el-tooltip v-if="data.twinBound" content="已绑定设备" placement="top" :show-after="400">
+              <el-icon :data-testid="`twin-binding-icon-${data.id}`" class="shrink-0 text-ok"><LinkIcon /></el-icon>
             </el-tooltip>
-            <span class="shrink-0 text-[9px] text-slate-600">{{ data.type }}</span>
             <button
               :data-testid="`visibility-${data.id}`"
               :aria-label="data.object.visible ? '隐藏对象' : '显示对象'"
-              class="shrink-0 rounded px-1 text-[11px] text-slate-500 hover:bg-slate-700 hover:text-white"
+              class="row__eye"
               type="button"
               @click.stop="editorStore.toggleVisibility(data.object)"
-            >{{ data.object.visible ? '◉' : '○' }}</button>
+            ><el-icon><component :is="data.object.visible ? View : Hide" /></el-icon></button>
           </div>
         </template>
       </el-tree>
 
-      <div v-if="treeData.length === 0" class="px-7 py-6 text-center text-[11px] text-slate-500">
+      <div v-if="treeData.length === 0" class="px-6 py-8 text-center text-[11px] text-fg-3">
         场景中暂无可编辑对象
       </div>
     </div>
@@ -147,36 +168,101 @@ watch(
 </template>
 
 <style scoped>
-.scene-tree :deep(.el-tree-node__content) {
-  height: 32px;
-  border-radius: 6px;
-  color: rgb(148 163 184);
-  background: transparent;
+.search {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  background: var(--color-field);
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--color-fg);
+  transition: border-color 120ms ease;
+}
+
+.search:focus-within {
+  border-color: var(--color-accent);
 }
 
 .scene-tree {
-  --el-tree-text-color: rgb(148 163 184);
-  --el-tree-node-hover-bg-color: rgb(51 65 85);
-  color: rgb(148 163 184);
-  background: transparent !important;
+  --el-tree-node-hover-bg-color: var(--color-hover);
+  --el-tree-text-color: var(--color-fg-2);
+  --el-tree-expand-icon-color: var(--color-fg-3);
+  background: transparent;
+  font-size: 12px;
 }
 
-.scene-tree :deep(.el-tree-node),
-.scene-tree :deep(.el-tree-node__children) {
-  background: transparent;
+/* Selection is shown by the ember bar; suppress the browser focus ring on tree nodes. */
+.scene-tree :deep(.el-tree-node:focus) {
+  outline: none;
+}
+
+.scene-tree :deep(.el-tree-node:focus > .el-tree-node__content) {
+  background: var(--color-hover);
+}
+
+.scene-tree :deep(.el-tree-node__content) {
+  height: 24px;
+  margin: 0 4px;
+  border-radius: 3px;
+  color: var(--color-fg-2);
 }
 
 .scene-tree :deep(.el-tree-node__content:hover) {
-  color: rgb(226 232 240);
-  background: rgb(51 65 85);
+  color: var(--color-fg);
 }
 
 .scene-tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
-  color: rgb(147 197 253);
-  background: rgb(59 130 246 / 0.18);
+  position: relative;
+  background: var(--color-accent-soft);
+  color: var(--color-fg);
 }
 
-.scene-tree :deep(.el-tree-node__expand-icon) {
-  color: rgb(100 116 139);
+.scene-tree :deep(.el-tree-node.is-current > .el-tree-node__content)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+}
+
+.scene-tree :deep(.el-tree-node.is-current > .el-tree-node__content .row__icon) {
+  color: var(--color-accent-fg);
+}
+
+.row__icon {
+  font-size: 13px;
+  color: var(--color-fg-3);
+}
+
+.row.is-hidden {
+  opacity: 0.45;
+}
+
+.row__eye {
+  display: grid;
+  height: 18px;
+  width: 18px;
+  place-items: center;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--color-fg-3);
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.row:hover .row__eye,
+.row.is-hidden .row__eye {
+  opacity: 1;
+}
+
+.row__eye:hover {
+  background: var(--color-active);
+  color: var(--color-fg);
 }
 </style>

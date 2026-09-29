@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import InspectorSection from './InspectorSection.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
@@ -51,27 +52,33 @@ watch(() => editor.selectedObject, () => { open.value = false })
 </script>
 
 <template>
-  <section data-testid="interaction-section" class="space-y-3 border-t border-slate-700 pt-3">
-    <div class="flex justify-between text-xs"><h3 class="font-semibold text-slate-200">交互</h3><button data-testid="add-interaction" :disabled="!target || !editor.runtimeReady" class="text-blue-400 disabled:opacity-40" @click="edit()">添加交互</button></div>
-    <p v-if="!target" class="text-xs text-slate-500">当前对象没有稳定业务 Target</p>
-    <p v-else-if="!selected.length" class="text-xs text-slate-500">Trigger → Action，运行态触发不修改场景</p>
-    <div v-for="item in selected" :key="item.id" :data-interaction-id="item.id" class="space-y-2 rounded bg-slate-900/40 p-2 text-xs">
-      <p>{{ triggerLabels[item.trigger] }} → {{ actionLabels[item.action.type] }}</p>
-      <p v-if="item.action.type === 'emit-event'" class="truncate font-mono text-[10px] text-sky-400">{{ item.action.eventName }}</p>
-      <div class="flex gap-3"><button data-testid="toggle-interaction" @click="store.save({ ...item, enabled: !item.enabled })">{{ item.enabled ? '禁用' : '启用' }}</button><button data-testid="edit-interaction" @click="edit(item)">编辑</button><button data-testid="delete-interaction" class="text-red-400" @click="store.remove(item.id)">删除</button></div>
+  <InspectorSection title="交互" :meta="selected.length || ''" data-testid="interaction-section">
+    <template #actions>
+      <button data-testid="add-interaction" :disabled="!target || !editor.runtimeReady" class="st-link st-link--accent" type="button" @click="edit()">+ 添加</button>
+    </template>
+    <p v-if="!target" class="st-hint">当前对象没有稳定的业务标识，无法配置交互</p>
+    <p v-else-if="!selected.length" class="st-hint">触发条件 → 动作，只影响运行态，不修改场景</p>
+    <div v-for="item in selected" :key="item.id" :data-interaction-id="item.id" class="st-item space-y-1.5" :class="{ 'opacity-55': !item.enabled }">
+      <p class="text-[12px] text-fg">{{ triggerLabels[item.trigger] }} <span class="text-fg-3">→</span> {{ actionLabels[item.action.type] }}</p>
+      <p v-if="item.action.type === 'emit-event'" class="st-mono truncate text-accent-fg">{{ item.action.eventName }}</p>
+      <div class="flex gap-3 pt-0.5">
+        <button data-testid="toggle-interaction" class="st-link" type="button" @click="store.save({ ...item, enabled: !item.enabled })">{{ item.enabled ? '禁用' : '启用' }}</button>
+        <button data-testid="edit-interaction" class="st-link" type="button" @click="edit(item)">编辑</button>
+        <button data-testid="delete-interaction" class="st-link st-link--danger" type="button" @click="store.remove(item.id)">删除</button>
+      </div>
     </div>
-    <p v-if="store.diagnostics.unresolved.length" data-testid="interaction-unresolved" class="text-[10px] text-amber-400">未解析 {{ store.diagnostics.unresolved.length }} 项</p>
+    <p v-if="store.diagnostics.unresolved.length" data-testid="interaction-unresolved" class="text-[11px] text-warn">未解析 {{ store.diagnostics.unresolved.length }} 项</p>
     <el-dialog v-model="open" title="场景交互" width="520px" append-to-body destroy-on-close :close-on-click-modal="false">
-      <div class="space-y-4" @keydown.stop>
-        <label class="block">Trigger <select v-model="form.trigger" data-testid="interaction-trigger" class="ml-2 rounded bg-slate-100 p-2" @change="triggerChanged"><option v-for="value in interactionTriggers" :key="value" :value="value">{{ triggerLabels[value] }}</option></select></label>
-        <label class="block">Action <select v-model="form.action" data-testid="interaction-action" class="ml-2 rounded bg-slate-100 p-2" @change="actionChanged"><option v-for="value in interactionActionTypes" :key="value" :value="value">{{ actionLabels[value] }}</option></select></label>
+      <div class="space-y-3" @keydown.stop>
+        <label class="st-form-row"><span>触发条件</span><select v-model="form.trigger" data-testid="interaction-trigger" class="st-select w-full" @change="triggerChanged"><option v-for="value in interactionTriggers" :key="value" :value="value">{{ triggerLabels[value] }}</option></select></label>
+        <label class="st-form-row"><span>动作</span><select v-model="form.action" data-testid="interaction-action" class="st-select w-full" @change="actionChanged"><option v-for="value in interactionActionTypes" :key="value" :value="value">{{ actionLabels[value] }}</option></select></label>
         <template v-if="form.action === 'emit-event'">
-          <label class="block">Event Name <input v-model="form.eventName" data-testid="interaction-event-name" class="ml-2 rounded bg-slate-100 p-2" /></label>
-          <label class="block">Metadata<textarea v-model="form.metadata" data-testid="interaction-metadata" rows="4" class="mt-2 block w-full rounded bg-slate-100 p-2 font-mono text-xs" /></label>
+          <label class="st-form-row"><span>事件名称</span><input v-model="form.eventName" data-testid="interaction-event-name" class="st-input st-input--mono w-full" /></label>
+          <label class="st-form-row items-start!"><span class="pt-1.5">附加数据</span><textarea v-model="form.metadata" data-testid="interaction-metadata" rows="4" class="st-input st-input--mono w-full" /></label>
         </template>
-        <p class="text-xs text-slate-500">Action 默认作用于当前对象。show/hide 与 highlight 仅影响运行态。</p>
+        <p class="st-hint rounded-[5px] bg-field px-3 py-2">动作默认作用于当前对象。显示 / 隐藏与高亮仅影响运行态；业务事件会通过 Viewer 的 interaction-event 通知大屏。</p>
       </div>
       <template #footer><el-button @click="open = false">取消</el-button><el-button data-testid="save-interaction" type="primary" @click="save">保存交互</el-button></template>
     </el-dialog>
-  </section>
+  </InspectorSection>
 </template>
