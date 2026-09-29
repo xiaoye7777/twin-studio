@@ -1,3 +1,4 @@
+import { activeDataSource, type ProjectDataSource } from '@/domain/dataSources'
 import type { UnwrapNestedRefs } from 'vue'
 import type { TwinBinding } from '@/domain/twin'
 import { BindingTargetResolver } from '@/internal/BindingTargetResolver'
@@ -22,7 +23,16 @@ export class TwinDataRuntime {
       this.state.setResolutionStatus(binding.id, this.resolver.resolve(binding.target) ? 'resolved' : 'unresolved')
     }
   }
-  start(config: ViewerDataSourceConfig = { type: 'mock' }): void { this.refresh(); this.setDataSource(config) }
+  start(sources?: ProjectDataSource[]): void {
+    this.refresh()
+    const config = activeDataSource(sources)
+    if (config) this.setDataSource(config)
+    else {
+      this.stop()
+      this.state.clearRuntimeValues()
+      this.state.resetDataSourceMessages()
+    }
+  }
   setDataSource(config: ViewerDataSourceConfig): void {
     this.stop()
     this.state.clearRuntimeValues()

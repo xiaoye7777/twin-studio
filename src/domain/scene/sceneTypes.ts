@@ -1,3 +1,4 @@
+import type { ProjectDataSource } from '@/domain/dataSources'
 import type { TwinBinding } from '@/domain/twin'
 import type { EffectInstance } from '@/domain/effects'
 import type { VisualRule } from '@/domain/visualRules'
@@ -77,6 +78,7 @@ export interface ScenePrimitiveV1 {
 
 export interface SceneDocumentV1 {
   version: 1
+  dataSources?: ProjectDataSource[]
   projectId: string
   metadata: {
     name?: string

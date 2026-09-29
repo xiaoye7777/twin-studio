@@ -1,7 +1,7 @@
 import type { DeepReadonly } from 'vue'
 import type { TwinBinding, TwinBindingResolution, TwinBindingTarget, TwinDevice, TwinRuntimeValue } from '@/domain/twin'
 import type { InteractionMetadata, InteractionTrigger } from '@/domain/interactions'
-import type { DataSourceConnectionStatus, DataSourceType, ViewerDataSourceConfig } from '@/infrastructure/data'
+import type { DataSourceConnectionStatus, DataSourceType } from '@/infrastructure/data'
 
 export type { TwinBindingTarget } from '@/domain/twin'
 
@@ -76,7 +76,6 @@ export interface TwinSceneViewerPublicApi {
   clearSelection(): void
   getSelection(): ViewerSelection
   getRuntimeState(): ViewerRuntimeState | null
-  setDataSource(config: ViewerDataSourceConfig): boolean
   getDiagnostics(): ViewerDiagnostics
 }
 

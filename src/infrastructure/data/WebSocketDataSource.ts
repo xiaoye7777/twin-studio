@@ -35,15 +35,14 @@ export function mapWebSocketDeviceMessage(
   bindings: readonly TwinBinding[],
 ): Array<{ bindingId: string; variableKey: string; value: TwinRuntimeValueData }> {
   if (!isRecord(message) || typeof message.deviceId !== 'string' || !message.deviceId) return []
-  const binding = bindings.find(item => item.device.id === message.deviceId)
-  if (!binding) return []
+  const matching = bindings.filter(item => item.device.id === message.deviceId)
   const values = isRecord(message.values) ? message.values : message
-  return binding.variables.flatMap(variable => {
+  return matching.flatMap(binding => binding.variables.flatMap(variable => {
     const value = values[variable.key]
     return isValueOfType(value, variable.dataType)
       ? [{ bindingId: binding.id, variableKey: variable.key, value }]
       : []
-  })
+  }))
 }
 
 export class WebSocketDataSource implements DataSource {
@@ -78,6 +77,7 @@ export class WebSocketDataSource implements DataSource {
             for (const update of updates) this.options.setRuntimeValue(update.bindingId, update.variableKey, update.value)
             accepted = accepted || updates.length > 0
           }
+          this.options.onStatus('connected')
           if (accepted) this.options.onMessage?.()
         } catch {
           this.options.onStatus('error', '收到无法解析的 WebSocket JSON 消息')

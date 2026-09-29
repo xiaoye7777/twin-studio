@@ -1,50 +1,37 @@
-# @twin-studio/viewer
+# @twin-studio/viewer 0.2.0
 
-当前本地发行版：`0.1.2`。
+Vue 3 项目运行组件。支持 Node 20.16+ 和 pnpm 10.20.0；加载 Editor 导出的 .twin.zip，恢复模型、绑定、实时数据、规则、特效和交互。
 
-开发与打包支持 Node.js `20.16.0+`，推荐使用仓库声明的 pnpm `10.20.0`。
-
-Vue 3 运行态组件，用于直接加载 Twin Studio 导出的 `.twin.zip`。组件恢复 SceneDocument、GLB/HDR、设备绑定、Mock 实时数据、原子特效、可视化规则和交互配置。
-
-```ts
-import { TwinSceneViewer } from '@twin-studio/viewer'
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { TwinSceneViewer, type TwinSceneViewerPublicApi } from '@twin-studio/viewer'
 import '@twin-studio/viewer/style.css'
+const viewer = ref<TwinSceneViewerPublicApi | null>(null)
+</script>
+<template>
+  <TwinSceneViewer ref="viewer" source="/project.twin.zip" />
+</template>
 ```
 
-```vue
-<TwinSceneViewer ref="viewer" source="/zero-carbon-demo.twin.zip" @selection-change="handleSelection" />
+## 项目数据源
+
+在 Editor 的“场景设置 → 项目数据源”配置并保存。项目包 scene.json 携带配置：
+
+```json
+{"dataSources":[{"id":"realtime","name":"实时设备数据","type":"websocket","enabled":true,"url":"ws://127.0.0.1:8787/realtime"}]}
 ```
 
-宿主只使用 `deviceId` 和 `TwinBindingTarget`，不需要接触 Three.js、Meteor3D 或 Editor Store。
+Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消息，不另建 Mock 或 Runtime Store。0.2.0 移除了旧版 dataSource prop / setDataSource()；迁移时把配置移入项目。
 
-默认使用内置 Mock 数据源。独立 Dashboard 可以切换为 WebSocket JSON：
+缺少 dataSources 的旧包默认使用 Mock；空数组或全部禁用表示停止采集。第一版最多启用一个数据源，不做重连和鉴权。配置不应包含密码、Token 等秘密；URL 中用户名密码会被拒绝。部署时需保证 URL 对浏览器可达，HTTPS 宿主使用 wss。
 
-```vue
-<TwinSceneViewer
-  source="/zero-carbon-demo.twin.zip"
-  :data-source="{ type: 'websocket', url: 'ws://127.0.0.1:8787' }"
-/>
-```
-
-消息以 `deviceId` 定位 Binding，其余字段按场景中已有变量 key 和 dataType 写入同一份 RuntimeValue：
-
+消息接受单个对象或数组：
 ```json
 {"deviceId":"ESS-003","soc":72,"temperature":75,"power":108,"alarm":true,"status":"running"}
 ```
+也支持将变量放在 values 对象中。按 deviceId 定位所有对应绑定，按变量 key/dataType 校验并写入同一 RuntimeValue。未知设备/字段和不匹配类型忽略。实时值不保存到场景。
 
-`getRuntimeState()` 的 `dataSourceType`、`dataSourceStatus`、`dataSourceMessageCount` 和 `dataSourceError` 可供宿主展示连接状态。也可调用 `setDataSource()` 在不重载场景的情况下切换 Mock/WebSocket；SDK 会先停止旧数据源，避免两者同时写入。
+宿主通过 getRuntimeState() 读取只读响应式数据，包括 dataSourceType、dataSourceStatus、dataSourceMessageCount、dataSourceError；通过 getDiagnostics() 查看规则和特效计数。selection-change、interaction-event 以及 selectDevice/focusDevice 等 API 保持不变。
 
-## 0.1.1
-
-- 新增外部 WebSocket JSON 实时数据源。
-- 新增 `dataSource` 组件配置和 `setDataSource()` 运行时切换 API。
-- WebSocket 消息按 `deviceId + variable key` 写入既有 RuntimeValue，不建立第二套状态。
-- Mock 与 WebSocket 切换时先停止旧数据源并清空旧实时值。
-- 对外暴露连接状态、消息计数和错误诊断。
-- Viewer 销毁或切换项目时主动关闭 WebSocket。
-
-## 0.1.2
-
-- 开发工具链调整为 Vite 6.4.3 和 `@vitejs/plugin-vue` 5.2.4。
-- 项目包管理器调整为 pnpm 10.20.0。
-- SDK 开发、构建与使用环境支持 Node.js 20.16.0。
+切换 source 或卸载组件会关闭旧连接、停止 Mock，并清理场景资源。SDK 不依赖测试 server；server 只是 demo 的外部数据服务。

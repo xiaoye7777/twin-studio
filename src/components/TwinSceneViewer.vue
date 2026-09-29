@@ -5,11 +5,8 @@ import type { TwinSceneViewerEvents, TwinSceneViewerPublicApi } from './viewerCo
 import { loadTwinPackage, type LoadedTwinPackage, type TwinPackageSource } from '@/infrastructure/package/PortableTwinPackageLoader'
 import { TwinSceneRuntime } from '@/runtime/twin/TwinSceneRuntime'
 import type { ViewerTargetClick } from '@/runtime/twin/ViewerPointerEvents'
-import type { ViewerDataSourceConfig } from '@/infrastructure/data'
 
-const props = withDefaults(defineProps<{ source: TwinPackageSource; dataSource?: ViewerDataSourceConfig }>(), {
-  dataSource: () => ({ type: 'mock' }),
-})
+const props = defineProps<{ source: TwinPackageSource }>()
 const emit = defineEmits<TwinSceneViewerEvents>()
 const canvas = ref<HTMLCanvasElement>()
 const canvasKey = ref(0)
@@ -45,7 +42,7 @@ async function load(): Promise<void> {
         device: event.device ? { ...event.device } : undefined }
       emit('target-click', payload); if (payload.device) emit('device-click', payload)
     }, selection => { if (mounted && request === generation) emit('selection-change', selection) },
-    event => { if (mounted && request === generation) emit('interaction-event', event) }, props.dataSource)
+    event => { if (mounted && request === generation) emit('interaction-event', event) })
     session.value = runtime
     const result = await runtime.load(portable.projectId)
     if (!mounted || request !== generation) return
@@ -59,7 +56,6 @@ async function load(): Promise<void> {
 }
 onMounted(() => { mounted = true; void load() })
 watch(() => props.source, () => { if (mounted) void load() })
-watch(() => props.dataSource, value => { session.value?.setDataSource(value) }, { deep: true })
 onBeforeUnmount(() => { mounted = false; generation++; release() })
 
 const publicApi: TwinSceneViewerPublicApi = {
@@ -70,9 +66,8 @@ const publicApi: TwinSceneViewerPublicApi = {
   clearSelection: () => session.value?.clearSelection(),
   getSelection: () => session.value?.getSelection() ?? null,
   getRuntimeState: () => session.value?.runtimeState ?? null,
-  setDataSource: (config: ViewerDataSourceConfig) => session.value?.setDataSource(config) ?? false,
   getDiagnostics: () => session.value?.getDiagnostics() ?? {
-    dataSource: { type: props.dataSource.type, status: 'disconnected', messageCount: 0, error: null },
+    dataSource: { type: 'mock', status: 'disconnected', messageCount: 0, error: null },
     visualRules: { activations: 0, activeRules: 0 },
     effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
   },
@@ -84,7 +79,7 @@ defineExpose(publicApi)
   <div class="twin-viewer" data-testid="twin-scene-viewer" :data-loaded="!loading && !error && !!session"
     :data-object-count="session?.roots.length ?? 0" :data-binding-count="session?.twin.bindings.length ?? 0"
     :data-mock-running="session?.twin.mockRunning ?? false" :data-mock-ticks="session?.twin.mockTickCount ?? 0"
-    :data-source-type="session?.twin.dataSourceType ?? props.dataSource.type"
+    :data-source-type="session?.twin.dataSourceType ?? 'mock'"
     :data-source-status="session?.twin.dataSourceStatus ?? 'disconnected'"
     :data-source-messages="session?.twin.dataSourceMessageCount ?? 0"
     :data-active-visual-rules="session?.visualRules?.getDiagnostics().activeRules ?? 0"
