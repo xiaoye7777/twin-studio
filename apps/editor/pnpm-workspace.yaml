@@ -1,0 +1,11 @@
+packages:
+  - .
+
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - vue-demi
+allowBuilds:
+  esbuild: true
+  workerd: true
+  vue-demi: true
