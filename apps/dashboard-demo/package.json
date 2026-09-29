@@ -1,0 +1,34 @@
+{
+  "name": "dashboard-viewer-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.20.0",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:frontend": "vite",
+    "data-server": "node server/realtime-server.mjs",
+    "test:integration": "node tests/project-data-source.mjs",
+    "type-check": "vue-tsc --noEmit",
+    "build": "pnpm run type-check && vite build"
+  },
+  "dependencies": {
+    "@twin-studio/viewer": "file:vendor/twin-studio-viewer-0.2.0.tgz",
+    "three": "0.184.0",
+    "vue": "3.5.25"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/three": "0.184.0",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-vue": "5.2.4",
+    "playwright-core": "^1.63.0",
+    "typescript": "5.9.3",
+    "vite": "6.4.3",
+    "vue-tsc": "3.1.5",
+    "ws": "8.18.3"
+  },
+  "engines": {
+    "node": ">=20.16.0"
+  }
+}

@@ -1,0 +1,42 @@
+.topbar .live {
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.live small {
+  margin-left: 5px;
+  color: #507984;
+}
+
+.live.offline {
+  color: #f1bd75;
+}
+
+.live.offline i {
+  background: #f0a24d;
+  box-shadow: 0 0 12px #f0a24d;
+}
+
+.topbar .load-status {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar .source-error {
+  position: absolute;
+  right: 18px;
+  top: 58px;
+  max-width: 420px;
+  margin: 0;
+  padding: 6px 9px;
+  border: 1px solid rgba(240, 162, 77, 0.35);
+  border-radius: 6px;
+  background: rgba(54, 26, 10, 0.92);
+  color: #ffd19a;
+  font: 10px ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
