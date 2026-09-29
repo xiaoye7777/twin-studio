@@ -20,15 +20,18 @@ export function useTwinDashboard() {
     })
   })
   const selected = computed(() => devices.value.find(device => device.id === selectedDeviceId.value) ?? null)
+  // Every figure comes from WebSocket values only: with no values, KPIs are null and render as "—".
   const summary = computed(() => {
     const numbers = (key:string) => devices.value.flatMap(device => typeof device.values[key] === 'number' ? [device.values[key] as number] : [])
-    const average = (key:string) => { const list=numbers(key); return list.length ? list.reduce((a,b)=>a+b,0)/list.length : 0 }
-    return { total:devices.value.length, online:devices.value.filter(device => device.resolved && device.status !== 'offline').length,
+    const average = (key:string) => { const list=numbers(key); return list.length ? list.reduce((a,b)=>a+b,0)/list.length : null }
+    const reporting = devices.value.filter(device => Object.values(device.values).some(value => value !== undefined))
+    const power = numbers('power')
+    return { total:devices.value.length, online:reporting.filter(device => device.resolved && device.status !== 'offline').length,
       alarms:devices.value.filter(device => device.alarm).length, soc:average('soc'), temperature:average('temperature'),
-      power:numbers('power').reduce((a,b)=>a+b,0) }
+      power:power.length ? power.reduce((a,b)=>a+b,0) : null, live:reporting.length > 0 }
   })
   const connection = computed(() => ({
-    type: runtime.value?.dataSourceType ?? 'mock',
+    type: runtime.value?.dataSourceType ?? 'websocket',
     status: runtime.value?.dataSourceStatus ?? 'disconnected',
     messages: runtime.value?.dataSourceMessageCount ?? 0,
     error: runtime.value?.dataSourceError ?? null,

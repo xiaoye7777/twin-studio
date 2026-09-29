@@ -1,4 +1,4 @@
-# @twin-studio/viewer 0.2.1
+# @twin-studio/viewer 0.3.0
 
 Vue 3 项目运行组件。支持 Node 20.16+ 和 pnpm 10.20.0；加载 Editor 导出的 .twin.zip，恢复模型、绑定、实时数据、规则、特效和交互。
 
@@ -24,7 +24,18 @@ const viewer = ref<TwinSceneViewerPublicApi | null>(null)
 
 Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消息，不另建 Mock 或 Runtime Store。0.2.0 移除了旧版 dataSource prop / setDataSource()；迁移时把配置移入项目。
 
-缺少 dataSources 的旧包默认使用 Mock；空数组或全部禁用表示停止采集。第一版最多启用一个数据源，不做重连和鉴权。配置不应包含密码、Token 等秘密；URL 中用户名密码会被拒绝。部署时需保证 URL 对浏览器可达，HTTPS 宿主使用 wss。
+**实时值只来自 WebSocket。** 连接未建立、断开或出错时，Runtime State 中没有任何实时值（`runtimeValues` 为空，`getRuntimeValue()` 返回 null），规则特效也会停止；页面上看到数值在变化，就说明 WebSocket 连接正常。SDK 内不包含任何模拟数据。
+
+`dataSourceStatus` 取值：
+
+| 值 | 含义 |
+| --- | --- |
+| `unconfigured` | 项目包没有启用的 WebSocket 数据源（缺少 dataSources、空数组、全部禁用或旧版 mock 配置），不会产生数据 |
+| `connecting` | 正在连接或断线重连中（1s → 2s → 4s … 最长 10s 退避） |
+| `connected` | 已连接，数据来自该连接 |
+| `disconnected` / `error` | 连接不可用，实时值已清空，`dataSourceError` 给出原因 |
+
+建议大屏把 `dataSourceStatus !== 'connected'` 明确展示给用户，并在没有值时显示“—”。最多启用一个数据源，不做鉴权。配置不应包含密码、Token 等秘密；URL 中用户名密码会被拒绝。部署时需保证 URL 对浏览器可达，HTTPS 宿主使用 wss。
 
 消息接受单个对象或数组：
 ```json
@@ -34,9 +45,16 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 
 宿主通过 getRuntimeState() 读取只读响应式数据，包括 dataSourceType、dataSourceStatus、dataSourceMessageCount、dataSourceError；通过 getDiagnostics() 查看规则和特效计数。selection-change、interaction-event 以及 selectDevice/focusDevice 等 API 保持不变。
 
-切换 source 或卸载组件会关闭旧连接、停止 Mock，并清理场景资源。SDK 不依赖测试 server；server 只是 demo 的外部数据服务。
+切换 source 或卸载组件会关闭旧连接并清理场景资源。演示和开发时可使用 monorepo 中的设备模拟器 `tools/device-simulator` 作为 WebSocket 服务。
 
 ## 更新记录
+
+### 0.3.0
+
+- **移除内置模拟数据**：实时值只来自项目配置的 WebSocket。缺少数据源配置的旧项目包不再自动使用 Mock，而是 `dataSourceStatus: 'unconfigured'` 且没有任何数据。
+- 连接断开或出错时立即清空实时值，避免展示过期数据；断线后自动重连。
+- `DataSourceConnectionStatus` 新增 `'unconfigured'`。若宿主代码对状态做了穷举判断，需要补上这一分支。
+- 旧包迁移：在 Editor 的“场景设置 → 项目数据源”填写 WebSocket 地址并保存，再重新导出。
 
 ### 0.2.1
 

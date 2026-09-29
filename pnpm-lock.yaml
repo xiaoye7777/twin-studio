@@ -26,9 +26,6 @@ importers:
       '@types/three':
         specifier: 0.184.0
         version: 0.184.0
-      '@types/ws':
-        specifier: 8.18.1
-        version: 8.18.1
       '@vitejs/plugin-vue':
         specifier: 5.2.4
         version: 5.2.4(vite@6.4.3(@types/node@24.10.1)(jiti@2.7.0)(lightningcss@1.30.2))(vue@3.5.25(typescript@5.9.3))
@@ -44,9 +41,6 @@ importers:
       vue-tsc:
         specifier: 3.1.5
         version: 3.1.5(typescript@5.9.3)
-      ws:
-        specifier: 8.18.3
-        version: 8.18.3
 
   apps/editor:
     dependencies:
@@ -160,6 +154,15 @@ importers:
       vue-tsc:
         specifier: 3.1.5
         version: 3.1.5(typescript@5.9.3)
+
+  tools/device-simulator:
+    dependencies:
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+      ws:
+        specifier: 8.18.3
+        version: 8.18.3
 
   vendor/meteor3d-core:
     dependencies:
@@ -1153,9 +1156,6 @@ packages:
 
   '@types/webxr@0.5.24':
     resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
-
-  '@types/ws@8.18.1':
-    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@vitejs/plugin-vue@5.2.4':
     resolution: {integrity: sha512-7Yx/SXSOcQq5HiiV3orevHUFn+pmMB4cgbEkDYgnkUWb0WfeQ/wa2yFv6D5ICiCQOVpjA7vYDXrC7AGO8yjDHA==}
@@ -2398,10 +2398,6 @@ snapshots:
   '@types/web-bluetooth@0.0.16': {}
 
   '@types/webxr@0.5.24': {}
-
-  '@types/ws@8.18.1':
-    dependencies:
-      '@types/node': 24.10.1
 
   '@vitejs/plugin-vue@5.2.4(vite@6.4.3(@types/node@24.10.1)(jiti@2.7.0)(lightningcss@1.30.2))(vue@3.5.25(typescript@5.9.3))':
     dependencies:

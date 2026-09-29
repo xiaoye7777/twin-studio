@@ -70,7 +70,7 @@ const publicApi: TwinSceneViewerPublicApi = {
   getSelection: () => session.value?.getSelection() ?? null,
   getRuntimeState: () => session.value?.runtimeState ?? null,
   getDiagnostics: () => session.value?.getDiagnostics() ?? {
-    dataSource: { type: 'mock', status: 'disconnected', messageCount: 0, error: null },
+    dataSource: { type: 'websocket', status: 'disconnected', messageCount: 0, error: null },
     visualRules: { activations: 0, activeRules: 0 },
     effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
   },

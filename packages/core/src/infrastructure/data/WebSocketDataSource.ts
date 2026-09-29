@@ -48,23 +48,31 @@ export function mapWebSocketDeviceMessage(
 export class WebSocketDataSource implements DataSource {
   private socket: WebSocket | null = null
   private stopping = false
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private retries = 0
 
   constructor(private readonly options: WebSocketDataSourceOptions) {}
 
   start(): void {
-    if (this.socket) return
+    if (this.socket || this.retryTimer) return
     if (typeof WebSocket === 'undefined') {
       this.options.onStatus('error', '当前环境不支持 WebSocket')
       return
     }
     this.stopping = false
-    this.options.onStatus('connecting')
+    this.connect()
+  }
+
+  private connect(): void {
+    this.options.onStatus('connecting', this.retries ? `连接中断，正在第 ${this.retries} 次重连…` : undefined)
     try {
       const socket = new WebSocket(this.options.url)
       this.socket = socket
       activeSocketCount += 1
       socket.addEventListener('open', () => {
-        if (this.socket === socket) this.options.onStatus('connected')
+        if (this.socket !== socket) return
+        this.retries = 0
+        this.options.onStatus('connected')
       })
       socket.addEventListener('message', (event) => {
         if (this.socket !== socket) return
@@ -80,7 +88,8 @@ export class WebSocketDataSource implements DataSource {
           this.options.onStatus('connected')
           if (accepted) this.options.onMessage?.()
         } catch {
-          this.options.onStatus('error', '收到无法解析的 WebSocket JSON 消息')
+          // The connection itself is still live; report the bad frame without dropping current values.
+          this.options.onStatus('connected', '收到无法解析的 WebSocket JSON 消息')
         }
       })
       socket.addEventListener('error', () => {
@@ -90,17 +99,31 @@ export class WebSocketDataSource implements DataSource {
         if (this.socket !== socket) return
         this.socket = null
         activeSocketCount = Math.max(0, activeSocketCount - 1)
-        this.options.onStatus('disconnected', this.stopping ? undefined : 'WebSocket 连接已关闭')
+        if (this.stopping) return
+        this.options.onStatus('disconnected', 'WebSocket 连接已关闭')
+        this.scheduleReconnect()
       })
     } catch (error) {
       this.options.onStatus('error', error instanceof Error ? error.message : 'WebSocket 连接失败')
     }
   }
 
+  /** Demo-grade resilience: back off 1s → 2s → 4s … capped at 10s until stop(). */
+  private scheduleReconnect(): void {
+    const delay = Math.min(1000 * 2 ** this.retries, 10000)
+    this.retries += 1
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null
+      if (!this.stopping) this.connect()
+    }, delay)
+  }
+
   stop(): void {
+    this.stopping = true
+    if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = null }
+    this.retries = 0
     const socket = this.socket
     if (!socket) return
-    this.stopping = true
     this.socket = null
     activeSocketCount = Math.max(0, activeSocketCount - 1)
     socket.close(1000, 'Viewer data source stopped')

@@ -72,7 +72,7 @@ const publicApi: TwinSceneViewerPublicApi = {
   getSelection: () => session.value?.getSelection() ?? null,
   getRuntimeState: () => session.value?.runtimeState ?? null,
   getDiagnostics: () => session.value?.getDiagnostics() ?? {
-    dataSource: { type: 'mock', status: 'disconnected', messageCount: 0, error: null },
+    dataSource: { type: 'websocket', status: 'disconnected', messageCount: 0, error: null },
     visualRules: { activations: 0, activeRules: 0 },
     effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
   },
@@ -92,7 +92,7 @@ defineExpose({
   <div class="twin-viewer" data-testid="twin-scene-viewer" :data-loaded="!loading && !error && !!session"
     :data-object-count="session?.roots.length ?? 0" :data-binding-count="session?.twin.bindings.length ?? 0"
     :data-mock-running="session?.twin.mockRunning ?? false" :data-mock-ticks="session?.twin.mockTickCount ?? 0"
-    :data-source-type="session?.twin.dataSourceType ?? 'mock'"
+    :data-source-type="session?.twin.dataSourceType ?? 'websocket'"
     :data-source-status="session?.twin.dataSourceStatus ?? 'disconnected'"
     :data-source-messages="session?.twin.dataSourceMessageCount ?? 0"
     :data-active-visual-rules="session?.visualRules?.getDiagnostics().activeRules ?? 0"

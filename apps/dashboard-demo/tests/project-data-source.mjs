@@ -27,15 +27,21 @@ try {
   // The saved scene's data sources reset the settings form once the runtime finishes loading.
   await page.waitForFunction(() => document.querySelector('[data-testid="editor-viewport"]')?.dataset.runtimeReady === 'true')
   await page.getByTestId('toggle-scene-settings').click()
-  await page.getByTestId('data-source-type').selectOption('websocket')
+  // Start from a disabled source so connection counts only reflect the steps below.
+  await page.getByTestId('data-source-enabled').uncheck()
+  await page.getByTestId('data-source-apply').click()
+  await page.waitForFunction(() => document.querySelector('[data-testid="data-source-status"]').dataset.status === 'unconfigured')
+  await waitConnections(0)
+  await page.getByTestId('data-source-enabled').check()
   await page.getByTestId('data-source-name').fill('实时设备数据')
   await page.getByTestId('data-source-url').fill(`ws://127.0.0.1:${dataPort}/realtime`)
   await page.getByTestId('data-source-apply').click()
-  await page.waitForFunction(() => document.querySelector('[data-testid="data-source-status"]').textContent.includes('connected'))
+  await page.waitForFunction(() => document.querySelector('[data-testid="data-source-status"]').dataset.status === 'connected')
   await waitConnections(1)
   await page.getByTestId('history-undo').click()
   await waitConnections(0)
-  assert.equal(await page.getByTestId('data-source-type').inputValue(), 'mock')
+  assert.equal(await page.getByTestId('data-source-enabled').isChecked(), false)
+  assert.equal(await page.getByTestId('data-source-status').getAttribute('data-status'), 'unconfigured')
   await page.getByTestId('history-redo').click()
   await waitConnections(1)
   await page.getByTestId('data-source-enabled').uncheck()
@@ -120,7 +126,7 @@ try {
   assert.equal(await page.getByTestId('dashboard-demo').getAttribute('data-selected-device-id'), 'ESS-001')
   await page.getByTestId('device-ESS-002').click()
   assert.equal(await viewer(() => window.sdkViewer.getSelection().deviceId), 'ESS-002')
-  // Same component, reactive source change: closes old socket, legacy package starts Mock.
+  // Same component, reactive source change: closes old socket; a package without a WebSocket source shows no data.
   await page.evaluate(async () => {
     // Reuse the exact module URLs the app loaded (prebundled tgz or linked workspace dist) to share instances.
     const loaded = performance.getEntriesByType('resource').map(entry => entry.name)
@@ -134,13 +140,19 @@ try {
   await page.waitForFunction(() => window.sdkViewer?.getRuntimeState()?.dataSourceMessageCount > 0)
   await waitConnections(1)
   await page.evaluate(() => { window.testSource.value = '/zero-carbon-demo.twin.zip' })
-  await page.waitForFunction(() => window.sdkViewer?.getRuntimeState()?.mockRunning === true)
+  await page.waitForFunction(() => window.sdkViewer?.getRuntimeState()?.dataSourceStatus === 'unconfigured')
   await waitConnections(0)
+  await page.waitForTimeout(2500)
+  const unconfigured = await viewer(() => {
+    const state = window.sdkViewer.getRuntimeState()
+    return { values: Object.keys(state.runtimeValues).length, mock: state.mockRunning, ticks: state.mockTickCount, rules: window.sdkViewer.getDiagnostics().visualRules.activeRules }
+  })
+  assert.deepEqual(unconfigured, { values: 0, mock: false, ticks: 0, rules: 0 })
   await page.evaluate(() => { window.testSource.value = '/project-websocket.twin.zip' })
-  await page.waitForFunction(() => window.sdkViewer?.getRuntimeState()?.dataSourceMessageCount > 0 && !window.sdkViewer?.getRuntimeState()?.mockRunning)
+  await page.waitForFunction(() => window.sdkViewer?.getRuntimeState()?.dataSourceMessageCount > 0)
   await waitConnections(1)
   await page.evaluate(() => window.testApp.unmount())
   await waitConnections(0)
   assert.deepEqual(errors, [])
-  console.log(JSON.stringify({ editorConfigureSaveReload:'PASS', exportImport: 'PASS', projectDataSources:config, networkTemperature:75, diagnostics, selectionFocusEvent:'PASS', legacyMock:'PASS', sourceSwitchAndDispose:'PASS' }, null, 2))
+  console.log(JSON.stringify({ editorConfigureSaveReload:'PASS', exportImport: 'PASS', projectDataSources:config, networkTemperature:75, diagnostics, selectionFocusEvent:'PASS', legacyPackageNoData:'PASS', sourceSwitchAndDispose:'PASS' }, null, 2))
 } finally { await context.close(); await browser.close() }

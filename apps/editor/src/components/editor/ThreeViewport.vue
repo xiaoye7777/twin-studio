@@ -669,7 +669,8 @@ onMounted(async () => {
       [() => twinStore.bindingRevision, () => editorStore.sceneRevision],
       refreshBindingResolutions,
     )
-    dataSourcesStore.replace(restoredDocument?.dataSources ?? defaultDataSources())
+    // New projects start on the local device simulator; saved scenes without the field stay unconfigured.
+    dataSourcesStore.replace(restoredDocument ? (restoredDocument.dataSources ?? []) : defaultDataSources())
     dataSourcesStore.configure((before, after) => {
       void history.execute(new FunctionalCommand('Edit data source', () => dataSourcesStore.replace(after), () => dataSourcesStore.replace(before)))
     })

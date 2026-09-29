@@ -11,6 +11,7 @@
     "build:viewer": "pnpm --filter @twin-studio/viewer build",
     "pack:viewer": "pnpm build:viewer && pnpm --filter @twin-studio/viewer pack --pack-destination release",
     "type-check": "pnpm --filter \"./apps/*\" --filter \"./packages/*\" type-check",
-    "build": "pnpm build:viewer && pnpm --filter @twin-studio/editor --filter @twin-studio/dashboard-demo build"
+    "build": "pnpm build:viewer && pnpm --filter @twin-studio/editor --filter @twin-studio/dashboard-demo build",
+    "simulator": "pnpm --filter @twin-studio/device-simulator start"
   }
 }

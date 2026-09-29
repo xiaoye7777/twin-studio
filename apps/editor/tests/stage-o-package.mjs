@@ -35,6 +35,7 @@ export async function testProjectPackage(page, sourceId) {
 
   // An independent browser context has neither the source project nor its IndexedDB.
   const clean = await page.context().browser().newContext({ viewport: { width: 1440, height: 1000 } })
+  await clean.addInitScript(() => { window.__TWIN_QA_MOCK__ = true })
   const fresh = await clean.newPage()
   const errors = []
   fresh.on('pageerror', error => errors.push(error.message))

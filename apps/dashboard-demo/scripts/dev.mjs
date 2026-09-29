@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
 const children = new Set()
 let shuttingDown = false
@@ -24,7 +25,8 @@ function shutdown(exitCode = 0) {
   setTimeout(() => process.exit(exitCode), 100).unref()
 }
 
-start(process.execPath, ['server/realtime-server.mjs'])
+// The device simulator stands in for the realtime gateway configured in the project package.
+start(process.execPath, [fileURLToPath(new URL('../../../tools/device-simulator/src/server.mjs', import.meta.url))])
 const viteArgs = process.argv.slice(2)
 start(process.execPath, ['node_modules/vite/bin/vite.js', ...(viteArgs.length ? viteArgs : ['--host', '127.0.0.1', '--port', '5200'])])
 

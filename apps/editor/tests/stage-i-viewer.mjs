@@ -12,6 +12,8 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH 
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
 const page = await context.newPage()
 await context.addInitScript(() => {
+  // Dev-server QA only: deterministic in-browser values instead of the WebSocket source (see TwinDataRuntime).
+  window.__TWIN_QA_MOCK__ = true
   const urls = new Set(), frames = new Set()
   const create = URL.createObjectURL.bind(URL), revoke = URL.revokeObjectURL.bind(URL)
   URL.createObjectURL = (...args) => { const url=create(...args); urls.add(url); return url }

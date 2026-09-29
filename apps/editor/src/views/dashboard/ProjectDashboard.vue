@@ -6,7 +6,13 @@ import { TwinSceneViewer } from '@twin-studio/viewer'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageService'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import type { ViewerSelection, ViewerRuntimeState, TwinSceneViewerPublicApi, ViewerInteractionEvent } from '@twin-studio/core'
+import type {
+  DataSourceConnectionStatus,
+  TwinSceneViewerPublicApi,
+  ViewerInteractionEvent,
+  ViewerRuntimeState,
+  ViewerSelection,
+} from '@twin-studio/core'
 import { useProjectStore } from '@/stores/project'
 import DashboardDevicePanel from './DashboardDevicePanel.vue'
 import DashboardOverviewPanel from './DashboardOverviewPanel.vue'
@@ -35,6 +41,11 @@ const devices = computed(() => {
   void state.resolutionRevision
   return buildDashboardDevices(state.bindings, state.runtimeValues, state.resolutionByBindingId)
 })
+const liveLabels: Record<DataSourceConnectionStatus, string> = {
+  unconfigured: '未配置实时数据源 · 无数据', connecting: '实时数据连接中 · 无数据', connected: 'WebSocket 实时数据',
+  disconnected: '实时数据未连接 · 无数据', error: '实时数据连接错误 · 无数据',
+}
+const liveStatus = computed<DataSourceConnectionStatus>(() => runtime.value?.dataSourceStatus ?? 'disconnected')
 const bindingCount = computed(() => runtime.value?.bindings.length ?? 0)
 const resolvedBindingCount = computed(() => {
   const state = runtime.value
@@ -111,7 +122,17 @@ onBeforeUnmount(() => { runtime.value = null })
         <h1 data-testid="dashboard-project-name" class="truncate text-sm font-medium text-white">{{ projectName }}</h1>
         <p class="text-[10px] text-slate-500">数据大屏 · {{ status }}</p>
       </div>
-      <button data-testid="dashboard-edit" class="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:border-blue-500 hover:text-white" type="button" @click="router.push({ name: 'editor', params: { projectId } })">
+      <span
+        data-testid="dashboard-source-status"
+        :data-status="liveStatus"
+        :title="runtime?.dataSourceError ?? ''"
+        :class="liveStatus === 'connected' ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/40 bg-amber-500/15 text-amber-300'"
+        class="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs"
+      >
+        <span :class="liveStatus === 'connected' ? 'animate-pulse bg-emerald-400' : 'bg-amber-400'" class="h-1.5 w-1.5 rounded-full" />
+        {{ liveLabels[liveStatus] }}
+      </span>
+      <button data-testid="dashboard-edit" class="ml-3 flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:border-blue-500 hover:text-white" type="button" @click="router.push({ name: 'editor', params: { projectId } })">
         <el-icon><EditPen /></el-icon>进入编辑器
       </button>
     </header>

@@ -1,0 +1,17 @@
+{
+  "name": "@twin-studio/device-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebSocket device simulator standing in for a real IoT gateway during demos and tests",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "ws": "8.18.3"
+  },
+  "engines": {
+    "node": ">=20.16.0"
+  }
+}

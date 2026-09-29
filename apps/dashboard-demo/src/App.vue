@@ -3,8 +3,11 @@ import { TwinSceneViewer } from '@twin-studio/viewer'
 import { useTwinDashboard } from './useTwinDashboard'
 const twin = useTwinDashboard()
 const viewerRef = twin.viewerRef
-const packageSource = new URLSearchParams(location.search).get('package') || '/zero-carbon-demo.twin.zip'
+const packageSource = new URLSearchParams(location.search).get('package') || '/project-websocket.twin.zip'
 const value = (key:string) => twin.selected.value?.values[key]
+const fixed = (input:number|null, digits=1) => input === null ? '—' : input.toFixed(digits)
+const liveLabels: Record<string,string> = { unconfigured:'未配置实时数据源', connecting:'实时数据连接中', connected:'WebSocket 已连接',
+  disconnected:'实时数据未连接', error:'实时数据连接错误' }
 const number = (key:string, digits=1) => typeof value(key) === 'number' ? (value(key) as number).toFixed(digits) : '—'
 function handleError(message:string) { twin.loadStatus.value = message }
 </script>
@@ -16,8 +19,8 @@ function handleError(message:string) { twin.loadStatus.value = message }
       @error="handleError" />
     <header class="topbar panel">
       <div><p class="eyebrow">ZERO CARBON DIGITAL TWIN</p><h1>零碳智慧园区数字孪生监控</h1></div>
-      <div class="live" :class="{offline:twin.connection.value.status!=='connected'}" :title="twin.connection.value.error ?? '由项目配置决定的数据源'">
-        <i/>{{ twin.connection.value.type === 'websocket' ? 'WS' : 'MOCK' }} · {{ twin.connection.value.status.toUpperCase() }}
+      <div class="live" data-testid="live-status" :data-status="twin.connection.value.status" :class="{offline:twin.connection.value.status!=='connected'}" :title="twin.connection.value.error ?? '由项目配置决定的数据源'">
+        <i/>{{ liveLabels[twin.connection.value.status] ?? twin.connection.value.status }}
         <small data-testid="source-message-count">{{ twin.connection.value.messages }}</small>
       </div>
       <p v-if="twin.connection.value.error" class="source-error" data-testid="source-error">
@@ -27,16 +30,19 @@ function handleError(message:string) { twin.loadStatus.value = message }
       <time>{{ new Date().toLocaleDateString('zh-CN') }}</time>
     </header>
 
+    <div v-if="twin.connection.value.status !== 'connected'" class="no-live" data-testid="no-live-banner">
+      无实时数据 · {{ liveLabels[twin.connection.value.status] ?? twin.connection.value.status }}<small v-if="twin.connection.value.error">{{ twin.connection.value.error }}</small>
+    </div>
     <aside class="left panel">
       <div class="section-title"><span>园区运行概览</span><small>OVERVIEW</small></div>
       <div class="kpis">
         <article><small>设备总数</small><strong data-testid="kpi-total">{{ twin.summary.value.total }}</strong><em>台</em></article>
         <article><small>在线设备</small><strong class="green">{{ twin.summary.value.online }}</strong><em>台</em></article>
         <article><small>当前告警</small><strong class="alarm">{{ twin.summary.value.alarms }}</strong><em>项</em></article>
-        <article><small>总功率</small><strong class="cyan">{{ twin.summary.value.power.toFixed(1) }}</strong><em>kW</em></article>
+        <article><small>总功率</small><strong class="cyan">{{ fixed(twin.summary.value.power) }}</strong><em>kW</em></article>
       </div>
-      <div class="metric"><span>平均 SOC</span><b>{{ twin.summary.value.soc.toFixed(1) }}%</b><div><i :style="{width:`${twin.summary.value.soc}%`}"/></div></div>
-      <div class="metric temperature"><span>平均温度</span><b>{{ twin.summary.value.temperature.toFixed(1) }}℃</b><div><i :style="{width:`${Math.min(100,twin.summary.value.temperature)}%`}"/></div></div>
+      <div class="metric"><span>平均 SOC</span><b>{{ fixed(twin.summary.value.soc) }}%</b><div><i :style="{width:`${twin.summary.value.soc ?? 0}%`}"/></div></div>
+      <div class="metric temperature"><span>平均温度</span><b>{{ fixed(twin.summary.value.temperature) }}℃</b><div><i :style="{width:`${Math.min(100,twin.summary.value.temperature ?? 0)}%`}"/></div></div>
       <div v-if="twin.lastEvent.value" class="event" data-testid="last-interaction-event"><small>最近业务事件</small><b>{{ twin.lastEvent.value.eventName }}</b><span>{{ twin.lastEvent.value.deviceId ?? '场景对象' }}</span></div>
       <div v-else class="event muted"><small>最近业务事件</small><span>等待场景交互…</span></div>
     </aside>

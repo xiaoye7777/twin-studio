@@ -9,16 +9,17 @@ pnpm install
 pnpm dev:dashboard   # 先构建 viewer，再启动本 demo
 ```
 
-pnpm dev 启动前端 5200 和独立测试数据服务 8787。若服务已经单独启动，使用 pnpm dev:frontend --port 5200。SDK 本身不启动 server。
+pnpm dev 启动前端 5200 和设备模拟器 8787（`tools/device-simulator`）。若模拟器已经单独启动（根目录 `pnpm simulator`），使用 pnpm dev:frontend --port 5200。SDK 本身不启动 server。
 
-默认加载 zero-carbon-demo.twin.zip（旧包，自动回退 Mock）。
-加载 Editor 配置并导出的 WebSocket 示例：
-http://127.0.0.1:5200/?package=/project-websocket.twin.zip
+默认加载 project-websocket.twin.zip（连接 8787 模拟器）。
+所有数值只来自 WebSocket：模拟器未启动或连接断开时，页面显示“无实时数据”横幅，数值全部为“—”。
+未配置数据源的旧包示例（始终无数据）：
+http://127.0.0.1:5200/?package=/zero-carbon-demo.twin.zip
 
 Dashboard 只传 source，通过 getRuntimeState() 展示设备值和只读连接状态。没有 URL 配置、Mock/WebSocket 切换按钮或消息解析逻辑。
 要改数据源，请在 Editor 场景设置中修改、保存、重新导出项目包。
 
-测试服务每秒推送 8 个设备，ESS-003 周期性达到 75℃，触发项目规则特效。
+模拟器默认每秒推送零碳园区 8 个设备，ESS-003 周期性达到 75℃，触发项目规则特效。
 
 端到端测试（需要 Editor 在 5190、Dashboard 在 5200、数据服务在 8787）：
 ```bash

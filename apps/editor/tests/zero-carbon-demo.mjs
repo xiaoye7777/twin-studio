@@ -4,6 +4,8 @@ import assert from 'node:assert/strict'
 const { chromium } = createRequire(import.meta.url)('playwright')
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+// Dev-server QA only: deterministic in-browser values instead of the WebSocket source (see TwinDataRuntime).
+await context.addInitScript(() => { window.__TWIN_QA_MOCK__ = true })
 const page = await context.newPage()
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5178'
 const errors = []

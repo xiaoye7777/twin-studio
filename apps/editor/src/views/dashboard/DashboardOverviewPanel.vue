@@ -10,7 +10,8 @@ const props = defineProps<{
 }>()
 
 const alarmCount = computed(() => props.devices.filter((device) => device.alarm).length)
-const normalCount = computed(() => props.devices.filter((device) => device.resolved && !device.alarm).length)
+// Only devices that actually reported values count as normal; waiting devices are not "healthy".
+const normalCount = computed(() => props.devices.filter((device) => device.statusKind === 'normal').length)
 const energy = computed(() => {
   const values = (key: string) => props.devices.flatMap(device => {
     const value = device.variables.find(variable => variable.key === key)?.value
@@ -52,7 +53,7 @@ const energy = computed(() => {
     </div>
 
     <div class="mt-4 space-y-3 rounded-lg border border-white/10 bg-slate-950/20 p-3 text-xs text-slate-400">
-      <p class="text-[10px] uppercase tracking-widest">全场实时汇总 · Mock</p>
+      <p class="text-[10px] uppercase tracking-widest">全场实时汇总</p>
       <p class="flex justify-between">平均 SOC <strong data-testid="dashboard-average-soc" class="text-emerald-300">{{ energy.soc }} %</strong></p>
       <p class="flex justify-between">平均温度 <strong data-testid="dashboard-average-temperature" class="text-white">{{ energy.temperature }} ℃</strong></p>
       <p class="flex justify-between">总功率 <strong data-testid="dashboard-total-power" class="text-cyan-300">{{ energy.power }} kW</strong></p>

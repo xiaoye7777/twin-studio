@@ -175,6 +175,7 @@ watch(() => editorStore.selectedObject, () => { dialogVisible.value = false })
       <span v-if="binding && twinStore.dataSourceStatus === 'connected'" class="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-medium text-emerald-300">
         <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {{ twinStore.dataSourceType === 'mock' ? 'MOCK' : 'WEBSOCKET' }} LIVE
       </span>
+      <span v-else-if="binding" data-testid="binding-no-live-data" class="rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-medium text-amber-300">无实时数据</span>
     </div>
 
     <p class="truncate font-mono text-[9px] text-slate-600">{{ targetLabel }}</p>
