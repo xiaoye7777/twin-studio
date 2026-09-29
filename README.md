@@ -1,25 +1,27 @@
 # Reference Dashboard Demo
 
-运行环境：Node.js `20.16.0+`、pnpm `10.20.0`。
-
-完全独立的 Vue 3 + TypeScript Viewer SDK 接入示例，不引用 `twin-Meteor/src`。
+独立 Vue 3 + TypeScript 示例，安装本地 @twin-studio/viewer 0.2.0 包。Node 20.16+ / pnpm 10.20.0。
 
 ```bash
-pnpm install
-pnpm data-server
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-集成入口在 `src/App.vue`，Viewer Contract 与实时数据投影集中在 `src/useTwinDashboard.ts`。示例从 `public/zero-carbon-demo.twin.zip` 直接加载项目包。
+pnpm dev 启动前端 5200 和独立测试数据服务 8787。若服务已经单独启动，使用 pnpm dev:frontend --port 5200。SDK 本身不启动 server。
 
-SDK 离线安装方式：
+默认加载 zero-carbon-demo.twin.zip（旧包，自动回退 Mock）。
+加载 Editor 配置并导出的 WebSocket 示例：
+http://127.0.0.1:5200/?package=/project-websocket.twin.zip
 
+Dashboard 只传 source，通过 getRuntimeState() 展示设备值和只读连接状态。没有 URL 配置、Mock/WebSocket 切换按钮或消息解析逻辑。
+要改数据源，请在 Editor 场景设置中修改、保存、重新导出项目包。
+
+测试服务每秒推送 8 个设备，ESS-003 周期性达到 75℃，触发项目规则特效。
+
+端到端测试（需要 Editor 在 5190、Dashboard 在 5200、数据服务在 8787）：
 ```bash
-pnpm add ./vendor/twin-studio-viewer-0.1.2.tgz
+pnpm test:integration
 ```
+测试创建隔离浏览器项目，通过 Editor UI 配置、保存、导出，更新 public/project-websocket.twin.zip，再验证独立 SDK 网络值、规则、事件及卸载。不会更改日常浏览器项目。
 
-页面可在 `Mock` 与 `WebSocket` 间切换。WebSocket 测试服务默认监听
-`ws://127.0.0.1:8787/realtime`，连接数可通过
-`http://127.0.0.1:8787/status` 查看。可用 `VITE_TWIN_WS_URL` 覆盖地址。
-
-测试服务每秒发送 8 个储能柜的 JSON 数据；ESS-003 会周期性进入 `75℃ / alarm=true`，用于验证外部网络数据触发项目包内 Visual Rule 与 3D Effect。
+本地安装包：vendor/twin-studio-viewer-0.2.0.tgz。

@@ -1,15 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { TwinSceneViewer, type DataSourceType, type ViewerDataSourceConfig } from '@twin-studio/viewer'
+import { TwinSceneViewer } from '@twin-studio/viewer'
 import { useTwinDashboard } from './useTwinDashboard'
 const twin = useTwinDashboard()
 const viewerRef = twin.viewerRef
 const packageSource = new URLSearchParams(location.search).get('package') || '/zero-carbon-demo.twin.zip'
-const dataSourceType = ref<DataSourceType>('mock')
-const webSocketUrl = import.meta.env.VITE_TWIN_WS_URL || 'ws://127.0.0.1:8787/realtime'
-const dataSource = computed<ViewerDataSourceConfig>(() => dataSourceType.value === 'websocket'
-  ? { type: 'websocket', url: webSocketUrl }
-  : { type: 'mock' })
 const value = (key:string) => twin.selected.value?.values[key]
 const number = (key:string, digits=1) => typeof value(key) === 'number' ? (value(key) as number).toFixed(digits) : '—'
 function handleError(message:string) { twin.loadStatus.value = message }
@@ -17,22 +11,17 @@ function handleError(message:string) { twin.loadStatus.value = message }
 
 <template>
   <main class="screen" data-testid="dashboard-demo" :data-selected-device-id="twin.selectedDeviceId.value ?? ''">
-    <TwinSceneViewer ref="viewerRef" :source="packageSource" :data-source="dataSource" @loaded="twin.handleLoaded"
+    <TwinSceneViewer ref="viewerRef" :source="packageSource" @loaded="twin.handleLoaded"
       @selection-change="twin.handleSelection" @interaction-event="twin.handleInteraction"
       @error="handleError" />
     <header class="topbar panel">
       <div><p class="eyebrow">ZERO CARBON DIGITAL TWIN</p><h1>零碳智慧园区数字孪生监控</h1></div>
-      <div class="source-switch" aria-label="数据源">
-        <span>数据源</span>
-        <button data-testid="source-mock" :class="{active:dataSourceType==='mock'}" @click="dataSourceType='mock'">Mock</button>
-        <button data-testid="source-websocket" :class="{active:dataSourceType==='websocket'}" @click="dataSourceType='websocket'">WebSocket</button>
-      </div>
-      <div class="live" :class="{offline:twin.connection.value.status!=='connected'}" :title="twin.connection.value.error ?? (dataSourceType === 'websocket' ? webSocketUrl : 'SDK 内置 MockDataSource')">
+      <div class="live" :class="{offline:twin.connection.value.status!=='connected'}" :title="twin.connection.value.error ?? '由项目配置决定的数据源'">
         <i/>{{ twin.connection.value.type === 'websocket' ? 'WS' : 'MOCK' }} · {{ twin.connection.value.status.toUpperCase() }}
         <small data-testid="source-message-count">{{ twin.connection.value.messages }}</small>
       </div>
-      <p v-if="dataSourceType === 'websocket' && twin.connection.value.status !== 'connected'" class="source-error" data-testid="source-error">
-        {{ twin.connection.value.error ?? `正在连接 ${webSocketUrl}` }}
+      <p v-if="twin.connection.value.error" class="source-error" data-testid="source-error">
+        {{ twin.connection.value.error }}
       </p>
       <p class="load-status">{{ twin.loadStatus.value }}</p>
       <time>{{ new Date().toLocaleDateString('zh-CN') }}</time>

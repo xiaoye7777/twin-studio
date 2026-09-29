@@ -8,12 +8,12 @@
     "dev": "node scripts/dev.mjs",
     "dev:frontend": "vite",
     "data-server": "node server/realtime-server.mjs",
-    "test:integration": "node tests/sdk-integration.mjs",
+    "test:integration": "node tests/project-data-source.mjs",
     "type-check": "vue-tsc --noEmit",
     "build": "pnpm run type-check && vite build"
   },
   "dependencies": {
-    "@twin-studio/viewer": "file:./vendor/twin-studio-viewer-0.1.2.tgz",
+    "@twin-studio/viewer": "file:vendor/twin-studio-viewer-0.2.0.tgz",
     "three": "0.184.0",
     "vue": "3.5.25"
   },
