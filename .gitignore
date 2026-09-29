@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+*.local
+*.log
+*.tgz
+.env
+.env.*
+.wrangler
+.vscode/*
+!.vscode/extensions.json
