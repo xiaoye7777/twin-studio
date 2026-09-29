@@ -12,7 +12,7 @@ try {
   const card = page.getByTestId(`project-card-${projectId}`)
   await card.getByTestId('project-menu').click()
   const download = await Promise.all([page.waitForEvent('download'), page.locator('[data-testid="export-project"]:visible').click()]).then(([item]) => item)
-  const output = resolve(process.argv[2] || '../dashboard-viewer-demo/public/zero-carbon-demo.twin.zip')
+  const output = resolve(process.argv[2] || '../dashboard-demo/public/zero-carbon-demo.twin.zip')
   await download.saveAs(output)
   console.log(JSON.stringify({ projectId, output }))
 } finally { await context.close(); await browser.close() }

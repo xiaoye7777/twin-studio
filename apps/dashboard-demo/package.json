@@ -1,5 +1,5 @@
 {
-  "name": "dashboard-viewer-demo",
+  "name": "@twin-studio/dashboard-demo",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -13,7 +13,7 @@
     "build": "pnpm run type-check && vite build"
   },
   "dependencies": {
-    "@twin-studio/viewer": "file:vendor/twin-studio-viewer-0.2.0.tgz",
+    "@twin-studio/viewer": "workspace:*",
     "three": "0.184.0",
     "vue": "3.5.25"
   },

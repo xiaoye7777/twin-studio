@@ -1,5 +1,5 @@
 {
-  "name": "digital-twin-studio-demo",
+  "name": "@twin-studio/editor",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "2.3.2",
-    "@meteor3d/core": "file:./vendor/meteor3d-core",
+    "@meteor3d/core": "workspace:*",
     "element-plus": "2.11.8",
     "fflate": "0.8.3",
     "pinia": "3.0.4",

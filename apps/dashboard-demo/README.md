@@ -1,10 +1,12 @@
 # Reference Dashboard Demo
 
-独立 Vue 3 + TypeScript 示例，安装本地 @twin-studio/viewer 0.2.0 包。Node 20.16+ / pnpm 10.20.0。
+Vue 3 + TypeScript 示例，通过 `workspace:*` 引用 monorepo 内的 @twin-studio/viewer（使用其 dist 构建产物，与外部安装 tgz 的效果一致）。Node 20.16+ / pnpm 10.20.0。
+
+在仓库根目录：
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm dev
+pnpm install
+pnpm dev:dashboard   # 先构建 viewer，再启动本 demo
 ```
 
 pnpm dev 启动前端 5200 和独立测试数据服务 8787。若服务已经单独启动，使用 pnpm dev:frontend --port 5200。SDK 本身不启动 server。
@@ -24,4 +26,4 @@ pnpm test:integration
 ```
 测试创建隔离浏览器项目，通过 Editor UI 配置、保存、导出，更新 public/project-websocket.twin.zip，再验证独立 SDK 网络值、规则、事件及卸载。不会更改日常浏览器项目。
 
-本地安装包：vendor/twin-studio-viewer-0.2.0.tgz。
+修改 viewer 源码后需重新执行 `pnpm build:viewer`（或重新运行 `pnpm dev:dashboard`）。

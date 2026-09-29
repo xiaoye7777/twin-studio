@@ -1,0 +1,16 @@
+{
+  "name": "twin-studio",
+  "private": true,
+  "packageManager": "pnpm@10.20.0",
+  "engines": {
+    "node": ">=20.16.0"
+  },
+  "scripts": {
+    "dev:editor": "pnpm --filter @twin-studio/editor dev",
+    "dev:dashboard": "pnpm build:viewer && pnpm --filter @twin-studio/dashboard-demo dev",
+    "build:viewer": "pnpm --filter @twin-studio/viewer build",
+    "pack:viewer": "pnpm build:viewer && pnpm --filter @twin-studio/viewer pack --pack-destination ../../release",
+    "type-check": "pnpm --filter \"./apps/*\" --filter \"./packages/*\" type-check",
+    "build": "pnpm build:viewer && pnpm --filter @twin-studio/editor --filter @twin-studio/dashboard-demo build"
+  }
+}

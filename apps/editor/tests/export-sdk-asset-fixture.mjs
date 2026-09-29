@@ -24,5 +24,5 @@ try{
   await page.waitForFunction(()=>document.querySelector('[data-testid="editor-viewport"]')?.dataset.environmentStatus==='sdk-environment.hdr')
   await page.getByTestId('save-scene').click();await page.waitForFunction(id=>!!localStorage.getItem(`digital-twin-studio:scene:v1:${id}`),id)
   const bytes=await page.evaluate(async id=>{const {ProjectPackageService}=await import('/src/infrastructure/packages/ProjectPackageService.ts');const {LocalSceneRepository}=await import('/src/infrastructure/scenes/index.ts');const {IndexedDbAssetRepository}=await import('/src/infrastructure/assets/index.ts');const {useProjectStore}=await import('/src/stores/project.ts');const projects=useProjectStore();const blob=await new ProjectPackageService(new LocalSceneRepository(),new IndexedDbAssetRepository(),projects).exportProject(projects.getProjectById(id));return [...new Uint8Array(await blob.arrayBuffer())]},id)
-  const output=resolve(process.argv[2]||'../dashboard-viewer-demo/public/sdk-assets-fixture.twin.zip');await writeFile(output,Buffer.from(bytes));console.log(JSON.stringify({output,bytes:bytes.length}))
+  const output=resolve(process.argv[2]||'../dashboard-demo/public/sdk-assets-fixture.twin.zip');await writeFile(output,Buffer.from(bytes));console.log(JSON.stringify({output,bytes:bytes.length}))
 }finally{await context.close();await browser.close()}
