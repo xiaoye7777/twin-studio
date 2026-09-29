@@ -11,4 +11,12 @@
 5. 等待 Mock 数据变化，观察温度预警、严重告警特效以及全场指标同步变化。
 6. 单击储能柜后，左侧会显示 `open-device-detail` 场景业务事件，证明 Interaction 配置能够通知宿主页面。
 
-示例完全由普通 `SceneDocumentV1` 配置组成，运行时仍使用现有 MockDataSource、EffectRuntime、VisualRuleRuntime 和 InteractionRuntime，没有专用 Demo Runtime。
+示例完全由普通 `SceneDocumentV1` 配置组成，运行时使用现有的 WebSocket 数据源、EffectRuntime、VisualRuleRuntime 和 InteractionRuntime，没有专用 Demo Runtime。实时数据来自设备模拟器（`pnpm simulator` 或 `pnpm dev:dashboard`）。
+
+## 模型资源
+
+储能柜（8 个集装箱式储能单元）、光伏阵列、风力发电机和园区建筑使用 Kenney 的 CC0 低多边形模型，文件位于 `public/demo-assets/`，来源与许可见同目录 `CREDITS.md`。创建示例时这些 GLB 会作为普通资产导入资产库（按文件指纹去重），导出的项目包中每个模型只打包一次。地面、道路、区域基座和绿化仍为基础几何体。
+
+这些模型只用于可行性演示，正式项目由建模同事替换：在编辑器中导入新的 GLB，删除旧实例、放置新实例并重新绑定设备即可；设备 ID、变量、规则和交互配置可以沿用。
+
+储能柜后排朝向道路：聚焦（双击或 `focusDevice`）从对象的本地正面取景，这样可以避免镜头落入前排集装箱内部。

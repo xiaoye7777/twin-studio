@@ -21,12 +21,14 @@ try {
     const projects = JSON.parse(localStorage.getItem('digital-twin-studio-projects') || '[]')
     const project = projects.at(-1)
     const scene = JSON.parse(localStorage.getItem(`digital-twin-studio:scene:v1:${project.id}`))
-    return { project, counts: { primitives: scene.primitives.length, bindings: scene.bindings.length, rules: scene.visualRules.length, interactions: scene.interactions.length, effects: scene.effects.length } }
+    return { project, counts: { instances: scene.instances.length, primitives: scene.primitives.length, bindings: scene.bindings.length, rules: scene.visualRules.length, interactions: scene.interactions.length, effects: scene.effects.length } }
   })
   assert.equal(seeded.counts.bindings, 8)
   assert.equal(seeded.counts.rules, 16)
   assert.equal(seeded.counts.interactions, 32)
-  assert(seeded.counts.primitives >= 50)
+  // Recognisable park objects are CC0 models (public/demo-assets); ground, roads and pads stay primitives.
+  assert.equal(seeded.counts.instances, 28) // 8 storage + 12 solar + 3 turbines + 5 buildings
+  assert(seeded.counts.primitives >= 15)
   const card = page.getByTestId(`project-card-${seeded.project.id}`)
   await card.hover()
   await card.getByTestId('edit-project').click()
@@ -48,7 +50,7 @@ try {
   const canvas = await page.locator('[data-testid="twin-scene-viewer"] canvas').boundingBox()
   const hit = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 }
   await page.mouse.move(hit.x, hit.y)
-  await page.waitForFunction(() => window.demoViewer.getInteractionDiagnostics()?.hoverTarget?.nodeId === 'ess-1')
+  await page.waitForFunction(() => window.demoViewer.getInteractionDiagnostics()?.hoverTarget?.instanceId === 'instance_ess-1')
   await page.mouse.click(hit.x, hit.y)
   await page.waitForFunction(() => window.demoViewer.getSelection()?.deviceId === 'ESS-001')
   await page.waitForSelector('[data-testid="dashboard-interaction-event"]')

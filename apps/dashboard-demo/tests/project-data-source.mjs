@@ -77,6 +77,7 @@ try {
   assert(!(await page.getByTestId('save-scene').textContent()).includes('*'))
   const config = await page.evaluate(id => JSON.parse(localStorage.getItem('digital-twin-studio:scene:v1:' + id)).dataSources, id)
   await page.reload()
+  await page.waitForFunction(() => document.querySelector('[data-testid="editor-viewport"]')?.dataset.runtimeReady === 'true')
   await page.getByTestId('toggle-scene-settings').click()
   assert.equal(await page.getByTestId('data-source-url').inputValue(), config[0].url)
   await waitConnections(1)
