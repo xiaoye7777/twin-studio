@@ -131,3 +131,7 @@ Dashboard 只使用 `deviceId`、`TwinBindingTarget`、`bindingId + variableKey`
 - `vendor/twin-studio-viewer-0.1.0.tgz`：真实安装的 SDK 包。
 
 运行 `pnpm install && pnpm dev`。当前数据源仍为 MockDataSource；无历史时序数据，也未提供 iframe/postMessage。
+
+## 项目数据源
+
+Viewer 自动读取 SceneDocumentV1.dataSources；宿主只读 getRuntimeState() 中的 dataSourceType / dataSourceStatus / dataSourceMessageCount / dataSourceError。数据源在 Editor 场景设置中配置，随 ZIP 导出，不由 Dashboard 决定。详见 docs/project-data-source.md。

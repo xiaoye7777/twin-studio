@@ -1,3 +1,4 @@
+import type { DataSourceType, DataSourceConnectionStatus } from '@/infrastructure/data'
 import type { DeepReadonly } from 'vue'
 import type { TwinBinding, TwinBindingResolution, TwinBindingTarget, TwinDevice, TwinRuntimeValue } from '@/domain/twin'
 import type { InteractionMetadata, InteractionTrigger } from '@/domain/interactions'
@@ -56,6 +57,10 @@ export type ViewerRuntimeState = DeepReadonly<{
   bindingRevision: number
   runtimeRevision: number
   resolutionRevision: number
+  dataSourceType: DataSourceType
+  dataSourceStatus: DataSourceConnectionStatus
+  dataSourceMessageCount: number
+  dataSourceError: string | null
   mockRunning: boolean
   mockTickCount: number
 }> & {

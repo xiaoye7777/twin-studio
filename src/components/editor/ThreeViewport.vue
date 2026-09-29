@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useDataSourcesStore } from '@/stores/dataSources'
+import { defaultDataSources } from '@/domain/dataSources'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue'
@@ -76,6 +78,8 @@ const environmentStatus = ref('None')
 
 const editorStore = useEditorStore()
 const sceneSettingsStore = useSceneSettingsStore()
+const dataSourcesStore = useDataSourcesStore()
+let stopDataSourcesWatch: WatchStopHandle | null = null
 const twinStore = useTwinStore()
 const effectsStore = useEffectsStore()
 const rulesStore = useVisualRulesStore()
@@ -245,6 +249,7 @@ async function saveScene(): Promise<void> {
       sceneSettings: cloneSceneSettings(sceneSettingsStore.settings),
       cameraView: captureCameraView(),
       bindings: twinStore.cloneBindings(),
+      dataSources: dataSourcesStore.sources,
       effects: effectsStore.instances,
       visualRules: rulesStore.rules,
       interactions: interactionsStore.interactions,
@@ -494,6 +499,9 @@ function installEditorActions(transforms: TransformManager): void {
 }
 
 function disposeEditorRuntime(): void {
+  stopDataSourcesWatch?.()
+  dataSourcesStore.configure(null)
+  dataSourcesStore.replace(defaultDataSources())
   stopSelectionWatch?.()
   stopTransformModeWatch?.()
   stopTransformRevisionWatch?.()
@@ -657,7 +665,12 @@ onMounted(async () => {
       [() => twinStore.bindingRevision, () => editorStore.sceneRevision],
       refreshBindingResolutions,
     )
-    twinRuntime.start()
+    dataSourcesStore.replace(restoredDocument?.dataSources ?? defaultDataSources())
+    dataSourcesStore.configure((before, after) => {
+      void history.execute(new FunctionalCommand('Edit data source', () => dataSourcesStore.replace(after), () => dataSourcesStore.replace(before)))
+    })
+    twinRuntime.start(dataSourcesStore.sources)
+    stopDataSourcesWatch = watch(() => dataSourcesStore.sources, sources => twinRuntime?.start(sources))
     syncCubeTransform()
 
     const transforms = new TransformManager(runtime, {

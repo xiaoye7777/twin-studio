@@ -72,7 +72,7 @@ export class TwinSceneRuntime {
       })
       this.interactions.setInteractions(document.interactions ?? [])
       this.interactions.setPointerActive(true)
-      this.data.start()
+      this.data.start(document.dataSources)
       this.pointers = new ViewerPointerEvents(this.canvas, this.meteor, this.roots, this.twin, (event) => {
         if (this.disposed) return
         this.selectTarget(event.target)

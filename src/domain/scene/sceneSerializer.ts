@@ -1,3 +1,4 @@
+import type { ProjectDataSource } from '@/domain/dataSources'
 import { Color, Mesh } from 'three'
 import type { Object3D } from 'three'
 import { findAssetInstanceRoot, getEditorMetadata } from '@/editor/editorMetadata'
@@ -60,6 +61,7 @@ function serializePrimitive(root: Object3D, visible: (object: Object3D) => boole
 
 export function serializeSceneDocument(options: {
   projectId: string
+  dataSources?: ProjectDataSource[]
   projectName?: string
   roots: readonly Object3D[]
   modifiedObjects: readonly Object3D[]
@@ -114,6 +116,7 @@ export function serializeSceneDocument(options: {
 
   return {
     version: 1,
+    dataSources: options.dataSources?.map(source => ({ ...source })),
     projectId: options.projectId,
     metadata: {
       name: options.projectName,

@@ -172,8 +172,8 @@ watch(() => editorStore.selectedObject, () => { dialogVisible.value = false })
   >
     <div class="flex items-center justify-between">
       <p class="text-xs font-semibold text-slate-200">数字孪生</p>
-      <span v-if="binding && twinStore.mockRunning" class="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-medium text-emerald-300">
-        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" /> MOCK LIVE
+      <span v-if="binding && twinStore.dataSourceStatus === 'connected'" class="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-medium text-emerald-300">
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {{ twinStore.dataSourceType === 'mock' ? 'MOCK' : 'WEBSOCKET' }} LIVE
       </span>
     </div>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DataSourceSettings from './DataSourceSettings.vue'
 import { Close, Picture, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
@@ -59,6 +60,7 @@ onMounted(() => {
     </header>
 
     <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 text-xs">
+      <DataSourceSettings />
       <section class="space-y-3">
         <p class="panel-title">辅助显示</p>
         <label class="setting-row"><span>网格</span><el-switch data-testid="scene-grid-toggle" :model-value="sceneSettingsStore.settings.gridEnabled" @change="sceneSettingsStore.setGridEnabled(Boolean($event))" /></label>

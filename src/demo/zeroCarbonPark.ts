@@ -1,3 +1,4 @@
+import { defaultDataSources } from '@/domain/dataSources'
 import { isSceneDocumentV1, type SceneDocumentV1, type ScenePrimitiveV1, type Vector3Tuple } from '@/domain/scene'
 import { createEffect } from '@/domain/effects'
 import { getBuiltinTemplates } from '@/domain/effectTemplates/builtins'
@@ -10,6 +11,7 @@ import type { Project } from '@/stores/project'
 /** Ordinary saved scene configuration: no demo runtime, assets, or special data source. */
 export function buildZeroCarbonPark(projectId: string): SceneDocumentV1 {
   const scene: SceneDocumentV1 = {
+    dataSources: defaultDataSources(),
     version: 1, projectId, metadata: { name: '零碳智慧园区 Demo', updatedAt: new Date().toISOString() },
     instances: [], primitives: [], bindings: [], effects: [], visualRules: [], interactions: [],
     sceneSettings: { gridEnabled: false, axesEnabled: false, ground: { enabled: false, size: 40, color: '#273e48' },
