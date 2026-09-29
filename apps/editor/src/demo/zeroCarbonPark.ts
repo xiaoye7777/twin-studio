@@ -10,25 +10,14 @@ import {
   type SceneInteraction,
   type ScenePrimitiveV1,
   type TwinBindingTarget,
-  validatePortableAsset,
   type Vector3Tuple,
 } from '@twin-studio/core'
+import { builtinModels, type BuiltinModelKey, importBuiltinModel } from '@/editor/builtinModels'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import type { Project } from '@/stores/project'
 
-/** CC0 Kenney models served from public/demo-assets (see CREDITS.md there). */
-export const DEMO_ASSETS = {
-  container: 'energy-storage-container.glb',
-  solar: 'solar-array.glb',
-  turbine: 'wind-turbine.glb',
-  energyCenter: 'energy-center.glb',
-  office: 'office-tower.glb',
-  factory: 'factory.glb',
-  warehouse: 'warehouse.glb',
-  tank: 'thermal-storage-tank.glb',
-} as const
-export type DemoAssetKey = keyof typeof DEMO_ASSETS
+type DemoAssetKey = BuiltinModelKey
 
 /** Ordinary saved scene configuration: no demo runtime or special data source; models are regular assets. */
 export function buildZeroCarbonPark(projectId: string, assets: Record<DemoAssetKey, string>): SceneDocumentV1 {
@@ -122,17 +111,10 @@ export function buildZeroCarbonPark(projectId: string, assets: Record<DemoAssetK
   return scene
 }
 
-/** Imports the bundled demo models once; identical files are de-duplicated by the repository fingerprint. */
+/** Uses the editor's built-in models; identical files de-duplicate to the same library asset. */
 async function importDemoAssets(repository: AssetRepository): Promise<Record<DemoAssetKey, string>> {
-  const entries = await Promise.all(Object.entries(DEMO_ASSETS).map(async ([key, file]) => {
-    const response = await fetch(`${import.meta.env.BASE_URL}demo-assets/${file}`)
-    if (!response.ok) throw new Error(`示例模型加载失败：${file}（HTTP ${response.status}）`)
-    const bytes = new Uint8Array(await response.arrayBuffer())
-    validatePortableAsset(bytes, 'model')
-    const record = await repository.saveFile(new File([bytes], file, { type: 'model/gltf-binary', lastModified: 0 }), 'model')
-    return [key, record.id] as const
-  }))
-  return Object.fromEntries(entries) as Record<DemoAssetKey, string>
+  const records = await Promise.all(builtinModels.map(async model => [model.key, (await importBuiltinModel(model, repository)).id] as const))
+  return Object.fromEntries(records) as Record<DemoAssetKey, string>
 }
 
 /** Always creates a fresh copy; never overwrites a colleague's edited demo. */

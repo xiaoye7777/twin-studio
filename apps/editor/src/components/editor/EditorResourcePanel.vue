@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Box, Files, Picture, Upload } from '@element-plus/icons-vue'
+import { Box, Files, Loading, Picture, Upload } from '@element-plus/icons-vue'
 import EffectLibrary from './EffectLibrary.vue'
 import EffectTemplateLibrary from './EffectTemplateLibrary.vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
-import { writeAssetDragPayload, writePrimitiveDragPayload } from '@/editor/assetDrag'
+import { writeAssetDragPayload, writeBuiltinModelDragPayload, writePrimitiveDragPayload } from '@/editor/assetDrag'
+import { type BuiltinModel, builtinModels, importBuiltinModel } from '@/editor/builtinModels'
+import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { primitivePresets, type PrimitivePreset } from '@/editor/primitivePresets'
 import type { AssetMetadata } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
@@ -12,7 +14,9 @@ import { useEditorStore, type PrimitiveType } from '@/stores/editor'
 
 const assetStore = useAssetStore()
 const activeTab = ref('assets')
-const activeAssetCategory = ref<'models' | 'basic' | 'park' | 'environments'>('models')
+// Built-in models are always available, so an empty library never opens on a blank panel.
+const activeAssetCategory = ref<'builtin' | 'models' | 'basic' | 'park' | 'environments'>('builtin')
+const placingModel = ref('')
 const editorStore = useEditorStore()
 const fileInputRef = ref<HTMLInputElement>()
 const modelAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'model'))
@@ -66,6 +70,25 @@ function handlePrimitiveDragStart(event: DragEvent, preset: PrimitivePreset): vo
   writePrimitiveDragPayload(event.dataTransfer, preset.id)
 }
 
+function handleBuiltinDragStart(event: DragEvent, model: BuiltinModel): void {
+  if (!event.dataTransfer) return
+  writeBuiltinModelDragPayload(event.dataTransfer, model.key)
+}
+
+async function placeBuiltinModel(model: BuiltinModel): Promise<void> {
+  if (!editorStore.runtimeReady || placingModel.value) return
+  placingModel.value = model.key
+  try {
+    const record = await importBuiltinModel(model, new IndexedDbAssetRepository())
+    await assetStore.refresh()
+    editorStore.instantiateAsset(record.id)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '内置模型加载失败')
+  } finally {
+    placingModel.value = ''
+  }
+}
+
 function instantiateAsset(assetId: string): void {
   if (!editorStore.runtimeReady) return
   editorStore.instantiateAsset(assetId)
@@ -98,14 +121,38 @@ onMounted(() => {
     <EffectTemplateLibrary v-else-if="activeTab === 'templates'" />
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <nav class="flex h-8 shrink-0 items-center gap-1 px-3" aria-label="资产分类">
-        <button data-testid="asset-category-models" class="chip" :class="{ 'is-active': activeAssetCategory === 'models' }" type="button" @click="activeAssetCategory = 'models'">模型 <span>{{ modelAssets.length }}</span></button>
+        <button data-testid="asset-category-builtin" class="chip" :class="{ 'is-active': activeAssetCategory === 'builtin' }" type="button" @click="activeAssetCategory = 'builtin'">内置模型 <span>{{ builtinModels.length }}</span></button>
+        <button data-testid="asset-category-models" class="chip" :class="{ 'is-active': activeAssetCategory === 'models' }" type="button" @click="activeAssetCategory = 'models'">我的模型 <span>{{ modelAssets.length }}</span></button>
         <button data-testid="asset-category-basic" class="chip" :class="{ 'is-active': activeAssetCategory === 'basic' }" type="button" @click="activeAssetCategory = 'basic'">基础几何</button>
         <button data-testid="asset-category-park" class="chip" :class="{ 'is-active': activeAssetCategory === 'park' }" type="button" @click="activeAssetCategory = 'park'">园区构件</button>
         <button v-if="environmentAssets.length" data-testid="asset-category-environments" class="chip" :class="{ 'is-active': activeAssetCategory === 'environments' }" type="button" @click="activeAssetCategory = 'environments'">环境 <span>{{ environmentAssets.length }}</span></button>
-        <span class="ml-auto text-[11px] text-fg-3">拖入视口放置 · 双击放到中心</span>
+        <span class="ml-auto text-[11px] text-fg-3">{{ activeAssetCategory === 'builtin' ? '拖入视口放置 · 点击放到中心 · CC0 可商用' : '拖入视口放置 · 双击放到中心' }}</span>
       </nav>
 
-      <div v-if="activeAssetCategory === 'models'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
+      <div v-if="activeAssetCategory === 'builtin'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
+        <div class="flex min-w-max gap-2">
+          <button
+            v-for="model in builtinModels"
+            :key="model.key"
+            :data-testid="`builtin-model-${model.key}`"
+            :disabled="!editorStore.runtimeReady || !!placingModel"
+            :draggable="editorStore.runtimeReady"
+            class="tile w-44 cursor-grab text-left active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+            type="button"
+            :title="`${model.name}：拖入视口放置，点击放到中心`"
+            @click="placeBuiltinModel(model)"
+            @dragstart="handleBuiltinDragStart($event, model)"
+          >
+            <span class="tile__icon"><el-icon :size="16" :class="{ 'is-loading': placingModel === model.key }"><component :is="placingModel === model.key ? Loading : Files" /></el-icon></span>
+            <span class="min-w-0">
+              <span class="block truncate text-[12px] text-fg">{{ model.name }}</span>
+              <span class="mt-0.5 block truncate text-[11px] text-fg-3">{{ model.category }} · {{ model.description }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div v-else-if="activeAssetCategory === 'models'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
         <div v-if="modelAssets.length" class="flex min-w-max gap-2">
           <article
             v-for="asset in modelAssets"

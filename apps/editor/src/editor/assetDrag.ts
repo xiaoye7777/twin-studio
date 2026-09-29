@@ -3,6 +3,7 @@ export const ASSET_DRAG_MIME = 'application/x-twin-studio-asset'
 export type SceneResourceDragPayload =
   | { type: 'asset'; assetId: string }
   | { type: 'primitive'; presetId: string }
+  | { type: 'builtin'; modelKey: string }
 
 export function writeAssetDragPayload(dataTransfer: DataTransfer, assetId: string): void {
   const payload: SceneResourceDragPayload = { type: 'asset', assetId }
@@ -18,6 +19,13 @@ export function writePrimitiveDragPayload(dataTransfer: DataTransfer, presetId: 
   dataTransfer.setData('text/plain', presetId)
 }
 
+export function writeBuiltinModelDragPayload(dataTransfer: DataTransfer, modelKey: string): void {
+  const payload: SceneResourceDragPayload = { type: 'builtin', modelKey }
+  dataTransfer.effectAllowed = 'copy'
+  dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify(payload))
+  dataTransfer.setData('text/plain', modelKey)
+}
+
 export function readAssetDragPayload(dataTransfer: DataTransfer | null): SceneResourceDragPayload | null {
   if (!dataTransfer) return null
   const raw = dataTransfer.getData(ASSET_DRAG_MIME)
@@ -29,7 +37,8 @@ export function readAssetDragPayload(dataTransfer: DataTransfer | null): SceneRe
       value !== null &&
       'type' in value &&
       ((value.type === 'asset' && 'assetId' in value && typeof value.assetId === 'string') ||
-        (value.type === 'primitive' && 'presetId' in value && typeof value.presetId === 'string'))
+        (value.type === 'primitive' && 'presetId' in value && typeof value.presetId === 'string') ||
+        (value.type === 'builtin' && 'modelKey' in value && typeof value.modelKey === 'string'))
     ) {
       return value as SceneResourceDragPayload
     }

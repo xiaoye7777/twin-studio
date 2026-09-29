@@ -39,6 +39,8 @@ import {
 } from 'three'
 import type { Object3D } from 'three'
 import { ASSET_DRAG_MIME, readAssetDragPayload } from '@/editor/assetDrag'
+import { getBuiltinModel, importBuiltinModel } from '@/editor/builtinModels'
+import { useAssetStore } from '@/stores/assets'
 import { getPrimitivePreset } from '@/editor/primitivePresets'
 import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
 import type { TransformState } from '@/editor/history'
@@ -85,6 +87,7 @@ const viewLabels: Record<string, string> = { Perspective: '透视', Top: '顶视
 const transformLabels = { translate: '移动', rotate: '旋转', scale: '缩放' } as const
 const sceneSettingsStore = useSceneSettingsStore()
 const dataSourcesStore = useDataSourcesStore()
+const assetStore = useAssetStore()
 let stopDataSourcesWatch: WatchStopHandle | null = null
 const twinStore = useTwinStore()
 const effectsStore = useEffectsStore()
@@ -360,6 +363,19 @@ async function instantiateAsset(assetId: string, groundPoint: Vector3): Promise<
   }
 }
 
+/** Built-in models join the asset library on first use, then behave like any imported asset. */
+async function instantiateBuiltinModel(modelKey: string, groundPoint: Vector3): Promise<void> {
+  const model = getBuiltinModel(modelKey)
+  if (!model) { ElMessage.warning('内置模型不存在或已更新'); return }
+  try {
+    const record = await importBuiltinModel(model, assetRepository)
+    void assetStore.refresh()
+    if (!unmounted) await instantiateAsset(record.id, groundPoint)
+  } catch (error) {
+    if (!unmounted) ElMessage.error(error instanceof Error ? error.message : '内置模型加载失败')
+  }
+}
+
 function handleDragOver(event: DragEvent): void {
   if (!event.dataTransfer?.types.includes(ASSET_DRAG_MIME)) return
   event.preventDefault()
@@ -385,6 +401,8 @@ function handleDrop(event: DragEvent): void {
   }
   if (payload.type === 'asset') {
     void instantiateAsset(payload.assetId, groundPoint)
+  } else if (payload.type === 'builtin') {
+    void instantiateBuiltinModel(payload.modelKey, groundPoint)
   } else {
     const preset = getPrimitivePreset(payload.presetId)
     if (!preset) {
