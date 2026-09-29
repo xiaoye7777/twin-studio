@@ -2,8 +2,11 @@
 import { ArrowLeft, EditPen, Monitor } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import TwinSceneViewer from '@/components/twin/TwinSceneViewer.vue'
-import type { ViewerSelection, ViewerRuntimeState, TwinSceneViewerPublicApi, ViewerInteractionEvent } from '@/components/twin/viewerContract'
+import { TwinSceneViewer } from '@twin-studio/viewer'
+import { IndexedDbAssetRepository } from '@/infrastructure/assets'
+import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageService'
+import { LocalSceneRepository } from '@/infrastructure/scenes'
+import type { ViewerSelection, ViewerRuntimeState, TwinSceneViewerPublicApi, ViewerInteractionEvent } from '@twin-studio/core'
 import { useProjectStore } from '@/stores/project'
 import DashboardDevicePanel from './DashboardDevicePanel.vue'
 import DashboardOverviewPanel from './DashboardOverviewPanel.vue'
@@ -19,6 +22,9 @@ const viewer = ref<TwinSceneViewerPublicApi | null>(null)
 const runtime = shallowRef<ViewerRuntimeState | null>(null)
 const selectedDeviceId = ref('')
 const lastInteraction = shallowRef<ViewerInteractionEvent | null>(null)
+// Preview through the exact delivery path: export the saved project to .twin.zip and load it with the SDK.
+const packages = new ProjectPackageService(new LocalSceneRepository(), new IndexedDbAssetRepository(), projects)
+const packageSource = shallowRef<Blob | null>(null)
 
 const devices = computed(() => {
   const state = runtime.value
@@ -49,12 +55,24 @@ async function selectDevice(deviceId: string): Promise<void> {
   await viewer.value?.focusDevice(deviceId)
 }
 
-watch(projectId, () => {
+watch(projectId, async (id, _previous, onCleanup) => {
+  let cancelled = false
+  onCleanup(() => { cancelled = true })
   lastInteraction.value = null
   runtime.value = null
   selectedDeviceId.value = ''
+  packageSource.value = null
   status.value = '正在加载场景…'
-})
+  // A saved scene without a project card (e.g. restored storage) still previews under its ID.
+  const now = new Date().toISOString()
+  const project = projects.getProjectById(id) ?? { id, name: id, createdAt: now, updatedAt: now }
+  try {
+    const blob = await packages.exportProject(project)
+    if (!cancelled) packageSource.value = blob
+  } catch (error) {
+    if (!cancelled) status.value = error instanceof Error ? error.message : '项目包生成失败'
+  }
+}, { immediate: true })
 watch(devices, (nextDevices) => {
   if (!nextDevices.some((device) => device.id === selectedDeviceId.value)) selectedDeviceId.value = ''
 }, { immediate: true })
@@ -72,9 +90,10 @@ onBeforeUnmount(() => { runtime.value = null })
   >
     <section data-testid="dashboard-viewer-region" class="absolute inset-0 overflow-hidden bg-slate-950">
       <TwinSceneViewer
+        v-if="packageSource"
         ref="viewer"
         :key="projectId"
-        :project-id="projectId"
+        :source="packageSource"
         @loaded="handleLoaded"
         @selection-change="handleSelection"
         @interaction-event="lastInteraction = $event"

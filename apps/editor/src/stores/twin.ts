@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { createTwinState } from '@/runtime/twin/createTwinState'
+import { createTwinState } from '@twin-studio/core'
 import { useEditorStore } from './editor'
 
 export const useTwinStore = defineStore('twin', () =>

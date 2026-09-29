@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import { defaultDataSources, isProjectDataSources, type ProjectDataSource } from '@/domain/dataSources'
+import { defaultDataSources, isProjectDataSources, type ProjectDataSource } from '@twin-studio/core'
 
 export const useDataSourcesStore = defineStore('data-sources', () => {
   const sources = shallowRef<ProjectDataSource[]>(defaultDataSources())

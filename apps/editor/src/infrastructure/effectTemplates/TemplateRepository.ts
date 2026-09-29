@@ -1,5 +1,4 @@
-import { cloneTemplate, isEffectTemplate, type EffectTemplate } from '@/domain/effectTemplates'
-import { getBuiltinTemplates } from '@/domain/effectTemplates/builtins'
+import { cloneTemplate, type EffectTemplate, getBuiltinTemplates, isEffectTemplate } from '@twin-studio/core'
 
 export interface TemplateRepository {
   list(): Promise<EffectTemplate[]>

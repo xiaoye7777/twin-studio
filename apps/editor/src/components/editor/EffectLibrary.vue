@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { effectDefinitions } from '@/domain/effects'
-import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
+import { bindingTargetFromObject, effectDefinitions } from '@twin-studio/core'
 import { useEditorStore } from '@/stores/editor'
 import { useEffectsStore } from '@/stores/effects'
 const editor = useEditorStore()

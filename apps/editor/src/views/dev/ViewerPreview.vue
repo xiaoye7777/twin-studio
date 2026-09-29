@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TwinSceneViewer from '@/components/twin/TwinSceneViewer.vue'
-import type { ViewerTargetClick } from '@/runtime/twin/ViewerPointerEvents'
+import type { ViewerTargetClick } from '@twin-studio/core'
 const route = useRoute()
 const router = useRouter()
 const projectId = computed(() => typeof route.query.projectId === 'string' ? route.query.projectId : '')

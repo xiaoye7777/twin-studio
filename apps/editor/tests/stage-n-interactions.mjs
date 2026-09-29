@@ -133,8 +133,8 @@ export async function testInteractions(page, sourceId) {
   await navigate('/projects')
   await page.waitForTimeout(200)
   const disposed = await page.evaluate(async () => {
-    const { getEffectDiagnostics } = await import('/src/runtime/effects/EffectRuntime.ts')
-    const { getMockDataSourceDiagnostics } = await import('/src/infrastructure/data/MockDataSource.ts')
+    const { getEffectDiagnostics } = await Promise.resolve(window.__twinCore)
+    const { getMockDataSourceDiagnostics } = await Promise.resolve(window.__twinCore)
     return { listeners: window.qaPointerListeners(), effects: getEffectDiagnostics().activeLoops, timers: getMockDataSourceDiagnostics().activeTimerCount }
   })
   assert.deepEqual(disposed, { listeners: 0, effects: 0, timers: 0 })

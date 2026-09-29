@@ -2,11 +2,17 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  createInteraction, interactionActionTypes, interactionTriggers, isSceneInteraction,
-  type InteractionAction, type InteractionActionType, type InteractionTrigger, type SceneInteraction,
-} from '@/domain/interactions'
-import { twinBindingTargetKey } from '@/domain/twin'
-import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
+  bindingTargetFromObject,
+  createInteraction,
+  type InteractionAction,
+  type InteractionActionType,
+  interactionActionTypes,
+  type InteractionTrigger,
+  interactionTriggers,
+  isSceneInteraction,
+  type SceneInteraction,
+  twinBindingTargetKey,
+} from '@twin-studio/core'
 import { useEditorStore } from '@/stores/editor'
 import { useInteractionsStore } from '@/stores/interactions'
 

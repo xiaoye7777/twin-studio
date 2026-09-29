@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { TwinRuntimeValueData } from '@/domain/twin'
+import type { TwinRuntimeValueData } from '@twin-studio/core'
 import type { DashboardDeviceStatusKind, DashboardDeviceView } from './dashboardRuntime'
 
 const props = defineProps<{

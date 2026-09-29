@@ -1,6 +1,4 @@
-import { isSceneDocumentV1 } from '@/domain/scene'
-import type { SceneDocumentV1 } from '@/domain/scene'
-import type { SceneRepository } from './SceneRepository'
+import { isSceneDocumentV1, type SceneDocumentV1, type SceneRepository } from '@twin-studio/core'
 
 const STORAGE_PREFIX = 'digital-twin-studio:scene:v1:'
 

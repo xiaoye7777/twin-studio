@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { cloneTemplate, type EffectTemplate } from '@/domain/effectTemplates'
-import { isVisualRule, ruleOperators, type RuleCondition, type RuleOperator, type VisualRule } from '@/domain/visualRules'
-import { twinBindingTargetKey } from '@/domain/twin'
-import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
+import {
+  bindingTargetFromObject,
+  cloneTemplate,
+  type EffectTemplate,
+  isVisualRule,
+  type RuleCondition,
+  type RuleOperator,
+  ruleOperators,
+  twinBindingTargetKey,
+  type VisualRule,
+} from '@twin-studio/core'
 import { useEditorStore } from '@/stores/editor'
 import { useTwinStore } from '@/stores/twin'
 import { useVisualRulesStore } from '@/stores/visualRules'

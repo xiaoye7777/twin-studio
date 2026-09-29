@@ -72,7 +72,7 @@ export async function testDashboard(page, projectId) {
   assert.equal(await page.getByTestId('dashboard-device-count').textContent(), '3')
   assert.equal(await page.getByTestId('dashboard-resolved-binding-count').textContent(), '3')
   assert.equal((await page.evaluate(async () => {
-    const { getMockDataSourceDiagnostics } = await import('/src/infrastructure/data/MockDataSource.ts')
+    const { getMockDataSourceDiagnostics } = await Promise.resolve(window.__twinCore)
     return getMockDataSourceDiagnostics().activeTimerCount
   })), 1)
 
@@ -135,8 +135,8 @@ export async function testDashboard(page, projectId) {
   assert.equal(new URL(page.url()).pathname, '/projects')
   await page.waitForTimeout(250)
   const disposed = await page.evaluate(async () => {
-    const { getMockDataSourceDiagnostics } = await import('/src/infrastructure/data/MockDataSource.ts')
-    const { getVisualRuleDiagnostics } = await import('/src/runtime/effects/VisualRuleRuntime.ts')
+    const { getMockDataSourceDiagnostics } = await Promise.resolve(window.__twinCore)
+    const { getVisualRuleDiagnostics } = await Promise.resolve(window.__twinCore)
     return { ...getMockDataSourceDiagnostics(), ...getVisualRuleDiagnostics(), ...window.qaResources() }
   })
   assert.deepEqual(disposed, { activeTimerCount: 0, subscriptions: 0, urls: 0, raf: 0 })

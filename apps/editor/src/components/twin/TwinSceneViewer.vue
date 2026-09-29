@@ -1,11 +1,15 @@
+<!-- Dev/test harness for /dev/viewer: loads a saved project straight from browser storage. Hosts use @twin-studio/viewer. -->
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import type { TwinSceneViewerPublicApi, TwinSceneViewerEvents } from './viewerContract'
-import type { TwinBindingTarget } from '@/domain/twin'
+import {
+  type TwinBindingTarget,
+  TwinSceneRuntime,
+  type TwinSceneViewerEvents,
+  type TwinSceneViewerPublicApi,
+  type ViewerTargetClick,
+} from '@twin-studio/core'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import { TwinSceneRuntime } from '@/runtime/twin/TwinSceneRuntime'
-import type { ViewerTargetClick } from '@/runtime/twin/ViewerPointerEvents'
 
 const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<TwinSceneViewerEvents>()
@@ -47,7 +51,7 @@ async function load(): Promise<void> {
     const result = await runtime.load(props.projectId)
     if (request !== generation) return
     warnings.value = result
-    emit('loaded', { projectId: props.projectId, objectCount: runtime.roots.length, bindingCount: runtime.twin.bindings.length, warnings: result })
+    emit('loaded', { projectId: props.projectId, projectName: props.projectId, objectCount: runtime.roots.length, bindingCount: runtime.twin.bindings.length, warnings: result })
   } catch (cause) {
     if (request !== generation) return
     error.value = cause instanceof Error ? cause.message : String(cause)
@@ -65,6 +69,11 @@ const publicApi: TwinSceneViewerPublicApi = {
   clearSelection: () => session.value?.clearSelection(),
   getSelection: () => session.value?.getSelection() ?? null,
   getRuntimeState: () => session.value?.runtimeState ?? null,
+  getDiagnostics: () => session.value?.getDiagnostics() ?? {
+    dataSource: { type: 'mock', status: 'disconnected', messageCount: 0, error: null },
+    visualRules: { activations: 0, activeRules: 0 },
+    effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
+  },
 }
 defineExpose({
   ...publicApi,

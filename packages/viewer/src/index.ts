@@ -1,13 +1,36 @@
 export { default as TwinSceneViewer } from './components/TwinSceneViewer.vue'
-export { loadTwinPackage } from './infrastructure/package/PortableTwinPackageLoader'
-export type { LoadedTwinPackage, TwinPackageSource } from './infrastructure/package/PortableTwinPackageLoader'
-export type { TwinSceneViewerPublicApi, TwinSceneViewerEvents, ViewerDiagnostics, ViewerInteractionEvent, ViewerLoadedEvent, ViewerRuntimeState, ViewerSelection, ViewerTargetClick } from './components/viewerContract'
-export type { DataSourceConnectionStatus, DataSourceType } from './infrastructure/data'
-export type { SceneDocumentV1, SceneAssetInstanceV1, ScenePrimitiveV1, SceneSettingsV1 } from './domain/scene'
-export type { TwinBinding, TwinBindingTarget, TwinDevice, TwinRuntimeValue, TwinVariableDefinition } from './domain/twin'
-export type { EffectInstance, EffectKind, EffectParameters } from './domain/effects'
-export type { EffectTemplate } from './domain/effectTemplates'
-export type { VisualRule, RuleCondition, RuleOperator } from './domain/visualRules'
-export type { SceneInteraction, InteractionAction, InteractionTrigger } from './domain/interactions'
-
-export type { ProjectDataSource } from './domain/dataSources'
+export { loadTwinPackage } from '@twin-studio/core'
+export type {
+  DataSourceConnectionStatus,
+  DataSourceType,
+  EffectInstance,
+  EffectKind,
+  EffectParameters,
+  EffectTemplate,
+  InteractionAction,
+  InteractionTrigger,
+  LoadedTwinPackage,
+  ProjectDataSource,
+  RuleCondition,
+  RuleOperator,
+  SceneAssetInstanceV1,
+  SceneDocumentV1,
+  SceneInteraction,
+  ScenePrimitiveV1,
+  SceneSettingsV1,
+  TwinBinding,
+  TwinBindingTarget,
+  TwinDevice,
+  TwinPackageSource,
+  TwinRuntimeValue,
+  TwinSceneViewerEvents,
+  TwinSceneViewerPublicApi,
+  TwinVariableDefinition,
+  ViewerDiagnostics,
+  ViewerInteractionEvent,
+  ViewerLoadedEvent,
+  ViewerRuntimeState,
+  ViewerSelection,
+  ViewerTargetClick,
+  VisualRule,
+} from '@twin-studio/core'

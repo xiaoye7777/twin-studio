@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { effectDefinitions } from '@/domain/effects'
+import { bindingTargetFromObject, effectDefinitions, twinBindingTargetKey } from '@twin-studio/core'
 import EffectParameterFields from './EffectParameterFields.vue'
-import { twinBindingTargetKey } from '@/domain/twin'
-import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
 import { useEditorStore } from '@/stores/editor'
 import { useEffectsStore } from '@/stores/effects'
 const editor = useEditorStore()

@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { effectDefinitions, type EffectKind } from '@/domain/effects'
-import { cloneTemplate, createTemplateEffect, isEffectTemplate, type EffectTemplate, type RelativeEffectTarget } from '@/domain/effectTemplates'
+import {
+  cloneTemplate,
+  createTemplateEffect,
+  effectDefinitions,
+  type EffectKind,
+  type EffectTemplate,
+  isEffectTemplate,
+  type RelativeEffectTarget,
+} from '@twin-studio/core'
 import { prepareTemplateApplication } from '@/editor/services/applyEffectTemplate'
 import { useEffectTemplatesStore } from '@/stores/effectTemplates'
 import { useEffectsStore } from '@/stores/effects'

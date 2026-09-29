@@ -4,16 +4,11 @@
 
 ## 1. 安装
 
-当前离线交付包：
-
-```text
-/Users/xiaoye/codexfolder/twin-viewer-sdk/twin-studio-viewer-0.1.0.tgz
-```
-
+在 monorepo 根目录执行 `pnpm pack:viewer`，生成 `release/twin-studio-viewer-<version>.tgz`。
 把 tgz 放入 Dashboard 的 `vendor/` 后安装：
 
 ```bash
-pnpm add ./vendor/twin-studio-viewer-0.1.0.tgz
+pnpm add ./vendor/twin-studio-viewer-<version>.tgz
 ```
 
 Dashboard 需要安装 SDK 的 peer dependencies：`vue@^3.5` 与 `three@0.184.0`。Meteor3D、ZIP Loader 和 Runtime 已打进 SDK，不会再请求本地 Meteor3D package。请通过 Vite `resolve.dedupe: ['three', 'vue']` 保证单实例。
@@ -120,7 +115,7 @@ Dashboard 只使用 `deviceId`、`TwinBindingTarget`、`bindingId + variableKey`
 完整独立参考工程：
 
 ```text
-/Users/xiaoye/codexfolder/dashboard-viewer-demo
+apps/dashboard-demo（monorepo 内）
 ```
 
 重点文件：
@@ -128,9 +123,9 @@ Dashboard 只使用 `deviceId`、`TwinBindingTarget`、`bindingId + variableKey`
 - `src/App.vue`：Viewer 放入大屏、事件监听与设备列表联动。
 - `src/useTwinDashboard.ts`：Viewer Contract、Runtime State 和 KPI 投影。
 - `public/zero-carbon-demo.twin.zip`：可直接运行的园区项目包。
-- `vendor/twin-studio-viewer-0.1.0.tgz`：真实安装的 SDK 包。
+- `package.json`：通过 `workspace:*` 引用 `packages/viewer` 的 dist 构建产物。
 
-运行 `pnpm install && pnpm dev`。当前数据源仍为 MockDataSource；无历史时序数据，也未提供 iframe/postMessage。
+在仓库根目录运行 `pnpm install && pnpm dev:dashboard`。数据源由项目包配置决定（Mock 或 WebSocket）；无历史时序数据，也未提供 iframe/postMessage。
 
 ## 项目数据源
 

@@ -5,9 +5,21 @@
 | 目录 | 包名 | 说明 |
 | --- | --- | --- |
 | `apps/editor` | `@twin-studio/editor` | 3D 场景编辑器，导出 `.twin.zip` |
-| `packages/viewer` | `@twin-studio/viewer` | 对外交付的 Vue 3 Viewer SDK，加载 `.twin.zip` |
+| `packages/core` | `@twin-studio/core` | 内部共享层：场景数据模型、包格式、运行时（数据/特效/规则/交互）。不单独发布 |
+| `packages/viewer` | `@twin-studio/viewer` | 对外交付的 Vue 3 Viewer SDK，加载 `.twin.zip`；构建时把 core 打包进 dist |
 | `apps/dashboard-demo` | `@twin-studio/dashboard-demo` | 模拟大屏项目，验证 SDK 接入 |
 | `vendor/meteor3d-core` | `@meteor3d/core` | Meteor3D Core 源码快照（见 UPSTREAM.md） |
+
+## 依赖关系
+
+```
+apps/editor ──┬─> packages/core ──> vendor/meteor3d-core
+              └─> packages/viewer ──> packages/core      （编辑器「数据大屏」页 = 导出 zip 后用 SDK 加载）
+apps/dashboard-demo ──> packages/viewer（dist，与外部项目安装 tgz 一致）
+```
+
+编辑器和 viewer 共享同一份 core 代码，新增规则/特效/数据源能力只需改 core 一处。
+viewer 的 `index.d.ts` 为对外手写声明，`packages/viewer/src/publicTypes.check.ts` 会在 `pnpm type-check` 时校验它与 core 真实类型一致。
 
 ## 开发
 

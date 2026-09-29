@@ -6,9 +6,10 @@
 
 运行环境：Node.js `20.16.0+`、pnpm `10.20.0`。
 
+在仓库根目录执行 `pnpm install` 后：
+
 ```bash
-pnpm install
-pnpm dev
+pnpm dev:editor
 ```
 
 ## 验证

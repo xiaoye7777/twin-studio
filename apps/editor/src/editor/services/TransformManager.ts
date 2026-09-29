@@ -1,6 +1,6 @@
 import type { Object3D } from 'three'
 import { TransformControls } from 'three/addons/controls/TransformControls.js'
-import type { MeteorScene } from '@/infrastructure/meteor3d'
+import type { MeteorScene } from '@twin-studio/core'
 import { MathUtils } from 'three'
 import type { TransformMode } from '@/stores/editor'
 

@@ -2,14 +2,14 @@
 import { Delete, Link as LinkIcon, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, reactive, ref, watch } from 'vue'
-import type {
-  TwinBinding,
-  TwinRuntimeValueData,
-  TwinVariableDataType,
-  TwinVariableDefinition,
-} from '@/domain/twin'
-import { twinBindingTargetKey } from '@/domain/twin'
-import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
+import {
+  bindingTargetFromObject,
+  type TwinBinding,
+  twinBindingTargetKey,
+  type TwinRuntimeValueData,
+  type TwinVariableDataType,
+  type TwinVariableDefinition,
+} from '@twin-studio/core'
 import { useEditorStore } from '@/stores/editor'
 import { useTwinStore } from '@/stores/twin'
 

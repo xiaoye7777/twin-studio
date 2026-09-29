@@ -1,6 +1,6 @@
 import { Vector2 } from 'three'
 import type { Object3D } from 'three'
-import type { MeteorScene } from '@/infrastructure/meteor3d'
+import type { MeteorScene } from '@twin-studio/core'
 import type { useEditorStore } from '@/stores/editor'
 
 type EditorStore = ReturnType<typeof useEditorStore>

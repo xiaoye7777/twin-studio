@@ -1,7 +1,11 @@
 import type { Object3D } from 'three'
-import { instantiateTemplate, type EffectTemplate } from '@/domain/effectTemplates'
-import { twinBindingTargetKey } from '@/domain/twin'
-import { bindingTargetFromObject, bindingTargetsInObjectTree } from './BindingTargetResolver'
+import {
+  bindingTargetFromObject,
+  bindingTargetsInObjectTree,
+  type EffectTemplate,
+  instantiateTemplate,
+  twinBindingTargetKey,
+} from '@twin-studio/core'
 
 /** Editor-specific existence check; all expansion semantics remain in the domain. */
 export function prepareTemplateApplication(template: EffectTemplate, selected: Object3D, roots: readonly Object3D[]) {

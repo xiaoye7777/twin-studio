@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import type { TwinBindingTarget } from '@/domain/twin'
-import type { TwinSceneViewerEvents, TwinSceneViewerPublicApi } from './viewerContract'
-import { loadTwinPackage, type LoadedTwinPackage, type TwinPackageSource } from '@/infrastructure/package/PortableTwinPackageLoader'
-import { TwinSceneRuntime } from '@/runtime/twin/TwinSceneRuntime'
-import type { ViewerTargetClick } from '@/runtime/twin/ViewerPointerEvents'
+import {
+  type LoadedTwinPackage,
+  loadTwinPackage,
+  type TwinBindingTarget,
+  type TwinPackageSource,
+  TwinSceneRuntime,
+  type TwinSceneViewerEvents,
+  type TwinSceneViewerPublicApi,
+  type ViewerTargetClick,
+} from '@twin-studio/core'
 
 const props = defineProps<{ source: TwinPackageSource }>()
 const emit = defineEmits<TwinSceneViewerEvents>()
@@ -72,7 +77,15 @@ const publicApi: TwinSceneViewerPublicApi = {
     effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
   },
 }
-defineExpose(publicApi)
+defineExpose({
+  ...publicApi,
+  // QA diagnostics for the Twin Studio browser test suites. Deliberately absent from index.d.ts:
+  // hosts integrate only through TwinSceneViewerPublicApi.
+  getRuntimeObject: (target: TwinBindingTarget) => session.value?.getRuntimeObject(target) ?? null,
+  getRuleDiagnostics: () => session.value?.visualRules?.getDiagnostics() ?? null,
+  getInteractionDiagnostics: () => session.value?.interactions?.getDiagnostics() ?? null,
+  getEffectDiagnostics: () => session.value?.effects?.getDiagnostics() ?? null,
+})
 </script>
 
 <template>

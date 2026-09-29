@@ -10,7 +10,9 @@ const errors = []
 page.on('pageerror', e => errors.push(e.message))
 const editor = process.env.EDITOR_URL || 'http://127.0.0.1:5190'
 const dashboard = process.env.TEST_BASE_URL || 'http://127.0.0.1:5200'
-const status = async () => (await (await fetch('http://127.0.0.1:8787/status')).json()).connections
+// Must match the realtime server's TWIN_DATA_PORT; the exported package points at this address.
+const dataPort = process.env.TWIN_DATA_PORT || '8787'
+const status = async () => (await (await fetch(`http://127.0.0.1:${dataPort}/status`)).json()).connections
 const waitConnections = async count => {
   for (let i = 0; i < 100; i++) { if (await status() === count) return; await new Promise(resolve => setTimeout(resolve, 100)) }
   assert.equal(await status(), count)
@@ -22,10 +24,12 @@ try {
   const id = await page.evaluate(() => JSON.parse(localStorage.getItem('digital-twin-studio-projects')).at(-1).id)
   const navigate = path => page.evaluate(path => document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(path), path)
   await navigate('/editor/' + id)
+  // The saved scene's data sources reset the settings form once the runtime finishes loading.
+  await page.waitForFunction(() => document.querySelector('[data-testid="editor-viewport"]')?.dataset.runtimeReady === 'true')
   await page.getByTestId('toggle-scene-settings').click()
   await page.getByTestId('data-source-type').selectOption('websocket')
   await page.getByTestId('data-source-name').fill('实时设备数据')
-  await page.getByTestId('data-source-url').fill('ws://127.0.0.1:8787/realtime')
+  await page.getByTestId('data-source-url').fill(`ws://127.0.0.1:${dataPort}/realtime`)
   await page.getByTestId('data-source-apply').click()
   await page.waitForFunction(() => document.querySelector('[data-testid="data-source-status"]').textContent.includes('connected'))
   await waitConnections(1)
@@ -40,7 +44,7 @@ try {
   await page.getByTestId('history-undo').click()
   await waitConnections(1)
   const invalidChecks = await page.evaluate(async () => {
-    const { isProjectDataSources } = await import('/src/domain/dataSources/index.ts')
+    const { isProjectDataSources } = await Promise.resolve(window.__twinCore)
     const source = {id:'x',name:'Test',type:'websocket',enabled:true,url:'ws://localhost:8787/realtime'}
     return [
       isProjectDataSources([source]),
@@ -78,7 +82,7 @@ try {
   await download.saveAs(new URL('../public/project-websocket.twin.zip', import.meta.url).pathname)
   // Parse with the actual project ZIP reader and exercise import through the UI.
   const contents = await page.evaluate(async bytes => {
-    const { readPackageZip } = await import('/src/infrastructure/packages/packageZip.ts')
+    const { readPackageZip } = await Promise.resolve(window.__twinCore)
     return JSON.parse(new TextDecoder().decode(readPackageZip(new Uint8Array(bytes)).get('scene.json')))
   }, [...bytes])
   assert.deepEqual(contents.dataSources, config)
@@ -118,8 +122,10 @@ try {
   assert.equal(await viewer(() => window.sdkViewer.getSelection().deviceId), 'ESS-002')
   // Same component, reactive source change: closes old socket, legacy package starts Mock.
   await page.evaluate(async () => {
-    const { createApp, h, ref } = await import('/node_modules/.vite/deps/vue.js')
-    const { TwinSceneViewer } = await import('/node_modules/.vite/deps/@twin-studio_viewer.js')
+    // Reuse the exact module URLs the app loaded (prebundled tgz or linked workspace dist) to share instances.
+    const loaded = performance.getEntriesByType('resource').map(entry => entry.name)
+    const { createApp, h, ref } = await import(loaded.find(url => /\/\.vite\/deps\/vue\.js/.test(url)))
+    const { TwinSceneViewer } = await import(loaded.find(url => /twin-viewer\.js|@twin-studio_viewer\.js/.test(url)))
     document.querySelector('#app').__vue_app__.unmount()
     window.testSource = ref('/project-websocket.twin.zip')
     window.testApp = createApp({ render: () => h(TwinSceneViewer, { source: window.testSource.value, ref: v => { window.sdkViewer = v } }) })

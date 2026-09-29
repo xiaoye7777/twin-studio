@@ -1,4 +1,4 @@
-import type { AssetMetadata, AssetRecord, AssetRepository, AssetType } from './AssetRepository'
+import type { AssetMetadata, AssetRecord, AssetRepository, AssetType } from '@twin-studio/core'
 
 const DATABASE_NAME = 'digital-twin-studio-assets'
 const DATABASE_VERSION = 1

@@ -11,7 +11,7 @@ import {
   getLastMeteorDisposeDiagnostics,
   MeteorScene,
   type MeteorRuntimeDiagnostics,
-} from '@/infrastructure/meteor3d'
+} from '@twin-studio/core'
 
 const canvasRef = ref<HTMLCanvasElement>()
 const previousDispose = getLastMeteorDisposeDiagnostics()

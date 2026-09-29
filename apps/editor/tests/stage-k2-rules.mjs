@@ -9,7 +9,7 @@ export async function testVisualRules(page, projectId) {
   await page.evaluate(async()=>{
     const {useEditorStore}=await import('/src/stores/editor.ts');const e=useEditorStore();e.selectObject(e.sceneRoots.find(o=>o.name==='Cabinet A'))
     const {LocalTemplateRepository}=await import('/src/infrastructure/effectTemplates/TemplateRepository.ts')
-    const {getBuiltinTemplates}=await import('/src/domain/effectTemplates/builtins.ts')
+    const {getBuiltinTemplates}=await Promise.resolve(window.__twinCore)
     const repo=new LocalTemplateRepository()
     for(const [id,name,color] of [['low-soc','低 SOC','#0033ff'],['fault','故障告警','#ff00ff']]) {
       const t=getBuiltinTemplates()[0];t.id=id;t.origin='local';t.name=name;t.effects.forEach(e=>{e.parameters.color=color;e.parameters.text=name});await repo.save(t)
@@ -115,16 +115,16 @@ export async function testVisualRules(page, projectId) {
   const lifecycle=[]
   for(let i=0;i<3;i++) {
     await navigate('/projects');await page.waitForTimeout(200)
-    const stats=await page.evaluate(async()=>{const {getVisualRuleDiagnostics}=await import('/src/runtime/effects/VisualRuleRuntime.ts');return {...getVisualRuleDiagnostics(),...window.qaResources()}})
+    const stats=await page.evaluate(async()=>{const {getVisualRuleDiagnostics}=await Promise.resolve(window.__twinCore);return {...getVisualRuleDiagnostics(),...window.qaResources()}})
     assert.deepEqual(stats,{subscriptions:0,urls:0,raf:0});lifecycle.push(stats)
     await navigate(`/dev/viewer?projectId=${projectId}`)
     await page.waitForFunction(()=>document.querySelector('[data-testid="twin-scene-viewer"]')?.dataset.loaded==='true')
   }
   await navigate('/projects')
   const missing=await page.evaluate(async saved=>{
-    const {TwinSceneRuntime}=await import('/src/runtime/twin/TwinSceneRuntime.ts')
+    const {TwinSceneRuntime}=await Promise.resolve(window.__twinCore)
     const {IndexedDbAssetRepository}=await import('/src/infrastructure/assets/index.ts')
-    const {evaluateCondition}=await import('/src/domain/visualRules/index.ts')
+    const {evaluateCondition}=await Promise.resolve(window.__twinCore)
     const checks=[['>',2,1,true],['>=',1,1,true],['<',1,2,true],['<=',1,1,true],['==',1,1,true],['!=',1,2,true]]
     if(!checks.every(([operator,value,threshold,expected])=>evaluateCondition({dataType:'number',operator,value:threshold},value)===expected))throw new Error('Operator test failed')
     if(evaluateCondition({dataType:'number',operator:'!=',value:1},NaN)||evaluateCondition({dataType:'number',operator:'!=',value:1},'2'))throw new Error('Type coercion')
@@ -144,7 +144,7 @@ export async function testVisualRules(page, projectId) {
       await runtime.load(document.projectId)
       const diagnostics=runtime.visualRules.getDiagnostics()
       if(!Object.values(diagnostics.rules).every(d=>d.status==='unresolved'))throw new Error('Missing references not unresolved')
-      runtime.twin.setMockRunning(false)
+      runtime.twin.setDataSourceState('mock','disconnected')
       if(!Object.values(runtime.visualRules.getDiagnostics().rules).every(d=>d.status==='stopped'))throw new Error('Stop did not deactivate')
       return diagnostics
     } finally {runtime.dispose();canvas.remove()}
@@ -155,8 +155,8 @@ export async function testVisualRules(page, projectId) {
     await navigate(`/editor/${projectId}`);await ready()
     await navigate('/projects');await page.waitForTimeout(200)
     const stats=await page.evaluate(async()=>{
-      const {getVisualRuleDiagnostics}=await import('/src/runtime/effects/VisualRuleRuntime.ts')
-      const {getMockDataSourceDiagnostics}=await import('/src/infrastructure/data/MockDataSource.ts')
+      const {getVisualRuleDiagnostics}=await Promise.resolve(window.__twinCore)
+      const {getMockDataSourceDiagnostics}=await Promise.resolve(window.__twinCore)
       return {...getVisualRuleDiagnostics(),...getMockDataSourceDiagnostics(),...window.qaResources()}
     })
     assert.deepEqual(stats,{subscriptions:0,activeTimerCount:0,urls:0,raf:0});editorLifecycle.push(stats)

@@ -1,0 +1,134 @@
+import type { ProjectDataSource } from '../dataSources'
+import { Color, Mesh } from 'three'
+import type { Object3D } from 'three'
+import { findAssetInstanceRoot, getEditorMetadata } from '../../runtime/scene/objectMetadata'
+import type { TwinBinding } from '../twin'
+import { cloneEffects, type EffectInstance } from '../effects'
+import { cloneRules, type VisualRule } from '../visualRules'
+import { cloneInteractions, type SceneInteraction } from '../interactions'
+import type {
+  SceneAssetInstanceV1,
+  SceneCameraViewV1,
+  SceneDocumentV1,
+  SceneNodeOverrideV1,
+  ScenePrimitiveV1,
+  SceneSettingsV1,
+  SceneTransformV1,
+} from './sceneTypes'
+
+function runtimeBid(object: Object3D): string | undefined {
+  return typeof object.userData.bid === 'string' ? object.userData.bid : undefined
+}
+export function serializeTransform(object: Object3D): SceneTransformV1 {
+  return {
+    position: [object.position.x, object.position.y, object.position.z],
+    rotation: [object.rotation.x, object.rotation.y, object.rotation.z],
+    scale: [object.scale.x, object.scale.y, object.scale.z],
+  }
+}
+
+export function applySceneTransform(object: Object3D, transform: SceneTransformV1): void {
+  object.position.fromArray(transform.position)
+  object.rotation.fromArray([...transform.rotation, object.rotation.order])
+  object.scale.fromArray(transform.scale)
+  object.updateMatrix()
+  object.updateMatrixWorld(true)
+}
+
+function serializePrimitive(root: Object3D, visible: (object: Object3D) => boolean): ScenePrimitiveV1 | null {
+  const metadata = getEditorMetadata(root)
+  if (metadata?.kind !== 'primitive') return null
+
+  const color = root instanceof Mesh && root.material && !Array.isArray(root.material)
+    && 'color' in root.material && root.material.color instanceof Color
+    ? `#${root.material.color.getHexString()}`
+    : '#3b82f6'
+
+  const storedProperties = typeof root.userData.primitiveProperties === 'object' && root.userData.primitiveProperties !== null
+    ? root.userData.primitiveProperties as Partial<ScenePrimitiveV1['properties']>
+    : {}
+
+  return {
+    nodeId: metadata.nodeId,
+    type: metadata.primitiveType,
+    name: root.name,
+    transform: serializeTransform(root),
+    properties: { ...storedProperties, color },
+    runtimeBid: runtimeBid(root),
+    visible: visible(root),
+  }
+}
+
+export function serializeSceneDocument(options: {
+  projectId: string
+  dataSources?: ProjectDataSource[]
+  projectName?: string
+  roots: readonly Object3D[]
+  modifiedObjects: readonly Object3D[]
+  sceneSettings?: SceneSettingsV1
+  cameraView?: SceneCameraViewV1
+  bindings?: TwinBinding[]
+  effects?: EffectInstance[]
+  visualRules?: VisualRule[]
+  interactions?: SceneInteraction[]
+  resolveVisibility?: (object: Object3D) => boolean
+}): SceneDocumentV1 {
+  const resolveVisibility = options.resolveVisibility ?? ((object: Object3D) => object.visible)
+  const overridesByRoot = new Map<Object3D, SceneNodeOverrideV1[]>()
+
+  for (const object of options.modifiedObjects) {
+    const root = findAssetInstanceRoot(object)
+    const assetNodeId = object.userData.assetNodeId
+    if (!root || object === root || typeof assetNodeId !== 'string') continue
+
+    const overrides = overridesByRoot.get(root) ?? []
+    overrides.push({
+      assetNodeId,
+      name: object.name,
+      transform: serializeTransform(object),
+      runtimeBid: runtimeBid(object),
+      visible: resolveVisibility(object),
+    })
+    overridesByRoot.set(root, overrides)
+  }
+
+  const instances: SceneAssetInstanceV1[] = []
+  const primitives: ScenePrimitiveV1[] = []
+
+  for (const root of options.roots) {
+    const metadata = getEditorMetadata(root)
+    if (metadata?.kind === 'assetInstance') {
+      instances.push({
+        assetId: metadata.assetId,
+        instanceId: metadata.instanceId,
+        name: root.name,
+        transform: serializeTransform(root),
+        nodeOverrides: overridesByRoot.get(root) ?? [],
+        runtimeBid: runtimeBid(root),
+        visible: resolveVisibility(root),
+        deletedAssetNodeIds: metadata.deletedAssetNodeIds,
+      })
+      continue
+    }
+    const primitive = serializePrimitive(root, resolveVisibility)
+    if (primitive) primitives.push(primitive)
+  }
+
+  return {
+    version: 1,
+    dataSources: options.dataSources?.map(source => ({ ...source })),
+    projectId: options.projectId,
+    metadata: {
+      name: options.projectName,
+      updatedAt: new Date().toISOString(),
+    },
+    instances,
+    primitives,
+    sceneSettings: options.sceneSettings,
+    cameraView: options.cameraView,
+    bindings: options.bindings,
+    effects: options.effects ? cloneEffects(options.effects) : undefined,
+    visualRules: options.visualRules ? cloneRules(options.visualRules) : undefined,
+    interactions: options.interactions ? cloneInteractions(options.interactions) : undefined,
+  }
+}

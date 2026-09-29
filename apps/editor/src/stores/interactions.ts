@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import { cloneInteractions, isSceneInteraction, type SceneInteraction } from '@/domain/interactions'
-import type { InteractionDiagnostics } from '@/runtime/interactions/InteractionRuntime'
+import {
+  cloneInteractions,
+  type InteractionDiagnostics,
+  isSceneInteraction,
+  type SceneInteraction,
+} from '@twin-studio/core'
 
 type Commit = (before: SceneInteraction[], after: SceneInteraction[], label: string) => void
 

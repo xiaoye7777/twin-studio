@@ -55,12 +55,13 @@ try {
   const card = page.locator('[data-testid^="asset-card-"]').first(); await card.waitFor()
   await card.dblclick(); await page.waitForFunction(() => document.querySelector('[data-testid="editor-viewport"]').dataset.sceneRootCount === '2')
   await card.dblclick(); await page.waitForFunction(() => document.querySelector('[data-testid="editor-viewport"]').dataset.sceneRootCount === '3')
+  await page.getByTestId('asset-category-basic').click()
   await page.getByTestId('asset-primitive-plane').click(); await page.getByTestId('asset-primitive-cylinder').click()
   await page.evaluate(async () => {
     const { useEditorStore } = await import('/src/stores/editor.ts'); const editor = useEditorStore()
     const { useTwinStore } = await import('/src/stores/twin.ts'); const twin = useTwinStore()
     const { useSceneSettingsStore } = await import('/src/stores/sceneSettings.ts'); const settings = useSceneSettingsStore()
-    const { bindingTargetFromObject } = await import('/src/editor/services/BindingTargetResolver.ts')
+    const { bindingTargetFromObject } = await Promise.resolve(window.__twinCore)
     const { captureTransform } = await import('/src/editor/history/index.ts')
     const models = editor.sceneRoots.filter(o => o.userData.editor.kind === 'assetInstance')
     const [a,b] = models; a.name='Cabinet A'; b.name='Cabinet B'
@@ -162,7 +163,7 @@ try {
     if (a.getObjectByName('Door override').material === b.getObjectByName('BatteryDoor').material) throw new Error('Highlight not isolated in Viewer')
     const snapshot = (o)=>({name:o.name,position:o.position.toArray(),rotation:[o.rotation.x,o.rotation.y,o.rotation.z],scale:o.scale.toArray(),visible:o.visible})
     let transforms=0; a.parent.traverse(o=>{if(o.type.includes('TransformControls'))transforms++})
-    const {getMockDataSourceDiagnostics}=await import('/src/infrastructure/data/MockDataSource.ts')
+    const {getMockDataSourceDiagnostics}=await Promise.resolve(window.__twinCore)
     return {roots:roots.map(snapshot),independent:a!==b&&a.getObjectByName('Body')!==b.getObjectByName('Body'),override:a.getObjectByName('Door override').position.x,deleted:!a.getObjectByName('RemovablePanel'),hidden:!b.getObjectByName('BatteryDoor').visible,bindings:state.bindings.length,values:Object.keys(state.runtimeValues).length,ticks:state.mockTickCount,transforms,timers:getMockDataSourceDiagnostics().activeTimerCount}
   },saved)
   report.viewer=viewer
@@ -177,8 +178,8 @@ try {
     await page.evaluate(async()=>{const r=document.querySelector('#app').__vue_app__.config.globalProperties.$router;await r.push('/projects')})
     await page.waitForTimeout(600)
     const disposed=await page.evaluate(async()=>{
-      const {getMockDataSourceDiagnostics}=await import('/src/infrastructure/data/MockDataSource.ts')
-      const {getLastMeteorDisposeDiagnostics}=await import('/src/infrastructure/meteor3d/MeteorScene.ts')
+      const {getMockDataSourceDiagnostics}=await Promise.resolve(window.__twinCore)
+      const {getLastMeteorDisposeDiagnostics}=await Promise.resolve(window.__twinCore)
       return {timers:getMockDataSourceDiagnostics().activeTimerCount,dispose:getLastMeteorDisposeDiagnostics(),resources:window.qaResources(),pointerListeners:window.qaPointerListeners()}
     })
     assert.equal(disposed.timers,0);assert(disposed.dispose.sceneManagerDisposed&&disposed.dispose.resizeObserverDisconnected&&disposed.dispose.webglContextLost)
@@ -200,7 +201,7 @@ try {
   // Exercise the exact runtime service behind the component, with injected repositories.
   await page.evaluate(async()=>{const r=document.querySelector('#app').__vue_app__.config.globalProperties.$router;await r.push('/projects')})
   const runtimeDetails=await page.evaluate(async id=>{
-    const {TwinSceneRuntime}=await import('/src/runtime/twin/TwinSceneRuntime.ts')
+    const {TwinSceneRuntime}=await Promise.resolve(window.__twinCore)
     const {LocalSceneRepository}=await import('/src/infrastructure/scenes/index.ts')
     const {IndexedDbAssetRepository}=await import('/src/infrastructure/assets/index.ts')
     const canvas=document.createElement('canvas');canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:9999';document.body.append(canvas)
@@ -224,8 +225,8 @@ try {
   assert.equal(runtimeDetails.ambient,0.8);assert.equal(runtimeDetails.directional,1.7);assert(runtimeDetails.environment)
   report.effectRuntime=await page.evaluate(async()=>{
     const runtime=window.qaRuntime,effects=runtime.effects,snapshot=effects.getSnapshot()
-    const {createEffect}=await import('/src/domain/effects/index.ts')
-    const {bindingTargetFromObject}=await import('/src/editor/services/BindingTargetResolver.ts')
+    const {createEffect}=await Promise.resolve(window.__twinCore)
+    const {bindingTargetFromObject}=await Promise.resolve(window.__twinCore)
     const {Box3,Vector3}=await import('/node_modules/three/build/three.module.js')
     const a=runtime.roots.find(o=>o.name==='Cabinet A'),b=runtime.roots.find(o=>o.name==='Cabinet B')
     effects.setEffects([])
@@ -294,10 +295,10 @@ try {
   await page.screenshot({path:'/tmp/twin-viewer-stage-i.png'})
   await page.evaluate(async()=>{const r=document.querySelector('#app').__vue_app__.config.globalProperties.$router;await r.push('/projects')})
   report.pendingLoad=await page.evaluate(async id=>{
-    const {TwinSceneRuntime}=await import('/src/runtime/twin/TwinSceneRuntime.ts')
+    const {TwinSceneRuntime}=await Promise.resolve(window.__twinCore)
     const {LocalSceneRepository}=await import('/src/infrastructure/scenes/index.ts')
     const {IndexedDbAssetRepository}=await import('/src/infrastructure/assets/index.ts')
-    const {getMockDataSourceDiagnostics}=await import('/src/infrastructure/data/MockDataSource.ts')
+    const {getMockDataSourceDiagnostics}=await Promise.resolve(window.__twinCore)
     const canvas=document.createElement('canvas');canvas.style.cssText='width:400px;height:300px';document.body.append(canvas)
     const runtime=new TwinSceneRuntime(canvas,new LocalSceneRepository(),new IndexedDbAssetRepository(),()=>{})
     const original=runtime.meteor.loadGLTFModel.bind(runtime.meteor)
@@ -314,7 +315,7 @@ try {
     await page.evaluate(async()=>{await document.querySelector('#app').__vue_app__.config.globalProperties.$router.push('/projects')})
     await page.waitForTimeout(400)
     assert.deepEqual(await page.evaluate(()=>window.qaResources()),{urls:0,raf:0})
-    assert.equal(await page.evaluate(async()=>{const {getEffectDiagnostics}=await import('/src/runtime/effects/EffectRuntime.ts');return getEffectDiagnostics().activeLoops}),0)
+    assert.equal(await page.evaluate(async()=>{const {getEffectDiagnostics}=await Promise.resolve(window.__twinCore);return getEffectDiagnostics().activeLoops}),0)
   }
   report.editorEffectLifecycle='PASS: three mount/unmount cycles, zero remaining RAF/URLs/effect loops'
   report.templates = await testTemplates(page, projectId)

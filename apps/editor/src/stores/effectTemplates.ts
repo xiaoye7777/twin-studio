@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import { cloneTemplate, type EffectTemplate } from '@/domain/effectTemplates'
+import { cloneTemplate, type EffectTemplate } from '@twin-studio/core'
 import { LocalTemplateRepository } from '@/infrastructure/effectTemplates/TemplateRepository'
 
 const repository = new LocalTemplateRepository()

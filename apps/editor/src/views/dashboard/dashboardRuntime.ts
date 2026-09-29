@@ -5,7 +5,7 @@ import type {
   TwinRuntimeValueData,
   TwinVariableDataType,
   TwinVariableDefinition,
-} from '@/domain/twin'
+} from '@twin-studio/core'
 
 export type DashboardDeviceStatusKind = 'alarm' | 'normal' | 'unresolved' | 'waiting'
 

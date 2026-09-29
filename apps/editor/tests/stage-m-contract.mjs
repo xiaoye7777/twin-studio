@@ -98,7 +98,7 @@ export async function testViewerContract(page, sourceId) {
     })
     await navigate('/projects'); await page.waitForTimeout(150)
     const result = await page.evaluate(async () => {
-      const { getMockDataSourceDiagnostics } = await import('/src/infrastructure/data/MockDataSource.ts')
+      const { getMockDataSourceDiagnostics } = await Promise.resolve(window.__twinCore)
       return { selection: window.disposedApi.getSelection(), select: window.disposedApi.selectDevice('ESS-001'),
         focus: await window.disposedApi.focusDevice('ESS-001'), listeners: window.qaPointerListeners(),
         timers: getMockDataSourceDiagnostics().activeTimerCount, ...window.qaResources() }

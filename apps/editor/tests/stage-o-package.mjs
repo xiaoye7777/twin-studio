@@ -125,7 +125,7 @@ export async function testProjectPackage(page, sourceId) {
     assert.equal(await fresh.evaluate(() => window.packageEvents.length), 1)
     await navigate('/projects')
     const view = await fresh.evaluate(async id => {
-      const { TwinSceneRuntime } = await import('/src/runtime/twin/TwinSceneRuntime.ts')
+      const { TwinSceneRuntime } = await Promise.resolve(window.__twinCore)
       const { LocalSceneRepository } = await import('/src/infrastructure/scenes/index.ts')
       const { IndexedDbAssetRepository } = await import('/src/infrastructure/assets/index.ts')
       const canvas = document.createElement('canvas'); canvas.style.cssText = 'width:640px;height:480px'; document.body.append(canvas)
@@ -161,7 +161,7 @@ export async function testProjectPackage(page, sourceId) {
       const { IndexedDbAssetRepository } = await import('/src/infrastructure/assets/index.ts')
       const { LocalSceneRepository } = await import('/src/infrastructure/scenes/index.ts')
       const { useProjectStore } = await import('/src/stores/project.ts')
-      const { sha256 } = await import('/src/infrastructure/packages/packageFormat.ts')
+      const { sha256 } = await Promise.resolve(window.__twinCore)
       const projects = useProjectStore(), assets = new IndexedDbAssetRepository(), scenes = new LocalSceneRepository()
       const service = new ProjectPackageService(scenes, assets, projects)
       const input = new Uint8Array(bytes), originalFiles = unzipSync(input)

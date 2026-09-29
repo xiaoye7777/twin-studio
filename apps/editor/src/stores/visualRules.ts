@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import { cloneRules, isVisualRule, type VisualRule } from '@/domain/visualRules'
-import type { RuleDiagnostic } from '@/runtime/effects/VisualRuleRuntime'
+import { cloneRules, isVisualRule, type RuleDiagnostic, type VisualRule } from '@twin-studio/core'
 export const useVisualRulesStore = defineStore('visualRules', () => {
   const rules = shallowRef<VisualRule[]>([])
   const diagnostics = shallowRef<Record<string, RuleDiagnostic>>({})

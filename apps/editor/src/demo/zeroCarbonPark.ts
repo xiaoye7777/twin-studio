@@ -1,10 +1,15 @@
-import { defaultDataSources } from '@/domain/dataSources'
-import { isSceneDocumentV1, type SceneDocumentV1, type ScenePrimitiveV1, type Vector3Tuple } from '@/domain/scene'
-import { createEffect } from '@/domain/effects'
-import { getBuiltinTemplates } from '@/domain/effectTemplates/builtins'
-import { cloneTemplate } from '@/domain/effectTemplates'
-import type { TwinBindingTarget } from '@/domain/twin'
-import type { SceneInteraction } from '@/domain/interactions'
+import {
+  cloneTemplate,
+  createEffect,
+  defaultDataSources,
+  getBuiltinTemplates,
+  isSceneDocumentV1,
+  type SceneDocumentV1,
+  type SceneInteraction,
+  type ScenePrimitiveV1,
+  type TwinBindingTarget,
+  type Vector3Tuple,
+} from '@twin-studio/core'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import type { Project } from '@/stores/project'
 

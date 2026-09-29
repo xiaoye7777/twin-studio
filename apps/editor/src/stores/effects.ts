@@ -1,7 +1,15 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
-import { cloneEffects, createEffect, isEffectInstance, type EffectInstance, type EffectKind, type EffectParameters } from '@/domain/effects'
-import { twinBindingTargetKey, type TwinBindingTarget } from '@/domain/twin'
+import {
+  cloneEffects,
+  createEffect,
+  type EffectInstance,
+  type EffectKind,
+  type EffectParameters,
+  isEffectInstance,
+  type TwinBindingTarget,
+  twinBindingTargetKey,
+} from '@twin-studio/core'
 
 type Commit = (before: EffectInstance[], after: EffectInstance[], label: string) => void
 export const useEffectsStore = defineStore('effects', () => {

@@ -1,4 +1,4 @@
-import type { SceneBoxPropertiesV1, Vector3Tuple } from '@/domain/scene'
+import type { SceneBoxPropertiesV1, Vector3Tuple } from '@twin-studio/core'
 import type { PrimitiveType } from '@/stores/editor'
 
 export interface PrimitivePreset {

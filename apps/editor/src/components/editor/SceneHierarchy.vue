@@ -3,7 +3,7 @@ import { computed, markRaw, nextTick, ref, watch } from 'vue'
 import { Link as LinkIcon } from '@element-plus/icons-vue'
 import type { Object3D } from 'three'
 import type { SceneTreeNode } from '@/editor/types'
-import { bindingTargetFromObject } from '@/editor/services/BindingTargetResolver'
+import { bindingTargetFromObject } from '@twin-studio/core'
 import { useEditorStore } from '@/stores/editor'
 import { useTwinStore } from '@/stores/twin'
 

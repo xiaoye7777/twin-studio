@@ -1,10 +1,22 @@
-import { isSceneDocumentV1, type SceneDocumentV1 } from '@/domain/scene'
-import type { AssetRecord, AssetRepository } from '@/infrastructure/assets/AssetRepository'
-import type { SceneRepository } from '@/infrastructure/scenes/SceneRepository'
+import {
+  type AssetRecord,
+  type AssetRepository,
+  collectSceneAssets,
+  isSceneDocumentV1,
+  json,
+  PACKAGE_FORMAT,
+  PACKAGE_LIMITS,
+  PACKAGE_VERSION,
+  type PackageManifest,
+  readPackageZip,
+  type SceneDocumentV1,
+  type SceneRepository,
+  sha256,
+  validateManifest,
+  validatePortableAsset,
+  writePackageZip,
+} from '@twin-studio/core'
 import type { Project } from '@/stores/project'
-import { collectSceneAssets, json, PACKAGE_FORMAT, PACKAGE_LIMITS, PACKAGE_VERSION, sha256, validateManifest, type PackageManifest } from './packageFormat'
-import { readPackageZip, writePackageZip } from './packageZip'
-import { validatePortableAsset } from './validatePortableAsset'
 
 interface PackageAssets extends AssetRepository {
   addBatch(records: readonly AssetRecord[]): Promise<void>

@@ -5,7 +5,7 @@ import {
   createDefaultSceneSettings,
   type SceneSettingsV1,
   type Vector3Tuple,
-} from '@/domain/scene'
+} from '@twin-studio/core'
 import { useEditorStore } from './editor'
 
 export const useSceneSettingsStore = defineStore('scene-settings', () => {

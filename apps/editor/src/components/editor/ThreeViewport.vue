@@ -1,6 +1,33 @@
 <script setup lang="ts">
 import { useDataSourcesStore } from '@/stores/dataSources'
-import { defaultDataSources } from '@/domain/dataSources'
+import {
+  BindingTargetResolver,
+  bindingTargetsInObjectTree,
+  cloneSceneSettings,
+  createScenePrimitive,
+  defaultDataSources,
+  type EffectInstance,
+  EffectRuntime,
+  findAssetInstanceRoot,
+  getEditorMetadata,
+  getMockDataSourceDiagnostics,
+  ImportedAssetResourceRegistry,
+  InteractionRuntime,
+  MeteorScene,
+  type SceneCameraViewV1,
+  type SceneDocumentV1,
+  type ScenePrimitiveV1,
+  SceneRuntimeLoader,
+  type SceneSettingsV1,
+  serializeSceneDocument,
+  setEditorMetadata,
+  type TwinBinding,
+  twinBindingTargetKey,
+  TwinDataRuntime,
+  ViewerPointerEvents,
+  type VisualRule,
+  VisualRuleRuntime,
+} from '@twin-studio/core'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle } from 'vue'
@@ -11,43 +38,20 @@ import {
   Vector3,
 } from 'three'
 import type { Object3D } from 'three'
-import { cloneSceneSettings, serializeSceneDocument } from '@/domain/scene'
-import type {
-  SceneCameraViewV1,
-  SceneDocumentV1,
-  ScenePrimitiveV1,
-  SceneSettingsV1,
-} from '@/domain/scene'
 import { ASSET_DRAG_MIME, readAssetDragPayload } from '@/editor/assetDrag'
 import { getPrimitivePreset } from '@/editor/primitivePresets'
-import { findAssetInstanceRoot, getEditorMetadata, setEditorMetadata } from '@/editor/editorMetadata'
 import { captureTransform, FunctionalCommand, HistoryManager, PropertyCommand, TransformCommand } from '@/editor/history'
 import type { TransformState } from '@/editor/history'
-import { ImportedAssetResourceRegistry } from '@/editor/services/ImportedAssetResourceRegistry'
-import { BindingTargetResolver, bindingTargetsInObjectTree } from '@/editor/services/BindingTargetResolver'
 import { SelectionManager } from '@/editor/services/SelectionManager'
 import { TransformManager } from '@/editor/services/TransformManager'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
-import { MeteorScene } from '@/infrastructure/meteor3d'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import { getMockDataSourceDiagnostics } from '@/infrastructure/data'
 import { useEditorStore, type CommonView, type PrimitiveType } from '@/stores/editor'
 import { useSceneSettingsStore } from '@/stores/sceneSettings'
 import { useTwinStore } from '@/stores/twin'
-import type { TwinBinding } from '@/domain/twin'
-import { SceneRuntimeLoader } from '@/runtime/scene/SceneRuntimeLoader'
-import { createScenePrimitive } from '@/runtime/scene/createScenePrimitive'
-import { TwinDataRuntime } from '@/runtime/twin/TwinDataRuntime'
-import { EffectRuntime } from '@/runtime/effects/EffectRuntime'
 import { useEffectsStore } from '@/stores/effects'
 import { useVisualRulesStore } from '@/stores/visualRules'
-import { VisualRuleRuntime } from '@/runtime/effects/VisualRuleRuntime'
-import type { VisualRule } from '@/domain/visualRules'
-import { twinBindingTargetKey } from '@/domain/twin'
-import type { EffectInstance } from '@/domain/effects'
 import { useInteractionsStore } from '@/stores/interactions'
-import { InteractionRuntime } from '@/runtime/interactions/InteractionRuntime'
-import { ViewerPointerEvents } from '@/runtime/twin/ViewerPointerEvents'
 
 const props = defineProps<{ projectId: string; projectName: string }>()
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { effectDefinitions, type EffectKind, type EffectParameters } from '@/domain/effects'
+import { effectDefinitions, type EffectKind, type EffectParameters } from '@twin-studio/core'
 const props = defineProps<{ kind: EffectKind; parameters: EffectParameters; testPrefix?: string }>()
 const emit = defineEmits<{ change: [parameters: EffectParameters] }>()
 const labels: Record<keyof EffectParameters, string> = { color: '颜色', opacity: '强度', speed: '速度', padding: '边距', text: '文字' }
