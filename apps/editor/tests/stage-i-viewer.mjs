@@ -1,5 +1,4 @@
 // Run with NODE_PATH pointing to a Playwright installation and Vite on :5173.
-import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
 import { testTemplates } from './stage-k1-templates.mjs'
 import { testVisualRules } from './stage-k2-rules.mjs'
@@ -7,9 +6,10 @@ import { testDashboard } from './stage-dashboard.mjs'
 import { testViewerContract } from './stage-m-contract.mjs'
 import { testInteractions } from './stage-n-interactions.mjs'
 import { testProjectPackage } from './stage-o-package.mjs'
-const { chromium } = createRequire(import.meta.url)('playwright')
+import { chromium } from 'playwright-core'
 const browser = await chromium.launch({
-  executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  // CHROME_PATH selects a local Chrome; otherwise Playwright's own Chromium is used.
+  executablePath: process.env.CHROME_PATH || undefined,
   headless: true,
 })
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })

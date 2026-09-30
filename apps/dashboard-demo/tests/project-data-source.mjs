@@ -4,7 +4,8 @@ import { chromium } from 'playwright-core'
 
 // Both dev servers must be running. All Editor data is isolated in this browser context.
 const browser = await chromium.launch({
-  executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  // CHROME_PATH selects a local Chrome; otherwise Playwright's own Chromium is used.
+  executablePath: process.env.CHROME_PATH || undefined,
   headless: true,
 })
 const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1440, height: 1000 } })
@@ -118,7 +119,7 @@ try {
     page.locator('[data-testid="export-project"]:visible').click(),
   ])
   const bytes = await readFile(await download.path())
-  await download.saveAs(new URL('../public/project-websocket.twin.zip', import.meta.url).pathname)
+  await download.saveAs(new URL('../public/e2e-project.twin.zip', import.meta.url).pathname)
   // Parse with the actual project ZIP reader and exercise import through the UI.
   const contents = await page.evaluate(
     async bytes => {
@@ -142,7 +143,7 @@ try {
   assert.deepEqual(imported.dataSources, config)
   assert.notEqual(imported.projectId, id)
 
-  await page.goto(dashboard + '/?package=/project-websocket.twin.zip')
+  await page.goto(dashboard + '/?package=/e2e-project.twin.zip')
   await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]')
   const viewer = fn => page.evaluate(fn)
   await page.evaluate(() => {
@@ -177,7 +178,7 @@ try {
     const { createApp, h, ref } = await import(loaded.find(url => /\/\.vite\/deps\/vue\.js/.test(url)))
     const { TwinSceneViewer } = await import(loaded.find(url => /twin-viewer\.js|@twin-studio_viewer\.js/.test(url)))
     document.querySelector('#app').__vue_app__.unmount()
-    window.testSource = ref('/project-websocket.twin.zip')
+    window.testSource = ref('/e2e-project.twin.zip')
     window.testApp = createApp({
       render: () =>
         h(TwinSceneViewer, {
@@ -208,7 +209,7 @@ try {
   })
   assert.deepEqual(unconfigured, { values: 0, mock: false, ticks: 0, rules: 0 })
   await page.evaluate(() => {
-    window.testSource.value = '/project-websocket.twin.zip'
+    window.testSource.value = '/e2e-project.twin.zip'
   })
   await page.waitForFunction(() => window.sdkViewer?.getRuntimeState()?.dataSourceMessageCount > 0)
   await waitConnections(1)

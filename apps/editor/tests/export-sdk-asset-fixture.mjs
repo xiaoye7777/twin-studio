@@ -1,8 +1,7 @@
-import { createRequire } from 'node:module'
 import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
-const { chromium } = createRequire(import.meta.url)('playwright')
+import { chromium } from 'playwright-core'
 function cabinetGlb() {
   const positions = new Float32Array([
       -0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 1, -0.5, -0.5, 1, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 1, 0.5, -0.5, 1, 0.5,
@@ -41,7 +40,8 @@ function cabinetGlb() {
   return Buffer.concat([header, json, bh, bin])
 }
 const browser = await chromium.launch({
-    executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    // CHROME_PATH selects a local Chrome; otherwise Playwright's own Chromium is used.
+    executablePath: process.env.CHROME_PATH || undefined,
     headless: true,
   }),
   context = await browser.newContext(),
