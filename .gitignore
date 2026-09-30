@@ -10,3 +10,6 @@ dist
 .vscode/*
 !.vscode/extensions.json
 release
+
+# Written by the dashboard end-to-end test
+apps/dashboard-demo/public/e2e-*.twin.zip

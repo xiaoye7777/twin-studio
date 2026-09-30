@@ -25,9 +25,12 @@ let generation = 0
 let controller: AbortController | null = null
 
 function release(): void {
-  controller?.abort(); controller = null
-  session.value?.dispose(); session.value = null
-  loadedPackage.value?.dispose(); loadedPackage.value = null
+  controller?.abort()
+  controller = null
+  session.value?.dispose()
+  session.value = null
+  loadedPackage.value?.dispose()
+  loadedPackage.value = null
 }
 async function load(): Promise<void> {
   const request = ++generation
@@ -35,33 +38,76 @@ async function load(): Promise<void> {
   canvasKey.value += 1
   await nextTick()
   if (!mounted || request !== generation || !canvas.value) return
-  error.value = ''; warnings.value = []; loading.value = true
+  error.value = ''
+  warnings.value = []
+  loading.value = true
   controller = new AbortController()
   try {
     const portable = await loadTwinPackage(props.source, { signal: controller.signal })
-    if (!mounted || request !== generation) { portable.dispose(); return }
+    if (!mounted || request !== generation) {
+      portable.dispose()
+      return
+    }
     loadedPackage.value = portable
-    const runtime = new TwinSceneRuntime(canvas.value, portable.sceneRepository, portable.assetRepository, (event) => {
-      if (!mounted || request !== generation) return
-      const payload: ViewerTargetClick = { ...event, target: { ...event.target }, bindingTarget: event.bindingTarget ? { ...event.bindingTarget } : undefined,
-        device: event.device ? { ...event.device } : undefined }
-      emit('target-click', payload); if (payload.device) emit('device-click', payload)
-    }, selection => { if (mounted && request === generation) emit('selection-change', selection) },
-    event => { if (mounted && request === generation) emit('interaction-event', event) })
+    const runtime = new TwinSceneRuntime(
+      canvas.value,
+      portable.sceneRepository,
+      portable.assetRepository,
+      event => {
+        if (!mounted || request !== generation) return
+        const payload: ViewerTargetClick = {
+          ...event,
+          target: { ...event.target },
+          bindingTarget: event.bindingTarget ? { ...event.bindingTarget } : undefined,
+          device: event.device ? { ...event.device } : undefined,
+        }
+        emit('target-click', payload)
+        if (payload.device) emit('device-click', payload)
+      },
+      selection => {
+        if (mounted && request === generation) emit('selection-change', selection)
+      },
+      event => {
+        if (mounted && request === generation) emit('interaction-event', event)
+      },
+    )
     session.value = runtime
     const result = await runtime.load(portable.projectId)
     if (!mounted || request !== generation) return
     warnings.value = result
-    emit('loaded', { projectId: portable.projectId, projectName: portable.projectName, objectCount: runtime.roots.length,
-      bindingCount: runtime.twin.bindings.length, warnings: result })
+    emit('loaded', {
+      projectId: portable.projectId,
+      projectName: portable.projectName,
+      objectCount: runtime.roots.length,
+      bindingCount: runtime.twin.bindings.length,
+      warnings: result,
+    })
   } catch (cause) {
     if (request !== generation || (cause instanceof DOMException && cause.name === 'AbortError')) return
-    error.value = cause instanceof Error ? cause.message : String(cause); emit('error', error.value)
-  } finally { if (request === generation) { loading.value = false; controller = null } }
+    error.value = cause instanceof Error ? cause.message : String(cause)
+    emit('error', error.value)
+  } finally {
+    if (request === generation) {
+      loading.value = false
+      controller = null
+    }
+  }
 }
-onMounted(() => { mounted = true; void load() })
-watch(() => props.source, () => { if (mounted) void load() })
-onBeforeUnmount(() => { mounted = false; generation++; release() })
+onMounted(() => {
+  mounted = true
+  void load()
+})
+watch(
+  () => props.source,
+  () => {
+    if (mounted) void load()
+  },
+)
+onBeforeUnmount(() => {
+  mounted = false
+  generation++
+  release()
+})
 
 const publicApi: TwinSceneViewerPublicApi = {
   focusTarget: (target: TwinBindingTarget) => session.value?.focusTarget(target) ?? Promise.resolve(false),
@@ -71,11 +117,12 @@ const publicApi: TwinSceneViewerPublicApi = {
   clearSelection: () => session.value?.clearSelection(),
   getSelection: () => session.value?.getSelection() ?? null,
   getRuntimeState: () => session.value?.runtimeState ?? null,
-  getDiagnostics: () => session.value?.getDiagnostics() ?? {
-    dataSource: { type: 'websocket', status: 'disconnected', messageCount: 0, error: null },
-    visualRules: { activations: 0, activeRules: 0 },
-    effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
-  },
+  getDiagnostics: () =>
+    session.value?.getDiagnostics() ?? {
+      dataSource: { type: 'websocket', status: 'disconnected', messageCount: 0, error: null },
+      visualRules: { activations: 0, activeRules: 0 },
+      effects: { effects: 0, transientOwners: 0, helpers: 0, outlined: 0 },
+    },
 }
 defineExpose({
   ...publicApi,
@@ -89,14 +136,20 @@ defineExpose({
 </script>
 
 <template>
-  <div class="twin-viewer" data-testid="twin-scene-viewer" :data-loaded="!loading && !error && !!session"
-    :data-object-count="session?.roots.length ?? 0" :data-binding-count="session?.twin.bindings.length ?? 0"
-    :data-mock-running="session?.twin.mockRunning ?? false" :data-mock-ticks="session?.twin.mockTickCount ?? 0"
+  <div
+    class="twin-viewer"
+    data-testid="twin-scene-viewer"
+    :data-loaded="!loading && !error && !!session"
+    :data-object-count="session?.roots.length ?? 0"
+    :data-binding-count="session?.twin.bindings.length ?? 0"
+    :data-mock-running="session?.twin.mockRunning ?? false"
+    :data-mock-ticks="session?.twin.mockTickCount ?? 0"
     :data-source-type="session?.twin.dataSourceType ?? 'websocket'"
     :data-source-status="session?.twin.dataSourceStatus ?? 'disconnected'"
     :data-source-messages="session?.twin.dataSourceMessageCount ?? 0"
     :data-active-visual-rules="session?.visualRules?.getDiagnostics().activeRules ?? 0"
-    :data-effect-helpers="session?.effects?.getDiagnostics().helpers ?? 0">
+    :data-effect-helpers="session?.effects?.getDiagnostics().helpers ?? 0"
+  >
     <canvas :key="canvasKey" ref="canvas" class="twin-viewer__canvas" aria-label="数字孪生场景" />
     <div v-if="loading || error" role="status" class="twin-viewer__overlay">{{ error || '正在加载项目包…' }}</div>
     <div v-else-if="warnings.length" role="status" class="twin-viewer__warning">{{ warnings.join('；') }}</div>
@@ -104,5 +157,42 @@ defineExpose({
 </template>
 
 <style>
-.twin-viewer{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;background:#0f172a}.twin-viewer__canvas{display:block;width:100%;height:100%}.twin-viewer__overlay{position:absolute;inset:0;display:grid;place-items:center;padding:2rem;background:rgba(2,6,23,.78);color:#e2e8f0;font:14px/1.5 system-ui,sans-serif}.twin-viewer__warning{position:absolute;left:.75rem;bottom:.75rem;max-width:28rem;border-radius:.4rem;padding:.5rem .75rem;background:rgba(69,26,3,.86);color:#fde68a;font:12px/1.5 system-ui,sans-serif}
+.twin-viewer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #0f172a;
+}
+.twin-viewer__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.twin-viewer__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: rgba(2, 6, 23, 0.78);
+  color: #e2e8f0;
+  font:
+    14px/1.5 system-ui,
+    sans-serif;
+}
+.twin-viewer__warning {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  max-width: 28rem;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(69, 26, 3, 0.86);
+  color: #fde68a;
+  font:
+    12px/1.5 system-ui,
+    sans-serif;
+}
 </style>

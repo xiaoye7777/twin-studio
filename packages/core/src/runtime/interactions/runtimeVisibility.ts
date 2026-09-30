@@ -6,7 +6,9 @@ export class RuntimeVisibilityLayer {
     if (!this.original.has(object)) this.original.set(object, object.visible)
     object.visible = visible
   }
-  getPersistent(object: Object3D): boolean { return this.original.get(object) ?? object.visible }
+  getPersistent(object: Object3D): boolean {
+    return this.original.get(object) ?? object.visible
+  }
   dispose(): void {
     for (const [object, visible] of this.original) object.visible = visible
     this.original.clear()

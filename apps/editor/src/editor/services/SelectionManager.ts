@@ -116,10 +116,7 @@ export class SelectionManager {
     this.editorStore.clearSelection()
   }
 
-  private findSelectionTarget(
-    object: Object3D,
-    selectableRoots: readonly Object3D[],
-  ): Object3D | null {
+  private findSelectionTarget(object: Object3D, selectableRoots: readonly Object3D[]): Object3D | null {
     let current: Object3D | null = object
     let nearestEditableNode: Object3D | null = null
 

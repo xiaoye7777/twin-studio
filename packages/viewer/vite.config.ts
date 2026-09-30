@@ -12,7 +12,12 @@ export default defineConfig({
     dedupe: ['three', 'vue'],
   },
   build: {
-    lib: { entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)), formats: ['es'], fileName: () => 'twin-viewer.js', cssFileName: 'twin-viewer' },
+    lib: {
+      entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
+      formats: ['es'],
+      fileName: () => 'twin-viewer.js',
+      cssFileName: 'twin-viewer',
+    },
     rollupOptions: { external: ['vue', 'three', /^three\//] },
   },
 })

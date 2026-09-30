@@ -69,7 +69,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   function getProjectById(id: string) {
-    return projects.value.find((project) => project.id === id)
+    return projects.value.find(project => project.id === id)
   }
 
   function addImportedProject(project: Project): void {
@@ -82,7 +82,7 @@ export const useProjectStore = defineStore('project', () => {
 
   watch(
     projects,
-    (value) => {
+    value => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
     },
     { deep: true },

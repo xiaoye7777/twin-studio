@@ -1,32 +1,82 @@
-import { isTwinBindingTarget, type TwinBindingTarget } from '../twin'
+import { z } from 'zod'
+import { isRecord, nonEmptyString } from '../schemaHelpers'
+import { TwinBindingTargetSchema, type TwinBindingTarget } from '../twin'
 
-export type InteractionTrigger = 'click' | 'double-click' | 'hover-enter' | 'hover-leave'
-export type InteractionMetadataValue = string | number | boolean | null | InteractionMetadataValue[] | { [key: string]: InteractionMetadataValue }
+export type InteractionMetadataValue =
+  string | number | boolean | null | InteractionMetadataValue[] | { [key: string]: InteractionMetadataValue }
 export type InteractionMetadata = Record<string, InteractionMetadataValue>
 
-export type InteractionAction =
-  | { type: 'select'; target?: TwinBindingTarget }
-  | { type: 'clear-selection' }
-  | { type: 'focus'; target?: TwinBindingTarget }
-  | { type: 'emit-event'; eventName: string; metadata?: InteractionMetadata }
-  | { type: 'show'; target?: TwinBindingTarget }
-  | { type: 'hide'; target?: TwinBindingTarget }
-  | { type: 'highlight'; target?: TwinBindingTarget }
-
-export interface SceneInteraction {
-  id: string
-  enabled: boolean
-  source: TwinBindingTarget
-  trigger: InteractionTrigger
-  action: InteractionAction
+/** Finite JSON values nested at most 10 levels deep: metadata is handed to host pages verbatim. */
+function isJsonValue(value: unknown, depth = 0): value is InteractionMetadataValue {
+  if (depth > 10) return false
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (Array.isArray(value)) return value.every(item => isJsonValue(item, depth + 1))
+  return isRecord(value) && Object.values(value).every(item => isJsonValue(item, depth + 1))
 }
 
-export const interactionTriggers: readonly InteractionTrigger[] = ['click', 'double-click', 'hover-enter', 'hover-leave']
-export const interactionActionTypes = ['select', 'clear-selection', 'focus', 'emit-event', 'show', 'hide', 'highlight'] as const
-export type InteractionActionType = typeof interactionActionTypes[number]
+const InteractionMetadataSchema = z.custom<InteractionMetadata>(value => isRecord(value) && isJsonValue(value), {
+  message: '附加数据必须是 JSON 对象，且嵌套不超过 10 层',
+})
+
+export const InteractionTriggerSchema = z.enum(['click', 'double-click', 'hover-enter', 'hover-leave'])
+
+// An explicit target is optional on every action; without one the action applies to the source.
+const actionTarget = TwinBindingTargetSchema.optional()
+export const InteractionActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('select'), target: actionTarget }),
+  z.object({ type: z.literal('clear-selection'), target: actionTarget }),
+  z.object({ type: z.literal('focus'), target: actionTarget }),
+  z.object({
+    type: z.literal('emit-event'),
+    target: actionTarget,
+    eventName: z.string().regex(/^[a-z][a-z0-9._:-]{0,63}$/i, {
+      message: '事件名需以字母开头，只能包含字母、数字和 . _ : -，最多 64 个字符',
+    }),
+    metadata: InteractionMetadataSchema.optional(),
+  }),
+  z.object({ type: z.literal('show'), target: actionTarget }),
+  z.object({ type: z.literal('hide'), target: actionTarget }),
+  z.object({ type: z.literal('highlight'), target: actionTarget }),
+])
+
+export const SceneInteractionSchema = z
+  .object({
+    id: nonEmptyString,
+    enabled: z.boolean(),
+    source: TwinBindingTargetSchema,
+    trigger: InteractionTriggerSchema,
+    action: InteractionActionSchema,
+  })
+  .refine(value => value.action.type !== 'highlight' || value.trigger === 'hover-enter', {
+    message: '临时高亮只能由悬停进入触发',
+    path: ['trigger'],
+  })
+
+export type InteractionTrigger = z.infer<typeof InteractionTriggerSchema>
+export type InteractionAction = z.infer<typeof InteractionActionSchema>
+export type InteractionActionType = InteractionAction['type']
+export type SceneInteraction = z.infer<typeof SceneInteractionSchema>
+
+export const interactionTriggers: readonly InteractionTrigger[] = InteractionTriggerSchema.options
+export const interactionActionTypes = [
+  'select',
+  'clear-selection',
+  'focus',
+  'emit-event',
+  'show',
+  'hide',
+  'highlight',
+] as const satisfies readonly InteractionActionType[]
 
 export function createInteraction(source: TwinBindingTarget): SceneInteraction {
-  return { id: `interaction_${crypto.randomUUID()}`, enabled: true, source: { ...source }, trigger: 'click', action: { type: 'select' } }
+  return {
+    id: `interaction_${crypto.randomUUID()}`,
+    enabled: true,
+    source: { ...source },
+    trigger: 'click',
+    action: { type: 'select' },
+  }
 }
 
 export function cloneInteractions(values: readonly SceneInteraction[]): SceneInteraction[] {
@@ -36,30 +86,13 @@ export function cloneInteractions(values: readonly SceneInteraction[]): SceneInt
     action: {
       ...value.action,
       ...('target' in value.action && value.action.target ? { target: { ...value.action.target } } : {}),
-      ...(value.action.type === 'emit-event' && value.action.metadata ? { metadata: structuredClone(value.action.metadata) } : {}),
+      ...(value.action.type === 'emit-event' && value.action.metadata
+        ? { metadata: structuredClone(value.action.metadata) }
+        : {}),
     } as InteractionAction,
   }))
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value) }
-function isJsonValue(value: unknown, depth = 0): value is InteractionMetadataValue {
-  if (depth > 10) return false
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true
-  if (typeof value === 'number') return Number.isFinite(value)
-  if (Array.isArray(value)) return value.every(item => isJsonValue(item, depth + 1))
-  return isRecord(value) && Object.values(value).every(item => isJsonValue(item, depth + 1))
-}
-
 export function isSceneInteraction(value: unknown): value is SceneInteraction {
-  if (!isRecord(value) || typeof value.id !== 'string' || !value.id || typeof value.enabled !== 'boolean') return false
-  if (!isTwinBindingTarget(value.source) || !interactionTriggers.includes(value.trigger as InteractionTrigger) || !isRecord(value.action)) return false
-  const type = value.action.type
-  if (!interactionActionTypes.includes(type as InteractionActionType)) return false
-  if ('target' in value.action && value.action.target !== undefined && !isTwinBindingTarget(value.action.target)) return false
-  if (type === 'emit-event') {
-    if (typeof value.action.eventName !== 'string' || !/^[a-z][a-z0-9._:-]{0,63}$/i.test(value.action.eventName)) return false
-    if ('metadata' in value.action && value.action.metadata !== undefined && (!isRecord(value.action.metadata) || !isJsonValue(value.action.metadata))) return false
-  }
-  if (type === 'highlight' && value.trigger !== 'hover-enter') return false
-  return true
+  return SceneInteractionSchema.safeParse(value).success
 }

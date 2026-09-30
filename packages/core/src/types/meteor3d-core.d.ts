@@ -1,18 +1,9 @@
 declare module '@meteor3d/core' {
-  import type {
-    Intersection,
-    Object3D,
-    PerspectiveCamera,
-    Scene,
-    Vector2,
-    WebGLRenderer,
-    Texture,
-  } from 'three'
+  import type { Intersection, Object3D, PerspectiveCamera, Scene, Vector2, WebGLRenderer, Texture } from 'three'
 
   interface MeteorOrbitControls {
     enabled: boolean
   }
-
 
   interface MeteorViewPoint {
     x: number

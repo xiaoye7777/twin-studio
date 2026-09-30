@@ -30,10 +30,7 @@ export class TransformManager {
     this.onAxisChange = options.onAxisChange
     this.onDraggingChange = options.onDraggingChange
     this.onObjectChange = options.onObjectChange
-    this.controls = new TransformControls(
-      meteorScene.getCamera(),
-      meteorScene.getDomElement(),
-    )
+    this.controls = new TransformControls(meteorScene.getCamera(), meteorScene.getDomElement())
     this.helper = this.controls.getHelper()
     meteorScene.getScene().add(this.helper)
 
@@ -57,14 +54,13 @@ export class TransformManager {
     this.applySnap(mode)
   }
 
-  setSnap(value: number | null): void { this.snapValue = value; this.applySnap(this.controls.getMode()) }
+  setSnap(value: number | null): void {
+    this.snapValue = value
+    this.applySnap(this.controls.getMode())
+  }
 
   isPointerInteractionActive(): boolean {
-    return (
-      this.controls.dragging ||
-      this.controls.axis !== null ||
-      currentTime() < this.suppressSelectionUntil
-    )
+    return this.controls.dragging || this.controls.axis !== null || currentTime() < this.suppressSelectionUntil
   }
 
   dispose(): void {
@@ -117,7 +113,9 @@ export class TransformManager {
 
   private applySnap(mode: TransformMode): void {
     this.controls.setTranslationSnap(mode === 'translate' ? this.snapValue : null)
-    this.controls.setRotationSnap(mode === 'rotate' && this.snapValue !== null ? MathUtils.degToRad(this.snapValue) : null)
+    this.controls.setRotationSnap(
+      mode === 'rotate' && this.snapValue !== null ? MathUtils.degToRad(this.snapValue) : null,
+    )
     this.controls.setScaleSnap(mode === 'scale' ? this.snapValue : null)
   }
 }

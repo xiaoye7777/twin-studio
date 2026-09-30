@@ -37,47 +37,69 @@ export const useSceneSettingsStore = defineStore('scene-settings', () => {
   }
 
   function setGridEnabled(enabled: boolean): void {
-    commit((draft) => { draft.gridEnabled = enabled })
+    commit(draft => {
+      draft.gridEnabled = enabled
+    })
   }
 
   function setAxesEnabled(enabled: boolean): void {
-    commit((draft) => { draft.axesEnabled = enabled })
+    commit(draft => {
+      draft.axesEnabled = enabled
+    })
   }
 
   function setGroundEnabled(enabled: boolean): void {
-    commit((draft) => { draft.ground.enabled = enabled })
+    commit(draft => {
+      draft.ground.enabled = enabled
+    })
   }
 
   function setGroundSize(size: number): void {
     if (!Number.isFinite(size) || size <= 0) return
-    commit((draft) => { draft.ground.size = size })
+    commit(draft => {
+      draft.ground.size = size
+    })
   }
 
   function setGroundColor(color: string): void {
-    commit((draft) => { draft.ground.color = color })
+    commit(draft => {
+      draft.ground.color = color
+    })
   }
 
   function setAmbientIntensity(intensity: number): void {
     if (!Number.isFinite(intensity) || intensity < 0) return
-    commit((draft) => { draft.lighting.ambientIntensity = intensity })
+    commit(draft => {
+      draft.lighting.ambientIntensity = intensity
+    })
   }
 
   function setDirectionalIntensity(intensity: number): void {
     if (!Number.isFinite(intensity) || intensity < 0) return
-    commit((draft) => { draft.lighting.directionalIntensity = intensity })
+    commit(draft => {
+      draft.lighting.directionalIntensity = intensity
+    })
   }
 
   function setDirectionalPosition(position: Vector3Tuple): void {
     if (!position.every(Number.isFinite)) return
-    commit((draft) => { draft.lighting.directionalPosition = [...position] })
+    commit(draft => {
+      draft.lighting.directionalPosition = [...position]
+    })
   }
 
   function setEnvironmentAssetId(assetId: string | null): void {
-    commit((draft) => { draft.environmentAssetId = assetId })
+    commit(draft => {
+      draft.environmentAssetId = assetId
+    })
   }
 
-  function togglePanel(): void { panelOpen.value = !panelOpen.value }
-  function closePanel(): void { panelOpen.value = false }
+  function togglePanel(): void {
+    panelOpen.value = !panelOpen.value
+  }
+  function closePanel(): void {
+    panelOpen.value = false
+  }
 
   return {
     projectId,

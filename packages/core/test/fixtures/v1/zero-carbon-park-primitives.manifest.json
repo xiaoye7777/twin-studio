@@ -1,0 +1,16 @@
+{
+  "format": "twin-studio-project",
+  "packageVersion": 1,
+  "exportedAt": "2026-09-22T16:11:47.023Z",
+  "project": {
+    "id": "zero-carbon-2fee0d46-422e-4485-8c4f-6b93b4c614d8",
+    "name": "零碳智慧园区 Demo",
+    "createdAt": "2026-09-22T16:11:46.546Z",
+    "updatedAt": "2026-09-22T16:11:46.546Z"
+  },
+  "scene": {
+    "path": "scene.json",
+    "sha256": "d87a69f78b3e8751d525ec0f46017daed21bdc778ec8d15f8fab54b3c5cae900"
+  },
+  "assets": []
+}

@@ -35,7 +35,9 @@
   border-radius: 6px;
   background: rgba(54, 26, 10, 0.92);
   color: #ffd19a;
-  font: 10px ui-monospace, monospace;
+  font:
+    10px ui-monospace,
+    monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

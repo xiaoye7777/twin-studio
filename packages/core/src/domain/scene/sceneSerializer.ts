@@ -39,14 +39,19 @@ function serializePrimitive(root: Object3D, visible: (object: Object3D) => boole
   const metadata = getEditorMetadata(root)
   if (metadata?.kind !== 'primitive') return null
 
-  const color = root instanceof Mesh && root.material && !Array.isArray(root.material)
-    && 'color' in root.material && root.material.color instanceof Color
-    ? `#${root.material.color.getHexString()}`
-    : '#3b82f6'
+  const color =
+    root instanceof Mesh &&
+    root.material &&
+    !Array.isArray(root.material) &&
+    'color' in root.material &&
+    root.material.color instanceof Color
+      ? `#${root.material.color.getHexString()}`
+      : '#3b82f6'
 
-  const storedProperties = typeof root.userData.primitiveProperties === 'object' && root.userData.primitiveProperties !== null
-    ? root.userData.primitiveProperties as Partial<ScenePrimitiveV1['properties']>
-    : {}
+  const storedProperties =
+    typeof root.userData.primitiveProperties === 'object' && root.userData.primitiveProperties !== null
+      ? (root.userData.primitiveProperties as Partial<ScenePrimitiveV1['properties']>)
+      : {}
 
   return {
     nodeId: metadata.nodeId,

@@ -25,10 +25,7 @@ export function createScenePrimitive(type: ScenePrimitiveV1['type'], saved?: Sce
     geometry.translate(0, height / 2, 0)
   }
 
-  const object = new Mesh(
-    geometry,
-    new MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.05 }),
-  )
+  const object = new Mesh(geometry, new MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.05 }))
   object.name = saved?.name ?? (type === 'box' ? 'Box' : type === 'plane' ? 'Plane' : 'Cylinder')
   setEditorMetadata(object, {
     kind: 'primitive',

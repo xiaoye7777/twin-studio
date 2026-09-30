@@ -1,19 +1,12 @@
-export type TwinVariableDataType = 'number' | 'boolean' | 'string'
+import type { z } from 'zod'
+import type { TwinDeviceSchema, TwinVariableDataTypeSchema, TwinVariableDefinitionSchema } from './schema'
+
+export type TwinVariableDataType = z.infer<typeof TwinVariableDataTypeSchema>
+export type TwinDevice = z.infer<typeof TwinDeviceSchema>
+export type TwinVariableDefinition = z.infer<typeof TwinVariableDefinitionSchema>
+
+/** Runtime-only values: never saved in a scene document, so they have no schema. */
 export type TwinRuntimeValueData = number | boolean | string
-
-export interface TwinDevice {
-  id: string
-  name: string
-  type?: string
-}
-
-export interface TwinVariableDefinition {
-  id: string
-  key: string
-  name: string
-  dataType: TwinVariableDataType
-  unit?: string
-}
 
 export interface TwinRuntimeValue {
   bindingId: string

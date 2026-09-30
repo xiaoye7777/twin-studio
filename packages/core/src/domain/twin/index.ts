@@ -9,3 +9,10 @@ export type {
   TwinVariableDataType,
   TwinVariableDefinition,
 } from './twinTypes'
+export {
+  TwinBindingSchema,
+  TwinBindingTargetSchema,
+  TwinDeviceSchema,
+  TwinVariableDataTypeSchema,
+  TwinVariableDefinitionSchema,
+} from './schema'

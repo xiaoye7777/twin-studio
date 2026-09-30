@@ -8,11 +8,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "schema:update": "UPDATE_SCHEMAS=1 vitest run test/jsonSchema.test.ts"
   },
   "dependencies": {
     "@meteor3d/core": "workspace:*",
-    "fflate": "0.8.3"
+    "fflate": "0.8.3",
+    "zod": "4.6.5"
   },
   "peerDependencies": {
     "three": "0.184.0",
@@ -21,8 +26,10 @@
   "devDependencies": {
     "@types/node": "24.10.1",
     "@types/three": "0.184.0",
+    "@vitest/coverage-v8": "3.2.7",
     "three": "0.184.0",
     "typescript": "5.9.3",
+    "vitest": "3.2.7",
     "vue": "3.5.25"
   }
 }

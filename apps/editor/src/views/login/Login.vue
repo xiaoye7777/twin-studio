@@ -32,9 +32,13 @@ async function login() {
     <div class="absolute -left-24 top-24 h-80 w-80 rounded-full bg-blue-200/40 blur-3xl" />
     <div class="absolute -right-24 bottom-10 h-80 w-80 rounded-full bg-indigo-200/40 blur-3xl" />
 
-    <section class="relative w-full max-w-[420px] rounded-2xl border border-white/70 bg-white p-8 shadow-xl shadow-slate-300/40">
+    <section
+      class="relative w-full max-w-[420px] rounded-2xl border border-white/70 bg-white p-8 shadow-xl shadow-slate-300/40"
+    >
       <div class="mb-8 text-center">
-        <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200">
+        <span
+          class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200"
+        >
           <el-icon :size="24"><DataAnalysis /></el-icon>
         </span>
         <h1 class="mt-4 text-xl font-semibold tracking-tight text-slate-900">数字孪生平台</h1>
@@ -56,9 +60,7 @@ async function login() {
             @keyup.enter="login"
           />
         </el-form-item>
-        <el-button class="mt-2 w-full" type="primary" size="large" :loading="loading" @click="login">
-          登录
-        </el-button>
+        <el-button class="mt-2 w-full" type="primary" size="large" :loading="loading" @click="login"> 登录 </el-button>
       </el-form>
 
       <p class="mt-6 text-center text-xs text-slate-400">Demo 环境 · 任意用户名和密码均可登录</p>

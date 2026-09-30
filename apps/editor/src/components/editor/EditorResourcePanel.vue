@@ -19,12 +19,14 @@ const activeAssetCategory = ref<'builtin' | 'models' | 'basic' | 'park' | 'envir
 const placingModel = ref('')
 const editorStore = useEditorStore()
 const fileInputRef = ref<HTMLInputElement>()
-const modelAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'model'))
-const environmentAssets = computed(() => assetStore.assets.filter((asset) => asset.assetType === 'environment'))
+const modelAssets = computed(() => assetStore.assets.filter(asset => asset.assetType === 'model'))
+const environmentAssets = computed(() => assetStore.assets.filter(asset => asset.assetType === 'environment'))
 
-const visiblePrimitivePresets = computed(() => primitivePresets.filter((preset) => (
-  activeAssetCategory.value === 'basic' ? preset.category === '基础几何' : preset.category === '园区构件'
-)))
+const visiblePrimitivePresets = computed(() =>
+  primitivePresets.filter(preset =>
+    activeAssetCategory.value === 'basic' ? preset.category === '基础几何' : preset.category === '园区构件',
+  ),
+)
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -105,13 +107,55 @@ onMounted(() => {
   <section data-testid="asset-panel" class="flex h-full min-h-0 flex-col bg-panel text-fg-2">
     <div class="flex h-[30px] shrink-0 items-stretch justify-between border-b border-line pr-2">
       <div class="flex items-stretch" role="tablist">
-        <button class="res-tab" :class="{ 'is-active': activeTab === 'assets' }" role="tab" :aria-selected="activeTab === 'assets'" type="button" @click="activeTab = 'assets'">资源</button>
-        <button data-testid="effects-tab" class="res-tab" :class="{ 'is-active': activeTab === 'effects' }" role="tab" :aria-selected="activeTab === 'effects'" type="button" @click="activeTab = 'effects'">特效</button>
-        <button data-testid="templates-tab" class="res-tab" :class="{ 'is-active': activeTab === 'templates' }" role="tab" :aria-selected="activeTab === 'templates'" type="button" @click="activeTab = 'templates'">特效模板</button>
+        <button
+          class="res-tab"
+          :class="{ 'is-active': activeTab === 'assets' }"
+          role="tab"
+          :aria-selected="activeTab === 'assets'"
+          type="button"
+          @click="activeTab = 'assets'"
+        >
+          资源
+        </button>
+        <button
+          data-testid="effects-tab"
+          class="res-tab"
+          :class="{ 'is-active': activeTab === 'effects' }"
+          role="tab"
+          :aria-selected="activeTab === 'effects'"
+          type="button"
+          @click="activeTab = 'effects'"
+        >
+          特效
+        </button>
+        <button
+          data-testid="templates-tab"
+          class="res-tab"
+          :class="{ 'is-active': activeTab === 'templates' }"
+          role="tab"
+          :aria-selected="activeTab === 'templates'"
+          type="button"
+          @click="activeTab = 'templates'"
+        >
+          特效模板
+        </button>
       </div>
       <div class="flex items-center">
-        <input ref="fileInputRef" data-testid="asset-file-input" class="hidden" type="file" accept=".glb,model/gltf-binary" @change="handleAssetFile" />
-        <button data-testid="import-asset" class="st-btn h-6! px-2!" type="button" :disabled="assetStore.loading" @click="openAssetPicker">
+        <input
+          ref="fileInputRef"
+          data-testid="asset-file-input"
+          class="hidden"
+          type="file"
+          accept=".glb,model/gltf-binary"
+          @change="handleAssetFile"
+        />
+        <button
+          data-testid="import-asset"
+          class="st-btn h-6! px-2!"
+          type="button"
+          :disabled="assetStore.loading"
+          @click="openAssetPicker"
+        >
           <el-icon><Upload /></el-icon>导入 GLB
         </button>
       </div>
@@ -121,12 +165,55 @@ onMounted(() => {
     <EffectTemplateLibrary v-else-if="activeTab === 'templates'" />
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <nav class="flex h-8 shrink-0 items-center gap-1 px-3" aria-label="资产分类">
-        <button data-testid="asset-category-builtin" class="chip" :class="{ 'is-active': activeAssetCategory === 'builtin' }" type="button" @click="activeAssetCategory = 'builtin'">内置模型 <span>{{ builtinModels.length }}</span></button>
-        <button data-testid="asset-category-models" class="chip" :class="{ 'is-active': activeAssetCategory === 'models' }" type="button" @click="activeAssetCategory = 'models'">我的模型 <span>{{ modelAssets.length }}</span></button>
-        <button data-testid="asset-category-basic" class="chip" :class="{ 'is-active': activeAssetCategory === 'basic' }" type="button" @click="activeAssetCategory = 'basic'">基础几何</button>
-        <button data-testid="asset-category-park" class="chip" :class="{ 'is-active': activeAssetCategory === 'park' }" type="button" @click="activeAssetCategory = 'park'">园区构件</button>
-        <button v-if="environmentAssets.length" data-testid="asset-category-environments" class="chip" :class="{ 'is-active': activeAssetCategory === 'environments' }" type="button" @click="activeAssetCategory = 'environments'">环境 <span>{{ environmentAssets.length }}</span></button>
-        <span class="ml-auto text-[11px] text-fg-3">{{ activeAssetCategory === 'builtin' ? '拖入视口放置 · 点击放到中心 · CC0 可商用' : '拖入视口放置 · 双击放到中心' }}</span>
+        <button
+          data-testid="asset-category-builtin"
+          class="chip"
+          :class="{ 'is-active': activeAssetCategory === 'builtin' }"
+          type="button"
+          @click="activeAssetCategory = 'builtin'"
+        >
+          内置模型 <span>{{ builtinModels.length }}</span>
+        </button>
+        <button
+          data-testid="asset-category-models"
+          class="chip"
+          :class="{ 'is-active': activeAssetCategory === 'models' }"
+          type="button"
+          @click="activeAssetCategory = 'models'"
+        >
+          我的模型 <span>{{ modelAssets.length }}</span>
+        </button>
+        <button
+          data-testid="asset-category-basic"
+          class="chip"
+          :class="{ 'is-active': activeAssetCategory === 'basic' }"
+          type="button"
+          @click="activeAssetCategory = 'basic'"
+        >
+          基础几何
+        </button>
+        <button
+          data-testid="asset-category-park"
+          class="chip"
+          :class="{ 'is-active': activeAssetCategory === 'park' }"
+          type="button"
+          @click="activeAssetCategory = 'park'"
+        >
+          园区构件
+        </button>
+        <button
+          v-if="environmentAssets.length"
+          data-testid="asset-category-environments"
+          class="chip"
+          :class="{ 'is-active': activeAssetCategory === 'environments' }"
+          type="button"
+          @click="activeAssetCategory = 'environments'"
+        >
+          环境 <span>{{ environmentAssets.length }}</span>
+        </button>
+        <span class="ml-auto text-[11px] text-fg-3">{{
+          activeAssetCategory === 'builtin' ? '拖入视口放置 · 点击放到中心 · CC0 可商用' : '拖入视口放置 · 双击放到中心'
+        }}</span>
       </nav>
 
       <div v-if="activeAssetCategory === 'builtin'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
@@ -143,10 +230,15 @@ onMounted(() => {
             @click="placeBuiltinModel(model)"
             @dragstart="handleBuiltinDragStart($event, model)"
           >
-            <span class="tile__icon"><el-icon :size="16" :class="{ 'is-loading': placingModel === model.key }"><component :is="placingModel === model.key ? Loading : Files" /></el-icon></span>
+            <span class="tile__icon"
+              ><el-icon :size="16" :class="{ 'is-loading': placingModel === model.key }"
+                ><component :is="placingModel === model.key ? Loading : Files" /></el-icon
+            ></span>
             <span class="min-w-0">
               <span class="block truncate text-[12px] text-fg">{{ model.name }}</span>
-              <span class="mt-0.5 block truncate text-[11px] text-fg-3">{{ model.category }} · {{ model.description }}</span>
+              <span class="mt-0.5 block truncate text-[11px] text-fg-3"
+                >{{ model.category }} · {{ model.description }}</span
+              >
             </span>
           </button>
         </div>
@@ -164,7 +256,9 @@ onMounted(() => {
             @dragstart="handleAssetDragStart($event, asset)"
             @dblclick="instantiateAsset(asset.id)"
           >
-            <span class="tile__icon"><el-icon :size="17"><Files /></el-icon></span>
+            <span class="tile__icon"
+              ><el-icon :size="17"><Files /></el-icon
+            ></span>
             <div class="min-w-0 flex-1">
               <p class="truncate text-[12px] font-medium text-fg">{{ asset.name }}</p>
               <p class="mt-0.5 truncate text-[11px] text-fg-3">GLB · {{ formatSize(asset.size) }}</p>
@@ -176,16 +270,24 @@ onMounted(() => {
               type="button"
               title="添加到场景中心"
               @click.stop="instantiateAsset(asset.id)"
-            >添加</button>
+            >
+              添加
+            </button>
           </article>
         </div>
-        <div v-else class="flex h-full min-h-14 items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[12px] text-fg-3">
+        <div
+          v-else
+          class="flex h-full min-h-14 items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[12px] text-fg-3"
+        >
           暂无模型资产
           <button class="st-link st-link--accent" type="button" @click="openAssetPicker">导入 GLB</button>
         </div>
       </div>
 
-      <div v-else-if="activeAssetCategory === 'basic' || activeAssetCategory === 'park'" class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
+      <div
+        v-else-if="activeAssetCategory === 'basic' || activeAssetCategory === 'park'"
+        class="min-h-0 flex-1 overflow-auto px-3 pb-2.5"
+      >
         <div class="flex min-w-max gap-2">
           <button
             v-for="preset in visiblePrimitivePresets"
@@ -199,7 +301,9 @@ onMounted(() => {
             @click="addPrimitive(preset)"
             @dragstart="handlePrimitiveDragStart($event, preset)"
           >
-            <span class="tile__icon"><el-icon :size="16"><Box /></el-icon></span>
+            <span class="tile__icon"
+              ><el-icon :size="16"><Box /></el-icon
+            ></span>
             <span class="min-w-0">
               <span class="block truncate text-[12px] text-fg">{{ preset.label }}</span>
               <span class="mt-0.5 block truncate text-[11px] text-fg-3">{{ preset.description }}</span>
@@ -210,9 +314,19 @@ onMounted(() => {
 
       <div v-else class="min-h-0 flex-1 overflow-auto px-3 pb-2.5">
         <div class="flex min-w-max gap-2">
-          <article v-for="asset in environmentAssets" :key="asset.id" :data-testid="`environment-card-${asset.id}`" class="tile w-56">
-            <span class="tile__icon"><el-icon :size="17"><Picture /></el-icon></span>
-            <div class="min-w-0"><p class="truncate text-[12px] font-medium text-fg">{{ asset.name }}</p><p class="mt-0.5 text-[11px] text-fg-3">HDR · {{ formatSize(asset.size) }}</p></div>
+          <article
+            v-for="asset in environmentAssets"
+            :key="asset.id"
+            :data-testid="`environment-card-${asset.id}`"
+            class="tile w-56"
+          >
+            <span class="tile__icon"
+              ><el-icon :size="17"><Picture /></el-icon
+            ></span>
+            <div class="min-w-0">
+              <p class="truncate text-[12px] font-medium text-fg">{{ asset.name }}</p>
+              <p class="mt-0.5 text-[11px] text-fg-3">HDR · {{ formatSize(asset.size) }}</p>
+            </div>
           </article>
         </div>
       </div>
@@ -257,7 +371,9 @@ onMounted(() => {
   padding: 0 9px;
   font-size: 11.5px;
   color: var(--color-fg-2);
-  transition: color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
 .chip:hover {
@@ -284,7 +400,9 @@ onMounted(() => {
   border-radius: 6px;
   background: var(--color-field);
   padding: 0 10px;
-  transition: border-color 120ms ease, background-color 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
 }
 
 .tile:hover:not(:disabled) {

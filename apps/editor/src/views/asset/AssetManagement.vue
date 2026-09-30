@@ -4,7 +4,13 @@ import { Box, Brush, Picture, Upload } from '@element-plus/icons-vue'
 const categories = [
   { title: '3D 模型', description: '建筑、设备与场景模型', icon: Box, count: 0, color: 'bg-blue-50 text-blue-600' },
   { title: '材质', description: 'PBR 材质与材质预设', icon: Brush, count: 0, color: 'bg-emerald-50 text-emerald-600' },
-  { title: '贴图', description: '颜色、法线与环境贴图', icon: Picture, count: 0, color: 'bg-violet-50 text-violet-600' },
+  {
+    title: '贴图',
+    description: '颜色、法线与环境贴图',
+    icon: Picture,
+    count: 0,
+    color: 'bg-violet-50 text-violet-600',
+  },
 ]
 </script>
 
@@ -38,7 +44,9 @@ const categories = [
       </article>
     </div>
 
-    <div class="mt-6 flex min-h-[340px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div
+      class="mt-6 flex min-h-[340px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
+    >
       <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
         <el-icon :size="26"><Box /></el-icon>
       </span>

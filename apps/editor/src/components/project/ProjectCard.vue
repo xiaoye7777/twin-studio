@@ -30,17 +30,18 @@ function formatDate(value: string) {
     :data-testid="`project-card-${project.id}`"
     class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-200/70"
   >
-    <div
-      class="relative aspect-[16/10] overflow-hidden"
-      :style="{ background: project.cover ?? '#dbeafe' }"
-    >
+    <div class="relative aspect-[16/10] overflow-hidden" :style="{ background: project.cover ?? '#dbeafe' }">
       <div class="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(15,23,42,0.16))]" />
-      <div class="absolute left-[18%] top-[22%] h-[43%] w-[64%] rounded-xl border border-white/35 bg-white/20 shadow-2xl backdrop-blur-[2px] transition duration-300 group-hover:scale-[1.03]">
+      <div
+        class="absolute left-[18%] top-[22%] h-[43%] w-[64%] rounded-xl border border-white/35 bg-white/20 shadow-2xl backdrop-blur-[2px] transition duration-300 group-hover:scale-[1.03]"
+      >
         <div class="m-3 grid h-[calc(100%-24px)] grid-cols-4 gap-1.5 opacity-70">
           <span v-for="item in 8" :key="item" class="rounded-sm bg-white/45" />
         </div>
       </div>
-      <span class="absolute left-4 top-4 rounded-md bg-white/85 px-2 py-1 text-[11px] font-medium text-slate-600 backdrop-blur">
+      <span
+        class="absolute left-4 top-4 rounded-md bg-white/85 px-2 py-1 text-[11px] font-medium text-slate-600 backdrop-blur"
+      >
         数字孪生项目
       </span>
       <div
@@ -75,8 +76,21 @@ function formatDate(value: string) {
         </p>
       </div>
       <el-dropdown trigger="click" @command="$emit('export', project)">
-        <button :disabled="exporting" data-testid="project-menu" class="mt-1 shrink-0 text-slate-400" aria-label="项目操作"><el-icon><MoreFilled /></el-icon></button>
-        <template #dropdown><el-dropdown-menu><el-dropdown-item command="export" :disabled="exporting" data-testid="export-project">{{ exporting ? '正在导出…' : '导出项目' }}</el-dropdown-item></el-dropdown-menu></template>
+        <button
+          :disabled="exporting"
+          data-testid="project-menu"
+          class="mt-1 shrink-0 text-slate-400"
+          aria-label="项目操作"
+        >
+          <el-icon><MoreFilled /></el-icon>
+        </button>
+        <template #dropdown
+          ><el-dropdown-menu
+            ><el-dropdown-item command="export" :disabled="exporting" data-testid="export-project">{{
+              exporting ? '正在导出…' : '导出项目'
+            }}</el-dropdown-item></el-dropdown-menu
+          ></template
+        >
       </el-dropdown>
     </div>
   </article>

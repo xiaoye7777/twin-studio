@@ -56,9 +56,10 @@ export class IndexedDbAssetRepository implements AssetRepository {
 
     const readTransaction = database.transaction(STORE_NAME, 'readonly')
     const fingerprintIndex = readTransaction.objectStore(STORE_NAME).index(FINGERPRINT_INDEX)
-    let existing = await requestResult(fingerprintIndex.get(fingerprint)) as AssetRecord | undefined
+    let existing = (await requestResult(fingerprintIndex.get(fingerprint))) as AssetRecord | undefined
     if (!existing && assetType === 'model') {
-      existing = await requestResult(fingerprintIndex.get(`${file.name}:${file.size}:${file.lastModified}`)) as AssetRecord | undefined
+      existing = (await requestResult(fingerprintIndex.get(`${file.name}:${file.size}:${file.lastModified}`))) as
+        AssetRecord | undefined
     }
     if (existing) return { ...existing, assetType: existing.assetType ?? 'model' }
 

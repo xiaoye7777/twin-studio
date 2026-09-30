@@ -56,7 +56,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function setSceneRoots(objects: readonly Object3D[]): void {
-    sceneRoots.value = objects.map((object) => markRaw(object))
+    sceneRoots.value = objects.map(object => markRaw(object))
     sceneRevision.value += 1
   }
 
@@ -79,8 +79,13 @@ export const useEditorStore = defineStore('editor', () => {
   function requestSceneSave(): void {
     sceneSaveRevision.value += 1
   }
-  function setHistoryState(undo: boolean, redo: boolean): void { canUndo.value = undo; canRedo.value = redo }
-  function setDirty(value: boolean): void { isDirty.value = value }
+  function setHistoryState(undo: boolean, redo: boolean): void {
+    canUndo.value = undo
+    canRedo.value = redo
+  }
+  function setDirty(value: boolean): void {
+    isDirty.value = value
+  }
   function setActions(value: EditorActions | null): void {
     actions.value = value ? markRaw(value) : null
     runtimeReady.value = value !== null
@@ -100,7 +105,11 @@ export const useEditorStore = defineStore('editor', () => {
     transformChangeSource,
     modifiedObjects,
     sceneSaveRevision,
-    canUndo, canRedo, isDirty, snapValue, runtimeReady,
+    canUndo,
+    canRedo,
+    isDirty,
+    snapValue,
+    runtimeReady,
     selectObject,
     clearSelection,
     setTransformMode,
@@ -110,7 +119,9 @@ export const useEditorStore = defineStore('editor', () => {
     markObjectModified,
     requestSceneSave,
     clearModifiedObjects,
-    setHistoryState, setDirty, setActions,
+    setHistoryState,
+    setDirty,
+    setActions,
     undo: () => actions.value?.undo(),
     redo: () => actions.value?.redo(),
     deleteSelected: () => actions.value?.deleteSelected(),
@@ -119,9 +130,14 @@ export const useEditorStore = defineStore('editor', () => {
     resetSelectedTransform: () => actions.value?.resetSelectedTransform(),
     focusSelected: () => actions.value?.focusSelected(),
     fitScene: () => actions.value?.fitScene(),
-    setSnap: (value: number | null) => { snapValue.value = value; actions.value?.setSnap(value) },
-    commitRename: (object: Object3D, before: string, after: string) => actions.value?.commitRename(object, before, after),
-    commitTransform: (object: Object3D, before: TransformState, after: TransformState) => actions.value?.commitTransform(object, before, after),
+    setSnap: (value: number | null) => {
+      snapValue.value = value
+      actions.value?.setSnap(value)
+    },
+    commitRename: (object: Object3D, before: string, after: string) =>
+      actions.value?.commitRename(object, before, after),
+    commitTransform: (object: Object3D, before: TransformState, after: TransformState) =>
+      actions.value?.commitTransform(object, before, after),
     addPrimitive: (type: PrimitiveType, presetId?: string) => actions.value?.addPrimitive(type, presetId),
     instantiateAsset: (assetId: string) => actions.value?.instantiateAsset(assetId),
     setCommonView: (view: CommonView) => actions.value?.setCommonView(view),

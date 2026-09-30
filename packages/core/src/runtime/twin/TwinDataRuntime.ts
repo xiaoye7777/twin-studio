@@ -19,7 +19,10 @@ function createQaMockSource(state: TwinRuntimeState, getBindings: () => readonly
   return new MockDataSource({
     getBindings,
     setRuntimeValue: (id, key, value) => state.setRuntimeValue(id, key, value),
-    onTick: () => { state.recordMockTick(); state.recordDataSourceMessage() },
+    onTick: () => {
+      state.recordMockTick()
+      state.recordDataSourceMessage()
+    },
   })
 }
 
@@ -30,8 +33,10 @@ function createQaMockSource(state: TwinRuntimeState, getBindings: () => readonly
 export class TwinDataRuntime {
   private source: DataSource | null = null
   private sourceType: DataSourceType = 'websocket'
-  constructor(readonly state: TwinRuntimeState, private readonly resolver: BindingTargetResolver) {
-  }
+  constructor(
+    readonly state: TwinRuntimeState,
+    private readonly resolver: BindingTargetResolver,
+  ) {}
   initialize(projectId: string, bindings: readonly TwinBinding[]): void {
     this.stop()
     this.state.initializeProject(projectId, bindings)
@@ -44,8 +49,12 @@ export class TwinDataRuntime {
   }
   start(sources?: ProjectDataSource[]): void {
     this.refresh()
-    const getBindings = () => this.state.bindings.filter(binding => this.state.resolutionByBindingId[binding.id] === 'resolved')
-    if (import.meta.env.DEV && qaMockRequested()) { this.run('mock', createQaMockSource(this.state, getBindings)); return }
+    const getBindings = () =>
+      this.state.bindings.filter(binding => this.state.resolutionByBindingId[binding.id] === 'resolved')
+    if (import.meta.env.DEV && qaMockRequested()) {
+      this.run('mock', createQaMockSource(this.state, getBindings))
+      return
+    }
     const config = activeDataSource(sources)
     if (!config) {
       this.stop()
@@ -53,17 +62,20 @@ export class TwinDataRuntime {
       this.state.setDataSourceState('websocket', 'unconfigured')
       return
     }
-    this.run('websocket', new WebSocketDataSource({
-      url: config.url,
-      getBindings,
-      setRuntimeValue: (id, key, value) => this.state.setRuntimeValue(id, key, value),
-      onStatus: (status, error) => {
-        // Never leave stale values on screen once the live connection is gone.
-        if (status !== 'connected') this.state.clearRuntimeValues()
-        this.state.setDataSourceState('websocket', status, error)
-      },
-      onMessage: () => this.state.recordDataSourceMessage(),
-    }))
+    this.run(
+      'websocket',
+      new WebSocketDataSource({
+        url: config.url,
+        getBindings,
+        setRuntimeValue: (id, key, value) => this.state.setRuntimeValue(id, key, value),
+        onStatus: (status, error) => {
+          // Never leave stale values on screen once the live connection is gone.
+          if (status !== 'connected') this.state.clearRuntimeValues()
+          this.state.setDataSourceState('websocket', status, error)
+        },
+        onMessage: () => this.state.recordDataSourceMessage(),
+      }),
+    )
   }
   private run(type: DataSourceType, source: DataSource): void {
     this.stop()

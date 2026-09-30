@@ -1,21 +1,29 @@
-import { isTwinBindingTarget, type TwinBindingTarget } from '../twin'
+import { z } from 'zod'
+import { nonEmptyString } from '../schemaHelpers'
+import { TwinBindingTargetSchema, type TwinBindingTarget } from '../twin'
 
-export type EffectKind = 'box-glow' | 'ground-pulse' | 'outline' | 'child-highlight' | 'floating-label'
-export interface EffectParameters {
-  color: string
-  opacity: number
-  speed: number
-  padding: number
-  text: string
-}
-export interface EffectInstance {
-  id: string
-  kind: EffectKind
-  target: TwinBindingTarget
-  parameters: EffectParameters
+export const EffectKindSchema = z.enum(['box-glow', 'ground-pulse', 'outline', 'child-highlight', 'floating-label'])
+
+export const EffectParametersSchema = z.object({
+  color: z.string().regex(/^#[0-9a-f]{6}$/i, { message: '颜色必须是 #RRGGBB 格式' }),
+  opacity: z.number().min(0).max(1),
+  speed: z.number().min(0).max(10),
+  padding: z.number().min(0).max(100),
+  text: z.string().max(200),
+})
+
+export const EffectInstanceSchema = z.object({
+  id: nonEmptyString,
+  kind: EffectKindSchema,
+  target: TwinBindingTargetSchema,
+  parameters: EffectParametersSchema,
   /** Provenance only: never resolved by the runtime or automatically synchronized. */
-  sourceTemplateId?: string
-}
+  sourceTemplateId: nonEmptyString.optional(),
+})
+
+export type EffectKind = z.infer<typeof EffectKindSchema>
+export type EffectParameters = z.infer<typeof EffectParametersSchema>
+export type EffectInstance = z.infer<typeof EffectInstanceSchema>
 export interface EffectDefinition {
   kind: EffectKind
   name: string
@@ -31,7 +39,9 @@ export const effectDefinitions: readonly EffectDefinition[] = [
 ]
 export function createEffect(kind: EffectKind, target: TwinBindingTarget): EffectInstance {
   return {
-    id: `effect_${crypto.randomUUID()}`, kind, target: { ...target },
+    id: `effect_${crypto.randomUUID()}`,
+    kind,
+    target: { ...target },
     parameters: createEffectParameters(),
   }
 }
@@ -42,17 +52,8 @@ export function cloneEffects(effects: readonly EffectInstance[]): EffectInstance
   return effects.map(effect => ({ ...effect, target: { ...effect.target }, parameters: { ...effect.parameters } }))
 }
 export function isEffectInstance(value: unknown): value is EffectInstance {
-  if (!value || typeof value !== 'object' || !('id' in value) || typeof value.id !== 'string' || !value.id) return false
-  if (!('kind' in value) || !effectDefinitions.some(def => def.kind === value.kind)) return false
-  if (!('target' in value) || !isTwinBindingTarget(value.target) || !('parameters' in value)) return false
-  if ('sourceTemplateId' in value && (typeof value.sourceTemplateId !== 'string' || !value.sourceTemplateId)) return false
-  return isEffectParameters(value.parameters)
+  return EffectInstanceSchema.safeParse(value).success
 }
-export function isEffectParameters(p: unknown): p is EffectParameters {
-  if (!p || typeof p !== 'object') return false
-  return 'color' in p && typeof p.color === 'string' && /^#[0-9a-f]{6}$/i.test(p.color) &&
-    'opacity' in p && typeof p.opacity === 'number' && Number.isFinite(p.opacity) && p.opacity >= 0 && p.opacity <= 1 &&
-    'speed' in p && typeof p.speed === 'number' && Number.isFinite(p.speed) && p.speed >= 0 && p.speed <= 10 &&
-    'padding' in p && typeof p.padding === 'number' && Number.isFinite(p.padding) && p.padding >= 0 && p.padding <= 100 &&
-    'text' in p && typeof p.text === 'string' && p.text.length <= 200
+export function isEffectParameters(value: unknown): value is EffectParameters {
+  return EffectParametersSchema.safeParse(value).success
 }

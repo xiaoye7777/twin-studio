@@ -1,11 +1,16 @@
-import { createRequire } from 'node:module'
 import assert from 'node:assert/strict'
 
-const { chromium } = createRequire(import.meta.url)('playwright')
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true })
+import { chromium } from 'playwright-core'
+const browser = await chromium.launch({
+  // CHROME_PATH selects a local Chrome; otherwise Playwright's own Chromium is used.
+  executablePath: process.env.CHROME_PATH || undefined,
+  headless: true,
+})
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
 // Dev-server QA only: deterministic in-browser values instead of the WebSocket source (see TwinDataRuntime).
-await context.addInitScript(() => { window.__TWIN_QA_MOCK__ = true })
+await context.addInitScript(() => {
+  window.__TWIN_QA_MOCK__ = true
+})
 const page = await context.newPage()
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5178'
 const errors = []
@@ -21,7 +26,17 @@ try {
     const projects = JSON.parse(localStorage.getItem('digital-twin-studio-projects') || '[]')
     const project = projects.at(-1)
     const scene = JSON.parse(localStorage.getItem(`digital-twin-studio:scene:v1:${project.id}`))
-    return { project, counts: { instances: scene.instances.length, primitives: scene.primitives.length, bindings: scene.bindings.length, rules: scene.visualRules.length, interactions: scene.interactions.length, effects: scene.effects.length } }
+    return {
+      project,
+      counts: {
+        instances: scene.instances.length,
+        primitives: scene.primitives.length,
+        bindings: scene.bindings.length,
+        rules: scene.visualRules.length,
+        interactions: scene.interactions.length,
+        effects: scene.effects.length,
+      },
+    }
   })
   assert.equal(seeded.counts.bindings, 8)
   assert.equal(seeded.counts.rules, 16)
@@ -34,23 +49,37 @@ try {
   await card.getByTestId('edit-project').click()
   await page.waitForURL(`**/editor/${seeded.project.id}`)
   await page.waitForSelector('[data-testid="editor-viewport"] canvas')
-  await page.waitForFunction(() => JSON.parse(document.querySelector('[data-testid="scene-document-debug"]')?.textContent || '{}').bindings?.length === 8)
+  await page.waitForFunction(
+    () =>
+      JSON.parse(document.querySelector('[data-testid="scene-document-debug"]')?.textContent || '{}').bindings
+        ?.length === 8,
+  )
 
-  await page.evaluate(async id => document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(`/projects/${id}/dashboard`), seeded.project.id)
+  await page.evaluate(
+    async id =>
+      document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(`/projects/${id}/dashboard`),
+    seeded.project.id,
+  )
   await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]')
-  await page.waitForFunction(() => Number(document.querySelector('[data-testid="project-dashboard"]')?.dataset.runtimeRevision || 0) > 0)
+  await page.waitForFunction(
+    () => Number(document.querySelector('[data-testid="project-dashboard"]')?.dataset.runtimeRevision || 0) > 0,
+  )
   assert.equal(await page.getByTestId('project-dashboard').getAttribute('data-device-count'), '8')
   for (const testId of ['dashboard-average-soc', 'dashboard-average-temperature', 'dashboard-total-power']) {
     assert.notEqual((await page.getByTestId(testId).textContent()).trim(), '—')
   }
   await page.waitForTimeout(3500)
   await page.screenshot({ path: '/tmp/zero-carbon-park-dashboard.png', fullPage: true })
-  await page.evaluate(() => { window.demoViewer = document.querySelector('[data-testid="twin-scene-viewer"]').__vueParentComponent.exposed })
+  await page.evaluate(() => {
+    window.demoViewer = document.querySelector('[data-testid="twin-scene-viewer"]').__vueParentComponent.exposed
+  })
   assert(await page.evaluate(() => window.demoViewer.focusDevice('ESS-001')))
   const canvas = await page.locator('[data-testid="twin-scene-viewer"] canvas').boundingBox()
   const hit = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 }
   await page.mouse.move(hit.x, hit.y)
-  await page.waitForFunction(() => window.demoViewer.getInteractionDiagnostics()?.hoverTarget?.instanceId === 'instance_ess-1')
+  await page.waitForFunction(
+    () => window.demoViewer.getInteractionDiagnostics()?.hoverTarget?.instanceId === 'instance_ess-1',
+  )
   await page.mouse.click(hit.x, hit.y)
   await page.waitForFunction(() => window.demoViewer.getSelection()?.deviceId === 'ESS-001')
   await page.waitForSelector('[data-testid="dashboard-interaction-event"]')
@@ -61,13 +90,37 @@ try {
   await page.getByTestId('dashboard-device-ESS-002').click()
   await page.waitForFunction(() => window.demoViewer.getSelection()?.deviceId === 'ESS-002')
   const ticks = await page.locator('[data-testid="twin-scene-viewer"]').getAttribute('data-mock-ticks')
-  await page.waitForFunction(before => Number(document.querySelector('[data-testid="twin-scene-viewer"]')?.dataset.mockTicks || 0) > Number(before), ticks)
+  await page.waitForFunction(
+    before =>
+      Number(document.querySelector('[data-testid="twin-scene-viewer"]')?.dataset.mockTicks || 0) > Number(before),
+    ticks,
+  )
   const runtime = await page.evaluate(() => ({
-    rule: window.demoViewer.getRuleDiagnostics(), interaction: window.demoViewer.getInteractionDiagnostics(), effect: window.demoViewer.getEffectDiagnostics(),
+    rule: window.demoViewer.getRuleDiagnostics(),
+    interaction: window.demoViewer.getInteractionDiagnostics(),
+    effect: window.demoViewer.getEffectDiagnostics(),
   }))
-  assert.equal(Object.keys(runtime.rule.rules).length, 16); assert.equal(runtime.interaction.total, 32)
-  assert(!Object.values(runtime.rule.rules).some(rule => rule.status === 'unresolved')); assert.equal(runtime.interaction.unresolved.length, 0)
+  assert.equal(Object.keys(runtime.rule.rules).length, 16)
+  assert.equal(runtime.interaction.total, 32)
+  assert(!Object.values(runtime.rule.rules).some(rule => rule.status === 'unresolved'))
+  assert.equal(runtime.interaction.unresolved.length, 0)
   await page.screenshot({ path: '/tmp/zero-carbon-park-focused.png', fullPage: true })
   assert.deepEqual(errors, [])
-  console.log(JSON.stringify({ projectId: seeded.project.id, ...seeded.counts, mock: 'PASS', rules: runtime.rule, interactions: runtime.interaction, screenshot: '/tmp/zero-carbon-park-dashboard.png' }, null, 2))
-} finally { await context.close(); await browser.close() }
+  console.log(
+    JSON.stringify(
+      {
+        projectId: seeded.project.id,
+        ...seeded.counts,
+        mock: 'PASS',
+        rules: runtime.rule,
+        interactions: runtime.interaction,
+        screenshot: '/tmp/zero-carbon-park-dashboard.png',
+      },
+      null,
+      2,
+    ),
+  )
+} finally {
+  await context.close()
+  await browser.close()
+}

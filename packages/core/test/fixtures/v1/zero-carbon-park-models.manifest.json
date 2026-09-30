@@ -1,0 +1,105 @@
+{
+  "format": "twin-studio-project",
+  "packageVersion": 1,
+  "exportedAt": "2026-09-29T07:24:38.904Z",
+  "project": {
+    "id": "zero-carbon-84ee0db8-4592-413c-be6c-d075dfef63ad",
+    "name": "零碳智慧园区 Demo",
+    "createdAt": "2026-09-29T07:24:34.196Z",
+    "updatedAt": "2026-09-29T07:24:34.196Z"
+  },
+  "scene": {
+    "path": "scene.json",
+    "sha256": "93574e32ab735f25a70cad32eab6b4df9e26bd578be97ffa5bcdad5356a2329a"
+  },
+  "assets": [
+    {
+      "id": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "path": "assets/0.glb",
+      "name": "energy-storage-container.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 48648,
+      "sha256": "13276e115f616a8f908356dc2ce1c20a6411073a2e1867f4a48c900a60d23977",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "path": "assets/1.glb",
+      "name": "solar-array.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 93860,
+      "sha256": "f3092a133d9aa6fd9cd82bb5070e0bb438ce8c839ff384a659924abdc3641ac9",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_62b48ad4-d79c-48bc-a5e9-b51091f9c443",
+      "path": "assets/2.glb",
+      "name": "wind-turbine.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 58284,
+      "sha256": "36a7416c926d9a1cce296c0c7da04a0f6c2d9a82287d83c6a02a2f901333380d",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_638d3222-6495-4098-a0a8-9d3fbada4b57",
+      "path": "assets/3.glb",
+      "name": "energy-center.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 115776,
+      "sha256": "1e75e97dcc0abc97056e2a533fe6bd19b2549624a08644649601feba8cc1ede9",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_5d07ac57-a4cf-4490-a1ac-92b01ebc7133",
+      "path": "assets/4.glb",
+      "name": "thermal-storage-tank.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 59464,
+      "sha256": "20fe25669b53ab510d5eb7adb1287e03a9eed443969d27df3a073d25d1ab6c20",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_accb3864-2c80-4aec-ad50-fa67bfa121dc",
+      "path": "assets/5.glb",
+      "name": "office-tower.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 122376,
+      "sha256": "affb365f6e19725e4e53d71191c1ef306df7d65035f8d770ab166aa8bb5c5923",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_20c57b25-e9c1-417a-a16b-c9869467b384",
+      "path": "assets/6.glb",
+      "name": "factory.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 118960,
+      "sha256": "0465f046efce1b6f65233b210e3c4bb3f765d661d92f1f0f3d4c452f8b3d0d4f",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    },
+    {
+      "id": "asset_d6baa430-d72a-4b0b-b788-e5ac2289b880",
+      "path": "assets/7.glb",
+      "name": "warehouse.glb",
+      "mimeType": "model/gltf-binary",
+      "assetType": "model",
+      "size": 85868,
+      "sha256": "7e9d5a3ecd42a70ff2e6b6dbc584c663580eda0b3aea32eff3a54dd49ad7da9e",
+      "lastModified": 0,
+      "createdAt": "2026-09-29T07:24:34.195Z"
+    }
+  ]
+}

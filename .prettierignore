@@ -1,0 +1,9 @@
+node_modules
+dist
+release
+vendor
+pnpm-lock.yaml
+**/public/**
+*.md
+*.twin.zip
+docs/schema

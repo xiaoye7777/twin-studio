@@ -1,8 +1,8 @@
-import { isSceneDocumentV1, type SceneDocumentV1, type SceneRepository } from '@twin-studio/core'
+import { loadSceneDocument, SceneDocumentError, type SceneDocumentV1, type SceneRepository } from '@twin-studio/core'
 
 const STORAGE_PREFIX = 'digital-twin-studio:scene:v1:'
 
-export class SceneDocumentError extends Error {}
+export { SceneDocumentError }
 
 export class LocalSceneRepository implements SceneRepository {
   async remove(projectId: string): Promise<void> {
@@ -23,13 +23,12 @@ export class LocalSceneRepository implements SceneRepository {
     } catch {
       throw new SceneDocumentError('本地场景数据不是有效 JSON')
     }
-    if (!isSceneDocumentV1(value)) {
-      throw new SceneDocumentError('本地场景数据损坏或版本不受支持')
-    }
-    if (value.projectId !== projectId) {
+    // Upgrades scenes saved by older builds and reports exactly what is wrong otherwise.
+    const { document } = loadSceneDocument(value)
+    if (document.projectId !== projectId) {
       throw new SceneDocumentError('本地场景与当前项目不匹配')
     }
-    return value
+    return document
   }
 
   private key(projectId: string): string {

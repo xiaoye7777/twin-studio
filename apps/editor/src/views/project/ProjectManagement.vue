@@ -23,8 +23,11 @@ async function createDemo(): Promise<void> {
   try {
     await createZeroCarbonPark(projectStore.addImportedProject)
     ElMessage.success('零碳智慧园区 Demo 已创建，可从项目卡片进入编辑器或数据大屏；再次创建将生成独立副本。')
-  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '创建示例失败') }
-  finally { creatingDemo.value = false }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '创建示例失败')
+  } finally {
+    creatingDemo.value = false
+  }
 }
 const exportingId = ref('')
 const packages = new ProjectPackageService(new LocalSceneRepository(), new IndexedDbAssetRepository(), projectStore)
@@ -37,12 +40,17 @@ async function exportProject(project: Project): Promise<void> {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
+    // Control characters are deliberately stripped from download file names.
+    // eslint-disable-next-line no-control-regex
     link.download = `${project.name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').slice(0, 100) || 'project'}.twin.zip`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
     ElMessage.success('项目包已导出（当前已保存版本）')
-  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '项目导出失败') }
-  finally { exportingId.value = '' }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '项目导出失败')
+  } finally {
+    exportingId.value = ''
+  }
 }
 
 async function importProject(event: Event): Promise<void> {
@@ -54,8 +62,11 @@ async function importProject(event: Event): Promise<void> {
   try {
     const project = await packages.importProject(file)
     ElMessage.success(`已导入：${project.name}`)
-  } catch (error) { ElMessage.error(error instanceof Error ? error.message : '项目导入失败') }
-  finally { importing.value = false }
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '项目导入失败')
+  } finally {
+    importing.value = false
+  }
 }
 
 function editProject(project: Project) {
@@ -78,7 +89,14 @@ function openDashboard(project: Project) {
         <p class="text-sm text-slate-400">共 {{ projectStore.projectCount }} 个项目</p>
         <el-button data-testid="create-park-demo" :loading="creatingDemo" @click="createDemo">创建园区示例</el-button>
         <el-button data-testid="import-project" :loading="importing" @click="packageInput?.click()">导入项目</el-button>
-        <input ref="packageInput" data-testid="project-package-input" class="hidden" type="file" accept=".zip,application/zip" @change="importProject" />
+        <input
+          ref="packageInput"
+          data-testid="project-package-input"
+          class="hidden"
+          type="file"
+          accept=".zip,application/zip"
+          @change="importProject"
+        />
       </div>
     </div>
 
@@ -98,7 +116,9 @@ function openDashboard(project: Project) {
         type="button"
         @click="dialogVisible = true"
       >
-        <span class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 transition group-hover:bg-blue-100">
+        <span
+          class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 transition group-hover:bg-blue-100"
+        >
           <el-icon :size="23"><Plus /></el-icon>
         </span>
         <span class="mt-4 text-sm font-medium">创建项目</span>

@@ -1,5 +1,5 @@
 export { default as TwinSceneViewer } from './components/TwinSceneViewer.vue'
-export { loadTwinPackage } from '@twin-studio/core'
+export { loadTwinPackage, SCENE_DOCUMENT_VERSION } from '@twin-studio/core'
 export type {
   DataSourceConnectionStatus,
   DataSourceType,

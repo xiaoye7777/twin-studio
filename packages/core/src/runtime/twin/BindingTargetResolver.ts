@@ -26,7 +26,7 @@ export function bindingTargetFromObject(object: Object3D): TwinBindingTarget | n
 
 export function bindingTargetsInObjectTree(object: Object3D): TwinBindingTarget[] {
   const targets: TwinBindingTarget[] = []
-  object.traverse((node) => {
+  object.traverse(node => {
     const target = bindingTargetFromObject(node)
     if (target) targets.push(target)
   })
@@ -64,20 +64,23 @@ export class BindingTargetResolver {
 
   private resolveByPlatformIdentity(target: TwinBindingTarget): Object3D | null {
     if (target.type === 'primitive') {
-      return this.getSceneRoots().find((root) => {
-        const metadata = getEditorMetadata(root)
-        return metadata?.kind === 'primitive' && metadata.nodeId === target.nodeId
-      }) ?? null
+      return (
+        this.getSceneRoots().find(root => {
+          const metadata = getEditorMetadata(root)
+          return metadata?.kind === 'primitive' && metadata.nodeId === target.nodeId
+        }) ?? null
+      )
     }
 
-    const assetRoot = this.getSceneRoots().find((root) => {
-      const metadata = getEditorMetadata(root)
-      return metadata?.kind === 'assetInstance' && metadata.instanceId === target.instanceId
-    }) ?? null
+    const assetRoot =
+      this.getSceneRoots().find(root => {
+        const metadata = getEditorMetadata(root)
+        return metadata?.kind === 'assetInstance' && metadata.instanceId === target.instanceId
+      }) ?? null
     if (!assetRoot || target.type === 'asset-instance') return assetRoot
 
     let resolved: Object3D | null = null
-    assetRoot.traverse((node) => {
+    assetRoot.traverse(node => {
       if (!resolved && node.userData.assetNodeId === target.assetNodeId) resolved = node
     })
     return resolved
