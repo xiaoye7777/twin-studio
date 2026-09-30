@@ -1,4 +1,4 @@
-# @twin-studio/viewer 0.3.0
+# @twin-studio/viewer 0.3.1
 
 Vue 3 项目运行组件。支持 Node 20.16+ 和 pnpm 10.20.0；加载 Editor 导出的 .twin.zip，恢复模型、绑定、实时数据、规则、特效和交互。
 
@@ -48,6 +48,13 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 切换 source 或卸载组件会关闭旧连接并清理场景资源。演示和开发时可使用 monorepo 中的设备模拟器 `tools/device-simulator` 作为 WebSocket 服务。
 
 ## 更新记录
+
+### 0.3.1
+
+- **格式版本检查**：项目包由更新版本的编辑器导出时，`error` 事件和加载提示会明确说明“场景文件格式为 vN，当前程序只支持到 vM，请升级 Viewer SDK”，不再笼统地提示“损坏”。
+- **更清晰的错误信息**：项目包内容有误时，提示会指出具体位置，例如 `effects[3].parameters.opacity：数值过大：期望 number <=1`。
+- 新增导出常量 `SCENE_DOCUMENT_VERSION`，表示当前 SDK 支持的最新场景格式版本。
+- 接口和事件没有变化，升级无需修改代码。项目包格式的完整说明见仓库 `docs/schema/`。
 
 ### 0.3.0
 

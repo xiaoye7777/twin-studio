@@ -98,6 +98,8 @@ export interface LoadedTwinPackage {
   readonly document: Readonly<SceneDocumentV1>
   dispose(): void
 }
+/** Newest scene format this SDK can open; packages from a newer editor are rejected with an upgrade hint. */
+export declare const SCENE_DOCUMENT_VERSION: number
 export function loadTwinPackage(
   source: TwinPackageSource,
   options?: { signal?: AbortSignal },
