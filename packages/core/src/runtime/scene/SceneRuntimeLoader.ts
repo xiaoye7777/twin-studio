@@ -1,4 +1,3 @@
-import { AmbientLight, DirectionalLight, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three'
 import type { Object3D } from 'three'
 import { applySceneTransform, createDefaultSceneSettings } from '../../domain/scene'
 import type { SceneDocumentV1, SceneSettingsV1, SceneCameraViewV1 } from '../../domain/scene'
@@ -7,6 +6,7 @@ import type { MeteorScene } from '../../infrastructure/meteor3d'
 import { ImportedAssetResourceRegistry } from './ImportedAssetResourceRegistry'
 import { setEditorMetadata } from './objectMetadata'
 import { createScenePrimitive } from './createScenePrimitive'
+import { SceneEnvironment } from './SceneEnvironment'
 
 export interface SceneRestoreResult {
   roots: Object3D[]
@@ -17,18 +17,19 @@ export interface SceneRestoreResult {
 /** Shared document interpreter. No stores, editing actions or DOM listeners. */
 export class SceneRuntimeLoader {
   private disposed = false
-  private ambient: AmbientLight | null = null
-  private directional: DirectionalLight | null = null
-  private ground: Mesh<PlaneGeometry, MeshStandardMaterial> | null = null
-  private environmentId: string | null | undefined
-  private environmentQueue: Promise<void> = Promise.resolve()
-  environmentStatus = 'None'
+  private readonly environment: SceneEnvironment
 
   constructor(
     private readonly runtime: MeteorScene,
     private readonly assets: AssetRepository,
     readonly resources = new ImportedAssetResourceRegistry(),
-  ) {}
+  ) {
+    this.environment = new SceneEnvironment(runtime, assets, resources)
+  }
+
+  get environmentStatus(): string {
+    return this.environment.status
+  }
 
   private assertActive(): void {
     if (this.disposed) throw new DOMException('Scene loading cancelled', 'AbortError')
@@ -106,83 +107,18 @@ export class SceneRuntimeLoader {
 
   applySettings(settings: SceneSettingsV1): Promise<void> {
     this.assertActive()
-    const scene = this.runtime.getScene()
-    if (!this.ambient) {
-      this.ambient = new AmbientLight(0xffffff)
-      this.ambient.name = 'Editor Ambient Light'
-      this.directional = new DirectionalLight(0xffffff)
-      this.directional.name = 'Editor Directional Light'
-      const geometry = new PlaneGeometry(1, 1)
-      geometry.rotateX(-Math.PI / 2)
-      this.ground = new Mesh(geometry, new MeshStandardMaterial({ roughness: 0.92, metalness: 0 }))
-      this.ground.name = 'Editor Ground'
-      this.ground.position.y = -0.01
-      this.ground.receiveShadow = true
-      for (const object of [this.ambient, this.directional, this.ground]) {
-        object.userData.editorInfrastructure = true
-        scene.add(object)
-      }
-    }
-    const size = Math.max(1, settings.ground.size)
-    const segments = Math.max(1, Math.min(200, Math.round(size / 10)))
-    this.runtime.setGridHelper(settings.gridEnabled, size, size, segments, segments)
-    this.runtime.setAxesHelper(settings.axesEnabled, Math.max(5, Math.min(50, size / 10)))
-    this.ambient.intensity = settings.lighting.ambientIntensity
-    this.directional!.intensity = settings.lighting.directionalIntensity
-    this.directional!.position.fromArray(settings.lighting.directionalPosition)
-    this.ground!.visible = settings.ground.enabled
-    this.ground!.scale.set(settings.ground.size, 1, settings.ground.size)
-    this.ground!.material.color.set(settings.ground.color)
-    this.ground!.updateMatrixWorld(true)
-    const id = settings.environmentAssetId
-    const task = this.environmentQueue
-      .then(async () => {
-        this.assertActive()
-        if (this.environmentId === id) return
-        if (!id) {
-          this.runtime.clearEnvironment()
-          this.environmentId = null
-          this.environmentStatus = 'None'
-          return
-        }
-        const asset = await this.assets.get(id)
-        this.assertActive()
-        if (!asset || asset.assetType !== 'environment') throw new Error('保存的环境资产不存在或类型不正确')
-        const texture = await this.runtime.loadEnvironment(this.resources.getOrCreate(asset).objectUrl)
-        this.assertActive()
-        if (!texture) throw new Error('环境贴图加载失败')
-        this.environmentId = id
-        this.environmentStatus = asset.name
-      })
-      .catch((error: unknown) => {
-        if (!this.disposed) {
-          this.runtime.clearEnvironment()
-          this.environmentId = undefined
-          this.environmentStatus = 'Fallback'
-        }
-        throw error
-      })
-    this.environmentQueue = task.catch(() => {})
-    return task
+    return this.environment.apply(settings)
   }
 
-  async restoreCamera(view: SceneCameraViewV1): Promise<void> {
+  restoreCamera(view: SceneCameraViewV1): Promise<void> {
     this.assertActive()
-    const camera = this.runtime.getCamera()
-    if (view.fov !== undefined) {
-      camera.fov = view.fov
-      camera.updateProjectionMatrix()
-    }
-    await this.runtime.setView({
-      position: { x: view.position[0], y: view.position[1], z: view.position[2] },
-      target: { x: view.target[0], y: view.target[1], z: view.target[2] },
-      duration: 0,
-    })
+    return this.environment.restoreCamera(view)
   }
 
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
+    this.environment.dispose()
     this.resources.dispose()
     // Objects and environment belong to MeteorScene; its dispose frees them.
   }

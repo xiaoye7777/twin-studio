@@ -10,6 +10,14 @@ import type {
   SceneTransformSchemaV1,
   Vector3TupleSchema,
 } from './sceneSchema'
+import type {
+  GroupNodeSchemaV2,
+  ModelNodeOverrideSchemaV2,
+  ModelNodeSchemaV2,
+  PrimitiveNodeSchemaV2,
+  SceneDocumentSchemaV2,
+  SceneNodeSchemaV2,
+} from './sceneSchemaV2'
 
 export type Vector3Tuple = z.infer<typeof Vector3TupleSchema>
 export type SceneSettingsV1 = z.infer<typeof SceneSettingsSchemaV1>
@@ -22,3 +30,11 @@ export type SceneAssetInstanceV1 = z.infer<typeof SceneAssetInstanceSchemaV1>
 export type SceneBoxPropertiesV1 = z.infer<typeof SceneBoxPropertiesSchemaV1>
 export type ScenePrimitiveV1 = z.infer<typeof ScenePrimitiveSchemaV1>
 export type SceneDocumentV1 = z.infer<typeof SceneDocumentSchemaV1>
+
+// Scene format v2
+export type SceneDocumentV2 = z.infer<typeof SceneDocumentSchemaV2>
+export type SceneNodeV2 = z.infer<typeof SceneNodeSchemaV2>
+export type ModelNodeV2 = z.infer<typeof ModelNodeSchemaV2>
+export type PrimitiveNodeV2 = z.infer<typeof PrimitiveNodeSchemaV2>
+export type GroupNodeV2 = z.infer<typeof GroupNodeSchemaV2>
+export type ModelNodeOverrideV2 = z.infer<typeof ModelNodeOverrideSchemaV2>

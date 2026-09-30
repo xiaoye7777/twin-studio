@@ -507,7 +507,7 @@ try {
       ambient: scene.getObjectByName('Editor Ambient Light').intensity,
       directional: scene.getObjectByName('Editor Directional Light').intensity,
       environment: !!scene.environment,
-      environmentStatus: runtime.loader.environmentStatus,
+      environmentStatus: runtime.sync.environmentStatus,
       click: { x: rect.left + ((center.x + 1) * rect.width) / 2, y: rect.top + ((1 - center.y) * rect.height) / 2 },
     }
   }, projectId)
@@ -580,7 +580,9 @@ try {
       report.effectRuntime.released,
   )
   await page.mouse.click(runtimeDetails.click.x, runtimeDetails.click.y)
-  await page.waitForTimeout(300)
+  // A single click is deferred 260 ms to tell it from a double click; on slow (software-rendered) CI
+  // runners a fixed short wait races that timer, so wait for the event itself.
+  await page.waitForFunction(() => window.qaClicks.length > 0)
   const hit = await page.evaluate(() => window.qaClicks[0])
   assert(hit?.target)
   assert(hit?.device)
