@@ -2,8 +2,20 @@ import { createEffectParameters, type EffectKind } from '../effects'
 import type { EffectTemplate } from './index'
 
 function preset(id: string, name: string, kinds: EffectKind[], color: string, category: string): EffectTemplate {
-  return { version: 1, id: `builtin:${id}`, origin: 'builtin', name, description: '内置只读方案，可复制为自定义模板', category,
-    effects: kinds.map((kind, index) => ({ id: `${id}:${index}`, kind, target: { mode: 'current-target' }, parameters: { ...createEffectParameters(), color, text: name } })) }
+  return {
+    version: 1,
+    id: `builtin:${id}`,
+    origin: 'builtin',
+    name,
+    description: '内置只读方案，可复制为自定义模板',
+    category,
+    effects: kinds.map((kind, index) => ({
+      id: `${id}:${index}`,
+      kind,
+      target: { mode: 'current-target' },
+      parameters: { ...createEffectParameters(), color, text: name },
+    })),
+  }
 }
 export function getBuiltinTemplates(): EffectTemplate[] {
   return [

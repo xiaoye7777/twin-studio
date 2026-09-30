@@ -31,8 +31,14 @@ export class TransformCommand implements Command {
     private readonly after: TransformState,
     private readonly notify: (object: Object3D) => void,
   ) {}
-  execute(): void { applyTransformState(this.object, this.after); this.notify(this.object) }
-  undo(): void { applyTransformState(this.object, this.before); this.notify(this.object) }
+  execute(): void {
+    applyTransformState(this.object, this.after)
+    this.notify(this.object)
+  }
+  undo(): void {
+    applyTransformState(this.object, this.before)
+    this.notify(this.object)
+  }
 }
 
 export class PropertyCommand<T> implements Command {
@@ -42,8 +48,12 @@ export class PropertyCommand<T> implements Command {
     private readonly after: T,
     private readonly apply: (value: T) => void,
   ) {}
-  execute(): void { this.apply(this.after) }
-  undo(): void { this.apply(this.before) }
+  execute(): void {
+    this.apply(this.after)
+  }
+  undo(): void {
+    this.apply(this.before)
+  }
 }
 
 export class FunctionalCommand implements Command {
@@ -52,6 +62,10 @@ export class FunctionalCommand implements Command {
     private readonly executeAction: () => void | Promise<void>,
     private readonly undoAction: () => void | Promise<void>,
   ) {}
-  execute(): void | Promise<void> { return this.executeAction() }
-  undo(): void | Promise<void> { return this.undoAction() }
+  execute(): void | Promise<void> {
+    return this.executeAction()
+  }
+  undo(): void | Promise<void> {
+    return this.undoAction()
+  }
 }

@@ -82,11 +82,7 @@ function commitName(): void {
   const object = editorStore.selectedObject
   if (object && nameEditBefore !== object.name) editorStore.commitRename(object, nameEditBefore, object.name)
 }
-function updateTransformValue(
-  section: TransformSection,
-  axis: Axis,
-  value: number | undefined,
-): void {
+function updateTransformValue(section: TransformSection, axis: Axis, value: number | undefined): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) return
 
   const object = editorStore.selectedObject
@@ -142,7 +138,9 @@ watch(
   >
     <div class="st-panel-header">
       <span>属性</span>
-      <span v-if="kindLabel" class="ml-auto rounded-sm bg-raised px-1.5 py-px text-[10.5px] font-medium text-fg-2">{{ kindLabel }}</span>
+      <span v-if="kindLabel" class="ml-auto rounded-sm bg-raised px-1.5 py-px text-[10.5px] font-medium text-fg-2">{{
+        kindLabel
+      }}</span>
     </div>
 
     <div
@@ -172,7 +170,13 @@ watch(
 
       <InspectorSection title="变换">
         <template #actions>
-          <button data-testid="reset-transform" class="st-link flex items-center gap-1" type="button" title="恢复初始变换" @click="editorStore.resetSelectedTransform()">
+          <button
+            data-testid="reset-transform"
+            class="st-link flex items-center gap-1"
+            type="button"
+            title="恢复初始变换"
+            @click="editorStore.resetSelectedTransform()"
+          >
             <el-icon><RefreshLeft /></el-icon>重置
           </button>
         </template>
@@ -199,8 +203,18 @@ watch(
       </InspectorSection>
 
       <InspectorSection title="标识">
-        <div class="id-row"><span>BID</span><code data-testid="inspector-bid" :title="editorStore.selectedBid ?? ''">{{ editorStore.selectedBid ?? '—' }}</code></div>
-        <div class="id-row"><span>节点 ID</span><code data-testid="inspector-asset-node-id">{{ editorStore.selectedObject.userData.assetNodeId ?? '—' }}</code></div>
+        <div class="id-row">
+          <span>BID</span
+          ><code data-testid="inspector-bid" :title="editorStore.selectedBid ?? ''">{{
+            editorStore.selectedBid ?? '—'
+          }}</code>
+        </div>
+        <div class="id-row">
+          <span>节点 ID</span
+          ><code data-testid="inspector-asset-node-id">{{
+            editorStore.selectedObject.userData.assetNodeId ?? '—'
+          }}</code>
+        </div>
       </InspectorSection>
 
       <TwinBindingSection />
@@ -232,9 +246,18 @@ watch(
   pointer-events: none;
 }
 
-.axis-field--x .axis-field__tag { color: var(--color-axis-x); background: rgb(208 103 92 / 0.12); }
-.axis-field--y .axis-field__tag { color: var(--color-axis-y); background: rgb(134 179 108 / 0.12); }
-.axis-field--z .axis-field__tag { color: var(--color-axis-z); background: rgb(106 147 207 / 0.12); }
+.axis-field--x .axis-field__tag {
+  color: var(--color-axis-x);
+  background: rgb(208 103 92 / 0.12);
+}
+.axis-field--y .axis-field__tag {
+  color: var(--color-axis-y);
+  background: rgb(134 179 108 / 0.12);
+}
+.axis-field--z .axis-field__tag {
+  color: var(--color-axis-z);
+  background: rgb(106 147 207 / 0.12);
+}
 
 .axis-field :deep(.el-input__wrapper) {
   padding-left: 20px;

@@ -9,17 +9,20 @@ const props = defineProps<{
   resolvedBindingCount: number
 }>()
 
-const alarmCount = computed(() => props.devices.filter((device) => device.alarm).length)
+const alarmCount = computed(() => props.devices.filter(device => device.alarm).length)
 // Only devices that actually reported values count as normal; waiting devices are not "healthy".
-const normalCount = computed(() => props.devices.filter((device) => device.statusKind === 'normal').length)
+const normalCount = computed(() => props.devices.filter(device => device.statusKind === 'normal').length)
 const energy = computed(() => {
-  const values = (key: string) => props.devices.flatMap(device => {
-    const value = device.variables.find(variable => variable.key === key)?.value
-    return typeof value === 'number' && Number.isFinite(value) ? [value] : []
-  })
+  const values = (key: string) =>
+    props.devices.flatMap(device => {
+      const value = device.variables.find(variable => variable.key === key)?.value
+      return typeof value === 'number' && Number.isFinite(value) ? [value] : []
+    })
   const display = (key: string, average: boolean) => {
     const numbers = values(key)
-    return numbers.length ? (numbers.reduce((sum, value) => sum + value, 0) / (average ? numbers.length : 1)).toFixed(1) : '—'
+    return numbers.length
+      ? (numbers.reduce((sum, value) => sum + value, 0) / (average ? numbers.length : 1)).toFixed(1)
+      : '—'
   }
   return { soc: display('soc', true), temperature: display('temperature', true), power: display('power', false) }
 })
@@ -35,33 +38,50 @@ const energy = computed(() => {
     <div class="mt-5 grid grid-cols-2 gap-2">
       <div class="rounded-lg border border-white/10 bg-slate-950/25 p-3">
         <p class="text-[10px] text-slate-400">设备总数</p>
-        <strong data-testid="dashboard-device-count" class="mt-1 block text-xl font-semibold text-white">{{ devices.length }}</strong>
+        <strong data-testid="dashboard-device-count" class="mt-1 block text-xl font-semibold text-white">{{
+          devices.length
+        }}</strong>
       </div>
       <div class="rounded-lg border border-white/10 bg-slate-950/25 p-3">
         <p class="text-[10px] text-slate-400">已解析绑定</p>
-        <strong data-testid="dashboard-resolved-binding-count" class="mt-1 block text-xl font-semibold text-cyan-300">{{ resolvedBindingCount }}</strong>
+        <strong data-testid="dashboard-resolved-binding-count" class="mt-1 block text-xl font-semibold text-cyan-300">{{
+          resolvedBindingCount
+        }}</strong>
         <span class="text-[10px] text-slate-500">共 {{ bindingCount }} 个</span>
       </div>
       <div class="rounded-lg border border-white/10 bg-slate-950/25 p-3">
         <p class="text-[10px] text-slate-400">正常设备</p>
-        <strong data-testid="dashboard-normal-count" class="mt-1 block text-xl font-semibold text-emerald-300">{{ normalCount }}</strong>
+        <strong data-testid="dashboard-normal-count" class="mt-1 block text-xl font-semibold text-emerald-300">{{
+          normalCount
+        }}</strong>
       </div>
       <div class="rounded-lg border border-white/10 bg-slate-950/25 p-3">
         <p class="text-[10px] text-slate-400">告警设备</p>
-        <strong data-testid="dashboard-alarm-count" class="mt-1 block text-xl font-semibold text-rose-300">{{ alarmCount }}</strong>
+        <strong data-testid="dashboard-alarm-count" class="mt-1 block text-xl font-semibold text-rose-300">{{
+          alarmCount
+        }}</strong>
       </div>
     </div>
 
     <div class="mt-4 space-y-3 rounded-lg border border-white/10 bg-slate-950/20 p-3 text-xs text-slate-400">
       <p class="text-[10px] uppercase tracking-widest">全场实时汇总</p>
-      <p class="flex justify-between">平均 SOC <strong data-testid="dashboard-average-soc" class="text-emerald-300">{{ energy.soc }} %</strong></p>
-      <p class="flex justify-between">平均温度 <strong data-testid="dashboard-average-temperature" class="text-white">{{ energy.temperature }} ℃</strong></p>
-      <p class="flex justify-between">总功率 <strong data-testid="dashboard-total-power" class="text-cyan-300">{{ energy.power }} kW</strong></p>
+      <p class="flex justify-between">
+        平均 SOC <strong data-testid="dashboard-average-soc" class="text-emerald-300">{{ energy.soc }} %</strong>
+      </p>
+      <p class="flex justify-between">
+        平均温度
+        <strong data-testid="dashboard-average-temperature" class="text-white">{{ energy.temperature }} ℃</strong>
+      </p>
+      <p class="flex justify-between">
+        总功率 <strong data-testid="dashboard-total-power" class="text-cyan-300">{{ energy.power }} kW</strong>
+      </p>
     </div>
     <div class="mt-4 rounded-lg border border-white/10 bg-slate-950/20 p-3 text-[11px] leading-5 text-slate-400">
       <div class="flex items-center justify-between">
         <span>数据来源</span>
-        <span class="flex items-center gap-1.5 text-emerald-300"><i class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Twin Runtime</span>
+        <span class="flex items-center gap-1.5 text-emerald-300"
+          ><i class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Twin Runtime</span
+        >
       </div>
       <p class="mt-2 text-slate-500">设备、告警和实时值均来自当前 3D Viewer 的运行态。</p>
     </div>

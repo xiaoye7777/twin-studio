@@ -37,12 +37,14 @@ export function mapWebSocketDeviceMessage(
   if (!isRecord(message) || typeof message.deviceId !== 'string' || !message.deviceId) return []
   const matching = bindings.filter(item => item.device.id === message.deviceId)
   const values = isRecord(message.values) ? message.values : message
-  return matching.flatMap(binding => binding.variables.flatMap(variable => {
-    const value = values[variable.key]
-    return isValueOfType(value, variable.dataType)
-      ? [{ bindingId: binding.id, variableKey: variable.key, value }]
-      : []
-  }))
+  return matching.flatMap(binding =>
+    binding.variables.flatMap(variable => {
+      const value = values[variable.key]
+      return isValueOfType(value, variable.dataType)
+        ? [{ bindingId: binding.id, variableKey: variable.key, value }]
+        : []
+    }),
+  )
 }
 
 export class WebSocketDataSource implements DataSource {
@@ -74,7 +76,7 @@ export class WebSocketDataSource implements DataSource {
         this.retries = 0
         this.options.onStatus('connected')
       })
-      socket.addEventListener('message', (event) => {
+      socket.addEventListener('message', event => {
         if (this.socket !== socket) return
         try {
           const parsed: unknown = JSON.parse(typeof event.data === 'string' ? event.data : '')
@@ -82,7 +84,8 @@ export class WebSocketDataSource implements DataSource {
           let accepted = false
           for (const message of messages) {
             const updates = mapWebSocketDeviceMessage(message, this.options.getBindings())
-            for (const update of updates) this.options.setRuntimeValue(update.bindingId, update.variableKey, update.value)
+            for (const update of updates)
+              this.options.setRuntimeValue(update.bindingId, update.variableKey, update.value)
             accepted = accepted || updates.length > 0
           }
           this.options.onStatus('connected')
@@ -120,7 +123,10 @@ export class WebSocketDataSource implements DataSource {
 
   stop(): void {
     this.stopping = true
-    if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = null }
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
     this.retries = 0
     const socket = this.socket
     if (!socket) return

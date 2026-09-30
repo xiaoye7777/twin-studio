@@ -4,10 +4,17 @@ export class HistoryManager {
   private readonly undoStack: Command[] = []
   private readonly redoStack: Command[] = []
 
-  constructor(private readonly onChange: () => void, private readonly limit = 100) {}
+  constructor(
+    private readonly onChange: () => void,
+    private readonly limit = 100,
+  ) {}
 
-  get canUndo(): boolean { return this.undoStack.length > 0 }
-  get canRedo(): boolean { return this.redoStack.length > 0 }
+  get canUndo(): boolean {
+    return this.undoStack.length > 0
+  }
+  get canRedo(): boolean {
+    return this.redoStack.length > 0
+  }
 
   async execute(command: Command, alreadyExecuted = false): Promise<void> {
     if (!alreadyExecuted) await command.execute()

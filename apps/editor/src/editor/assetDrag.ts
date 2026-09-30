@@ -1,9 +1,7 @@
 export const ASSET_DRAG_MIME = 'application/x-twin-studio-asset'
 
 export type SceneResourceDragPayload =
-  | { type: 'asset'; assetId: string }
-  | { type: 'primitive'; presetId: string }
-  | { type: 'builtin'; modelKey: string }
+  { type: 'asset'; assetId: string } | { type: 'primitive'; presetId: string } | { type: 'builtin'; modelKey: string }
 
 export function writeAssetDragPayload(dataTransfer: DataTransfer, assetId: string): void {
   const payload: SceneResourceDragPayload = { type: 'asset', assetId }

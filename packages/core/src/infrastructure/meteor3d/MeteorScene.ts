@@ -1,10 +1,7 @@
 // The vendored engine ships no types; this ambient declaration is not a module, so it cannot be imported.
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="../../types/meteor3d-core.d.ts" />
-import type {
-  PersistenceManager as PersistenceManagerType,
-  SceneManager as SceneManagerType,
-} from '@meteor3d/core'
+import type { PersistenceManager as PersistenceManagerType, SceneManager as SceneManagerType } from '@meteor3d/core'
 import { Mesh, REVISION, Vector2 } from 'three'
 import type { Intersection, Object3D, PerspectiveCamera, Scene, Texture, Vector3 } from 'three'
 import type {
@@ -22,8 +19,7 @@ interface MeteorRuntimeGlobal {
 }
 
 const runtimeGlobal = globalThis as typeof globalThis & MeteorRuntimeGlobal
-const meshRaycastBeforeFirstCoreImport =
-  runtimeGlobal.__digitalTwinOriginalMeshRaycast__ ?? Mesh.prototype.raycast
+const meshRaycastBeforeFirstCoreImport = runtimeGlobal.__digitalTwinOriginalMeshRaycast__ ?? Mesh.prototype.raycast
 
 runtimeGlobal.__digitalTwinOriginalMeshRaycast__ = meshRaycastBeforeFirstCoreImport
 
@@ -100,7 +96,9 @@ export class MeteorScene {
   focusObject(bid: string): Promise<void> {
     return this.requireManager().focusObject(bid)
   }
-  fitScene(): Promise<void> { return this.requireManager().fitCameraToScene() }
+  fitScene(): Promise<void> {
+    return this.requireManager().fitCameraToScene()
+  }
   setOutline(bid: string, enabled: boolean): void {
     const manager = this.requireManager()
     if (enabled) manager.enableOutline(bid, { color: 0xffb020, thickness: 1, strength: 3 })
@@ -123,10 +121,7 @@ export class MeteorScene {
     return this.requireManager().renderer.domElement
   }
 
-  raycastObjects(
-    screenPosition: Vector2,
-    options: MeteorRaycastOptions = {},
-  ): Intersection<Object3D>[] {
+  raycastObjects(screenPosition: Vector2, options: MeteorRaycastOptions = {}): Intersection<Object3D>[] {
     return this.requireManager().raycastObjects(screenPosition, options)
   }
 
@@ -142,20 +137,8 @@ export class MeteorScene {
     this.requireManager().controls.enabled = enabled
   }
 
-  setGridHelper(
-    visible: boolean,
-    length = 30,
-    width = 30,
-    widthSegments = 30,
-    lengthSegments = 30,
-  ): void {
-    this.requireManager().setGridHelper(
-      visible,
-      length,
-      width,
-      widthSegments,
-      lengthSegments,
-    )
+  setGridHelper(visible: boolean, length = 30, width = 30, widthSegments = 30, lengthSegments = 30): void {
+    this.requireManager().setGridHelper(visible, length, width, widthSegments, lengthSegments)
   }
 
   setAxesHelper(visible: boolean, size = 10): void {
@@ -209,10 +192,8 @@ export class MeteorScene {
         beforeCoreImport: functionName(this.raycastBeforeCoreImport),
         afterCoreImport: functionName(this.raycastAfterCoreImport),
         afterManagerInitialization: functionName(this.raycastAfterManagerInitialization),
-        changedDuringCoreImport:
-          this.raycastAfterCoreImport !== this.raycastBeforeCoreImport,
-        differsFromAdapterBaseline:
-          this.raycastAfterManagerInitialization !== meshRaycastBeforeFirstCoreImport,
+        changedDuringCoreImport: this.raycastAfterCoreImport !== this.raycastBeforeCoreImport,
+        differsFromAdapterBaseline: this.raycastAfterManagerInitialization !== meshRaycastBeforeFirstCoreImport,
       },
     }
   }

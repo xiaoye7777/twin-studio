@@ -53,11 +53,14 @@ export class SceneRuntimeLoader {
         this.assertActive()
         model.name = instance.name
         setEditorMetadata(model, {
-          kind: 'assetInstance', assetRoot: true, assetId: instance.assetId,
-          instanceId: instance.instanceId, deletedAssetNodeIds: [...(instance.deletedAssetNodeIds ?? [])],
+          kind: 'assetInstance',
+          assetRoot: true,
+          assetId: instance.assetId,
+          instanceId: instance.instanceId,
+          deletedAssetNodeIds: [...(instance.deletedAssetNodeIds ?? [])],
         })
         const nodes = new Map<string, Object3D>()
-        model.traverse((node) => {
+        model.traverse(node => {
           // Preserve original poses for Editor reset without involving an Editor store.
           node.userData.editorInitialTransform = {
             position: node.position.toArray(),
@@ -70,7 +73,10 @@ export class SceneRuntimeLoader {
         if (instance.runtimeBid) model.userData.bid = instance.runtimeBid
         for (const override of instance.nodeOverrides) {
           const node = nodes.get(override.assetNodeId)
-          if (!node) { warnings.push(`缺少模型节点 ${instance.instanceId}/${override.assetNodeId}`); continue }
+          if (!node) {
+            warnings.push(`缺少模型节点 ${instance.instanceId}/${override.assetNodeId}`)
+            continue
+          }
           node.name = override.name
           applySceneTransform(node, override.transform)
           node.visible = override.visible ?? true
@@ -86,8 +92,9 @@ export class SceneRuntimeLoader {
         warnings.push(`${instance.instanceId}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
-    try { await this.applySettings(document.sceneSettings ?? createDefaultSceneSettings()) }
-    catch (error) {
+    try {
+      await this.applySettings(document.sceneSettings ?? createDefaultSceneSettings())
+    } catch (error) {
       this.assertActive()
       warnings.push(error instanceof Error ? error.message : String(error))
     }
@@ -128,31 +135,33 @@ export class SceneRuntimeLoader {
     this.ground!.material.color.set(settings.ground.color)
     this.ground!.updateMatrixWorld(true)
     const id = settings.environmentAssetId
-    const task = this.environmentQueue.then(async () => {
-      this.assertActive()
-      if (this.environmentId === id) return
-      if (!id) {
-        this.runtime.clearEnvironment()
-        this.environmentId = null
-        this.environmentStatus = 'None'
-        return
-      }
-      const asset = await this.assets.get(id)
-      this.assertActive()
-      if (!asset || asset.assetType !== 'environment') throw new Error('保存的环境资产不存在或类型不正确')
-      const texture = await this.runtime.loadEnvironment(this.resources.getOrCreate(asset).objectUrl)
-      this.assertActive()
-      if (!texture) throw new Error('环境贴图加载失败')
-      this.environmentId = id
-      this.environmentStatus = asset.name
-    }).catch((error: unknown) => {
-      if (!this.disposed) {
-        this.runtime.clearEnvironment()
-        this.environmentId = undefined
-        this.environmentStatus = 'Fallback'
-      }
-      throw error
-    })
+    const task = this.environmentQueue
+      .then(async () => {
+        this.assertActive()
+        if (this.environmentId === id) return
+        if (!id) {
+          this.runtime.clearEnvironment()
+          this.environmentId = null
+          this.environmentStatus = 'None'
+          return
+        }
+        const asset = await this.assets.get(id)
+        this.assertActive()
+        if (!asset || asset.assetType !== 'environment') throw new Error('保存的环境资产不存在或类型不正确')
+        const texture = await this.runtime.loadEnvironment(this.resources.getOrCreate(asset).objectUrl)
+        this.assertActive()
+        if (!texture) throw new Error('环境贴图加载失败')
+        this.environmentId = id
+        this.environmentStatus = asset.name
+      })
+      .catch((error: unknown) => {
+        if (!this.disposed) {
+          this.runtime.clearEnvironment()
+          this.environmentId = undefined
+          this.environmentStatus = 'Fallback'
+        }
+        throw error
+      })
     this.environmentQueue = task.catch(() => {})
     return task
   }
@@ -160,10 +169,14 @@ export class SceneRuntimeLoader {
   async restoreCamera(view: SceneCameraViewV1): Promise<void> {
     this.assertActive()
     const camera = this.runtime.getCamera()
-    if (view.fov !== undefined) { camera.fov = view.fov; camera.updateProjectionMatrix() }
+    if (view.fov !== undefined) {
+      camera.fov = view.fov
+      camera.updateProjectionMatrix()
+    }
     await this.runtime.setView({
       position: { x: view.position[0], y: view.position[1], z: view.position[2] },
-      target: { x: view.target[0], y: view.target[1], z: view.target[2] }, duration: 0,
+      target: { x: view.target[0], y: view.target[1], z: view.target[2] },
+      duration: 0,
     })
   }
 

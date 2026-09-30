@@ -48,12 +48,14 @@ function isAlarmVariable(variable: DashboardVariableView): boolean {
 }
 
 function resolveStatus(device: DashboardDeviceView): Pick<DashboardDeviceView, 'alarm' | 'status' | 'statusKind'> {
-  const alarm = device.variables.some((variable) => isAlarmVariable(variable) && variable.value === true)
+  const alarm = device.variables.some(variable => isAlarmVariable(variable) && variable.value === true)
   if (alarm) return { alarm: true, status: '告警', statusKind: 'alarm' }
   if (!device.resolved) return { alarm: false, status: '目标未解析', statusKind: 'unresolved' }
-  const statusVariable = device.variables.find((variable) => variable.key.toLowerCase() === 'status' && typeof variable.value === 'string')
+  const statusVariable = device.variables.find(
+    variable => variable.key.toLowerCase() === 'status' && typeof variable.value === 'string',
+  )
   if (statusVariable) return { alarm: false, status: String(statusVariable.value), statusKind: 'normal' }
-  const hasRuntimeValue = device.variables.some((variable) => variable.value !== undefined)
+  const hasRuntimeValue = device.variables.some(variable => variable.value !== undefined)
   return hasRuntimeValue
     ? { alarm: false, status: '正常', statusKind: 'normal' }
     : { alarm: false, status: '等待数据', statusKind: 'waiting' }
@@ -99,6 +101,6 @@ export function buildDashboardDevices(
     }
   }
   return [...devices.values()]
-    .map((device) => ({ ...device, ...resolveStatus(device) }))
+    .map(device => ({ ...device, ...resolveStatus(device) }))
     .sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
 }

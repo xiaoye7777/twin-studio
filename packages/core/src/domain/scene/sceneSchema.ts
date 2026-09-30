@@ -10,19 +10,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 function isNumberTuple(value: unknown): value is [number, number, number] {
   return (
-    Array.isArray(value) &&
-    value.length === 3 &&
-    value.every((item) => typeof item === 'number' && Number.isFinite(item))
+    Array.isArray(value) && value.length === 3 && value.every(item => typeof item === 'number' && Number.isFinite(item))
   )
 }
 
 function isTransform(value: unknown): value is SceneTransformV1 {
-  return (
-    isRecord(value) &&
-    isNumberTuple(value.position) &&
-    isNumberTuple(value.rotation) &&
-    isNumberTuple(value.scale)
-  )
+  return isRecord(value) && isNumberTuple(value.position) && isNumberTuple(value.rotation) && isNumberTuple(value.scale)
 }
 
 function isPositiveFinite(value: unknown): value is number {
@@ -39,8 +32,12 @@ function isSceneSettings(value: unknown): boolean {
     isPositiveFinite(ground.size) &&
     typeof ground.color === 'string' &&
     isRecord(lighting) &&
-    typeof lighting.ambientIntensity === 'number' && Number.isFinite(lighting.ambientIntensity) && lighting.ambientIntensity >= 0 &&
-    typeof lighting.directionalIntensity === 'number' && Number.isFinite(lighting.directionalIntensity) && lighting.directionalIntensity >= 0 &&
+    typeof lighting.ambientIntensity === 'number' &&
+    Number.isFinite(lighting.ambientIntensity) &&
+    lighting.ambientIntensity >= 0 &&
+    typeof lighting.directionalIntensity === 'number' &&
+    Number.isFinite(lighting.directionalIntensity) &&
+    lighting.directionalIntensity >= 0 &&
     isNumberTuple(lighting.directionalPosition) &&
     (value.environmentAssetId === null || typeof value.environmentAssetId === 'string')
   )
@@ -63,14 +60,33 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
   if (!Array.isArray(value.instances) || !Array.isArray(value.primitives)) return false
   if (value.sceneSettings !== undefined && !isSceneSettings(value.sceneSettings)) return false
   if (value.cameraView !== undefined && !isCameraView(value.cameraView)) return false
-  if (value.bindings !== undefined && (!Array.isArray(value.bindings) || !value.bindings.every(isTwinBinding))) return false
-  if (value.effects !== undefined && (!Array.isArray(value.effects) || !value.effects.every(isEffectInstance) || new Set(value.effects.map(effect => effect.id)).size !== value.effects.length)) return false
-  if (value.visualRules !== undefined && (!Array.isArray(value.visualRules) || !value.visualRules.every(isVisualRule) || new Set(value.visualRules.map(rule => rule.id)).size !== value.visualRules.length)) return false
-  if (value.interactions !== undefined && (!Array.isArray(value.interactions) || !value.interactions.every(isSceneInteraction) || new Set(value.interactions.map(item => item.id)).size !== value.interactions.length)) return false
+  if (value.bindings !== undefined && (!Array.isArray(value.bindings) || !value.bindings.every(isTwinBinding)))
+    return false
+  if (
+    value.effects !== undefined &&
+    (!Array.isArray(value.effects) ||
+      !value.effects.every(isEffectInstance) ||
+      new Set(value.effects.map(effect => effect.id)).size !== value.effects.length)
+  )
+    return false
+  if (
+    value.visualRules !== undefined &&
+    (!Array.isArray(value.visualRules) ||
+      !value.visualRules.every(isVisualRule) ||
+      new Set(value.visualRules.map(rule => rule.id)).size !== value.visualRules.length)
+  )
+    return false
+  if (
+    value.interactions !== undefined &&
+    (!Array.isArray(value.interactions) ||
+      !value.interactions.every(isSceneInteraction) ||
+      new Set(value.interactions.map(item => item.id)).size !== value.interactions.length)
+  )
+    return false
 
   if (value.dataSources !== undefined && !isProjectDataSources(value.dataSources)) return false
 
-  const validInstances = value.instances.every((instance) => {
+  const validInstances = value.instances.every(instance => {
     if (
       !isRecord(instance) ||
       typeof instance.assetId !== 'string' ||
@@ -81,9 +97,14 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
     ) {
       return false
     }
-    if (instance.deletedAssetNodeIds !== undefined && (!Array.isArray(instance.deletedAssetNodeIds) || !instance.deletedAssetNodeIds.every((id) => typeof id === 'string'))) return false
+    if (
+      instance.deletedAssetNodeIds !== undefined &&
+      (!Array.isArray(instance.deletedAssetNodeIds) ||
+        !instance.deletedAssetNodeIds.every(id => typeof id === 'string'))
+    )
+      return false
     return instance.nodeOverrides.every(
-      (override) =>
+      override =>
         isRecord(override) &&
         typeof override.assetNodeId === 'string' &&
         typeof override.name === 'string' &&
@@ -92,7 +113,7 @@ export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
   })
 
   const validPrimitives = value.primitives.every(
-    (primitive) =>
+    primitive =>
       isRecord(primitive) &&
       (primitive.type === 'box' || primitive.type === 'plane' || primitive.type === 'cylinder') &&
       typeof primitive.nodeId === 'string' &&

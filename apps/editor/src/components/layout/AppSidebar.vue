@@ -8,11 +8,7 @@ const route = useRoute()
 <template>
   <aside class="fixed bottom-0 left-0 top-16 w-56 border-r border-slate-200/80 bg-white px-3 py-5">
     <p class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">工作台</p>
-    <el-menu
-      :default-active="route.path"
-      router
-      class="border-r-0! bg-transparent!"
-    >
+    <el-menu :default-active="route.path" router class="border-r-0! bg-transparent!">
       <el-menu-item index="/projects" class="mb-1 rounded-lg!">
         <el-icon><FolderOpened /></el-icon>
         <span>项目管理</span>

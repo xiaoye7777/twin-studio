@@ -28,7 +28,10 @@ function shutdown(exitCode = 0) {
 // The device simulator stands in for the realtime gateway configured in the project package.
 start(process.execPath, [fileURLToPath(new URL('../../../tools/device-simulator/src/server.mjs', import.meta.url))])
 const viteArgs = process.argv.slice(2)
-start(process.execPath, ['node_modules/vite/bin/vite.js', ...(viteArgs.length ? viteArgs : ['--host', '127.0.0.1', '--port', '5200'])])
+start(process.execPath, [
+  'node_modules/vite/bin/vite.js',
+  ...(viteArgs.length ? viteArgs : ['--host', '127.0.0.1', '--port', '5200']),
+])
 
 process.on('SIGINT', () => shutdown(0))
 process.on('SIGTERM', () => shutdown(0))

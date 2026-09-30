@@ -41,7 +41,11 @@ function zeroCarbonMessage(index) {
     status: alarmDemo ? 'alarm' : 'running',
   }
 }
-const zeroCarbonProfile = { name: 'zero-carbon-park', deviceCount: 8, next: () => Array.from({ length: 8 }, (_, i) => zeroCarbonMessage(i + 1)) }
+const zeroCarbonProfile = {
+  name: 'zero-carbon-park',
+  deviceCount: 8,
+  next: () => Array.from({ length: 8 }, (_, i) => zeroCarbonMessage(i + 1)),
+}
 
 /** Devices and their variables, merged across bindings, from an exported .twin.zip. */
 function readPackageDevices(file) {
@@ -79,28 +83,33 @@ function packageProfile(file) {
   return {
     name: `package:${file}`,
     deviceCount: devices.length,
-    next: () => devices.map((device, index) => {
-      const overheating = index === 2 && tick % 12 < 6
-      const message = { deviceId: device.id }
-      for (const [key, dataType] of device.variables) {
-        const k = key.toLowerCase()
-        if (dataType === 'number') message[key] = overheating && k.includes('temp') ? 75 : step(device.id, key)
-        else if (dataType === 'boolean') message[key] = k.includes('alarm') ? overheating : Math.random() < 0.95
-        else message[key] = k.includes('status') ? (overheating ? 'alarm' : 'running') : 'online'
-      }
-      return message
-    }),
+    next: () =>
+      devices.map((device, index) => {
+        const overheating = index === 2 && tick % 12 < 6
+        const message = { deviceId: device.id }
+        for (const [key, dataType] of device.variables) {
+          const k = key.toLowerCase()
+          if (dataType === 'number') message[key] = overheating && k.includes('temp') ? 75 : step(device.id, key)
+          else if (dataType === 'boolean') message[key] = k.includes('alarm') ? overheating : Math.random() < 0.95
+          else message[key] = k.includes('status') ? (overheating ? 'alarm' : 'running') : 'online'
+        }
+        return message
+      }),
   }
 }
 
 // Relative paths resolve from where the user ran the command (pnpm sets INIT_CWD for workspace scripts).
-const profile = args.package ? packageProfile(resolve(process.env.INIT_CWD ?? process.cwd(), args.package)) : zeroCarbonProfile
+const profile = args.package
+  ? packageProfile(resolve(process.env.INIT_CWD ?? process.cwd(), args.package))
+  : zeroCarbonProfile
 
 const server = createServer((request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*')
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
   if (request.url === '/status') {
-    response.end(JSON.stringify({ connections: clients.size, tick, profile: profile.name, devices: profile.deviceCount }))
+    response.end(
+      JSON.stringify({ connections: clients.size, tick, profile: profile.name, devices: profile.deviceCount }),
+    )
     return
   }
   response.statusCode = 404

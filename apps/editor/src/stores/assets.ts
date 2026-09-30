@@ -26,10 +26,10 @@ export const useAssetStore = defineStore('assets', () => {
   }
 
   async function importAsset(file: File, assetType: AssetType = 'model'): Promise<AssetImportResult> {
-    const knownIds = new Set(assets.value.map((asset) => asset.id))
+    const knownIds = new Set(assets.value.map(asset => asset.id))
     const record = await repository.saveFile(file, assetType)
     await refresh()
-    const asset = assets.value.find((item) => item.id === record.id)
+    const asset = assets.value.find(item => item.id === record.id)
     if (!asset) throw new Error('资产已保存，但无法刷新资产列表')
     return { asset, isNew: !knownIds.has(record.id) }
   }

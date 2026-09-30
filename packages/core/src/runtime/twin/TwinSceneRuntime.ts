@@ -61,7 +61,13 @@ export class TwinSceneRuntime {
       this.roots = restored.roots
       this.effects = new EffectRuntime(this.meteor, () => this.roots)
       this.data.initialize(projectId, document.bindings ?? [])
-      this.visualRules = new VisualRuleRuntime(this.effects, this.twin, this.resolver, () => document.visualRules ?? [], () => document.effects ?? [])
+      this.visualRules = new VisualRuleRuntime(
+        this.effects,
+        this.twin,
+        this.resolver,
+        () => document.visualRules ?? [],
+        () => document.effects ?? [],
+      )
       this.interactions = new InteractionRuntime({
         resolver: this.resolver,
         effects: this.effects,
@@ -69,22 +75,40 @@ export class TwinSceneRuntime {
         clearSelection: () => this.clearSelection(),
         focusTarget: target => this.focusTarget(target),
         resolveDeviceId: target => this.twin.getBindingByTarget(target)?.device.id ?? null,
-        emit: event => { if (!this.disposed) this.onInteractionEvent(event) },
+        emit: event => {
+          if (!this.disposed) this.onInteractionEvent(event)
+        },
       })
       this.interactions.setInteractions(document.interactions ?? [])
       this.interactions.setPointerActive(true)
       this.data.start(document.dataSources)
-      this.pointers = new ViewerPointerEvents(this.canvas, this.meteor, this.roots, this.twin, (event) => {
-        if (this.disposed) return
-        this.selectTarget(event.target)
-        if (!this.disposed) this.onClick(event)
-        void this.interactions?.dispatch('click', event)
-      }, () => this.clearSelection(),
-      event => { this.selectTarget(event.target); void this.interactions?.dispatch('double-click', event) },
-      event => { void this.interactions?.dispatch('hover-enter', event) },
-      event => { void this.interactions?.dispatch('hover-leave', event) })
-      const unresolved = this.twin.bindings.filter((binding) => this.twin.resolutionByBindingId[binding.id] === 'unresolved')
-      return [...restored.warnings, ...unresolved.map((binding) => `设备绑定未解析: ${binding.device.id}`)]
+      this.pointers = new ViewerPointerEvents(
+        this.canvas,
+        this.meteor,
+        this.roots,
+        this.twin,
+        event => {
+          if (this.disposed) return
+          this.selectTarget(event.target)
+          if (!this.disposed) this.onClick(event)
+          void this.interactions?.dispatch('click', event)
+        },
+        () => this.clearSelection(),
+        event => {
+          this.selectTarget(event.target)
+          void this.interactions?.dispatch('double-click', event)
+        },
+        event => {
+          void this.interactions?.dispatch('hover-enter', event)
+        },
+        event => {
+          void this.interactions?.dispatch('hover-leave', event)
+        },
+      )
+      const unresolved = this.twin.bindings.filter(
+        binding => this.twin.resolutionByBindingId[binding.id] === 'unresolved',
+      )
+      return [...restored.warnings, ...unresolved.map(binding => `设备绑定未解析: ${binding.device.id}`)]
     } catch (error) {
       this.dispose()
       throw error
@@ -94,11 +118,13 @@ export class TwinSceneRuntime {
   getRuntimeObject(target: TwinBindingTarget): Object3D | null {
     return this.disposed ? null : this.resolver.resolve(target)
   }
-  getSelection(): ViewerSelection { return this.selection }
+  getSelection(): ViewerSelection {
+    return this.selection
+  }
 
   selectDevice(deviceId: string): boolean {
     if (this.disposed) return false
-    const binding = this.twin.bindings.find((item) => item.device.id === deviceId && this.resolver.resolve(item.target))
+    const binding = this.twin.bindings.find(item => item.device.id === deviceId && this.resolver.resolve(item.target))
     return binding ? this.selectTarget(binding.target) : false
   }
 
@@ -112,24 +138,35 @@ export class TwinSceneRuntime {
       if (binding || this.roots.includes(object)) break
       object = object.parent
     }
-    this.setSelection(Object.freeze({
-      target: Object.freeze({ ...target }),
-      bindingTarget: binding ? Object.freeze({ ...binding.target }) : null,
-      bindingId: binding?.id ?? null,
-      deviceId: binding?.device.id ?? null,
-      deviceName: binding?.device.name ?? null,
-    }))
+    this.setSelection(
+      Object.freeze({
+        target: Object.freeze({ ...target }),
+        bindingTarget: binding ? Object.freeze({ ...binding.target }) : null,
+        bindingId: binding?.id ?? null,
+        deviceId: binding?.device.id ?? null,
+        deviceName: binding?.device.name ?? null,
+      }),
+    )
     return true
   }
 
-  clearSelection(): void { this.setSelection(null) }
+  clearSelection(): void {
+    this.setSelection(null)
+  }
 
   private setSelection(next: ViewerSelection): void {
     if (this.disposed) return
     const before = this.selection
-    if (before === next || (before && next &&
-      twinBindingTargetKey(before.target) === twinBindingTargetKey(next.target) &&
-      before.bindingId === next.bindingId && before.deviceId === next.deviceId && before.deviceName === next.deviceName)) return
+    if (
+      before === next ||
+      (before &&
+        next &&
+        twinBindingTargetKey(before.target) === twinBindingTargetKey(next.target) &&
+        before.bindingId === next.bindingId &&
+        before.deviceId === next.deviceId &&
+        before.deviceName === next.deviceName)
+    )
+      return
     this.selection = next
     this.onSelectionChange(next)
   }
@@ -141,7 +178,9 @@ export class TwinSceneRuntime {
     return true
   }
   async focusDevice(deviceId: string): Promise<boolean> {
-    const binding = this.twin.bindings.find((item) => item.device.id === deviceId && this.twin.resolutionByBindingId[item.id] === 'resolved')
+    const binding = this.twin.bindings.find(
+      item => item.device.id === deviceId && this.twin.resolutionByBindingId[item.id] === 'resolved',
+    )
     return binding ? this.focusTarget(binding.target) : false
   }
   getDiagnostics(): ViewerDiagnostics {

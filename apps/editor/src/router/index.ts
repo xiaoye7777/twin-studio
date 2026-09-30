@@ -63,7 +63,7 @@ const router = createRouter({
   ],
 })
 
-router.afterEach((to) => {
+router.afterEach(to => {
   document.title = `${String(to.meta.title ?? 'Digital Twin Studio')} · Digital Twin Studio`
 })
 

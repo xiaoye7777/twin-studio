@@ -4,5 +4,13 @@ function unsupported(): never {
   throw new Error('Viewer SDK 不支持 Gaussian Splat 资源')
 }
 
-export class SparkRenderer { constructor() { unsupported() } }
-export class SplatMesh { constructor() { unsupported() } }
+export class SparkRenderer {
+  constructor() {
+    unsupported()
+  }
+}
+export class SplatMesh {
+  constructor() {
+    unsupported()
+  }
+}

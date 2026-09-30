@@ -1,7 +1,7 @@
 import { type AssetRecord, type AssetRepository, validatePortableAsset } from '@twin-studio/core'
 
 export type BuiltinModelKey =
-  | 'container' | 'solar' | 'turbine' | 'energyCenter' | 'office' | 'factory' | 'warehouse' | 'tank'
+  'container' | 'solar' | 'turbine' | 'energyCenter' | 'office' | 'factory' | 'warehouse' | 'tank'
 
 export interface BuiltinModel {
   key: BuiltinModelKey
@@ -14,7 +14,13 @@ export interface BuiltinModel {
 
 /** CC0 Kenney models bundled with the editor (see public/demo-assets/CREDITS.md). */
 export const builtinModels: readonly BuiltinModel[] = [
-  { key: 'container', file: 'energy-storage-container.glb', name: '储能集装箱', category: '储能', description: '集装箱式储能单元' },
+  {
+    key: 'container',
+    file: 'energy-storage-container.glb',
+    name: '储能集装箱',
+    category: '储能',
+    description: '集装箱式储能单元',
+  },
   { key: 'tank', file: 'thermal-storage-tank.glb', name: '储热罐', category: '储能', description: '热储能设施' },
   { key: 'solar', file: 'solar-array.glb', name: '光伏阵列', category: '新能源', description: '地面光伏组件' },
   { key: 'turbine', file: 'wind-turbine.glb', name: '风力发电机', category: '新能源', description: '含独立叶片节点' },

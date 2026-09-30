@@ -19,9 +19,20 @@ const selectedEffects = computed(() => {
     <div v-for="effect in selectedEffects" :key="effect.id" :data-effect-id="effect.id" class="st-item space-y-2">
       <div class="flex items-center justify-between text-[12px]">
         <span class="font-medium text-fg">{{ effectDefinitions.find(d => d.kind === effect.kind)?.name }}</span>
-        <button :data-testid="`remove-effect-${effect.kind}`" class="st-link st-link--danger" type="button" @click="effects.remove(effect.id)">删除</button>
+        <button
+          :data-testid="`remove-effect-${effect.kind}`"
+          class="st-link st-link--danger"
+          type="button"
+          @click="effects.remove(effect.id)"
+        >
+          删除
+        </button>
       </div>
-      <EffectParameterFields :kind="effect.kind" :parameters="effect.parameters" @change="parameters => effects.update(effect.id, parameters)" />
+      <EffectParameterFields
+        :kind="effect.kind"
+        :parameters="effect.parameters"
+        @change="parameters => effects.update(effect.id, parameters)"
+      />
     </div>
   </InspectorSection>
 </template>

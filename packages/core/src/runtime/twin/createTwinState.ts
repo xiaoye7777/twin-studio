@@ -14,7 +14,7 @@ function cloneBinding(binding: TwinBinding): TwinBinding {
     id: binding.id,
     target: { ...binding.target },
     device: { ...binding.device },
-    variables: binding.variables.map((variable) => ({ ...variable })),
+    variables: binding.variables.map(variable => ({ ...variable })),
   }
 }
 
@@ -22,7 +22,7 @@ function runtimeValueKey(bindingId: string, variableKey: string): string {
   return `${bindingId}:${variableKey}`
 }
 
-export function createTwinState(onConfigurationChanged: () => void = () => {} ) {
+export function createTwinState(onConfigurationChanged: () => void = () => {}) {
   const projectId = ref<string | null>(null)
   const bindings = shallowRef<TwinBinding[]>([])
   const runtimeValues = shallowRef<Record<string, TwinRuntimeValue>>({})
@@ -69,17 +69,17 @@ export function createTwinState(onConfigurationChanged: () => void = () => {} ) 
 
   function getBindingByTarget(target: TwinBindingTarget): TwinBinding | null {
     const key = twinBindingTargetKey(target)
-    return bindings.value.find((binding) => twinBindingTargetKey(binding.target) === key) ?? null
+    return bindings.value.find(binding => twinBindingTargetKey(binding.target) === key) ?? null
   }
 
   function getBindingById(bindingId: string): TwinBinding | null {
-    return bindings.value.find((binding) => binding.id === bindingId) ?? null
+    return bindings.value.find(binding => binding.id === bindingId) ?? null
   }
 
   function upsertBinding(binding: TwinBinding): void {
     const targetKey = twinBindingTargetKey(binding.target)
     bindings.value = [
-      ...bindings.value.filter((item) => item.id !== binding.id && twinBindingTargetKey(item.target) !== targetKey),
+      ...bindings.value.filter(item => item.id !== binding.id && twinBindingTargetKey(item.target) !== targetKey),
       cloneBinding(binding),
     ]
     bindingRevision.value += 1
@@ -89,7 +89,7 @@ export function createTwinState(onConfigurationChanged: () => void = () => {} ) 
   function removeBindingByTarget(target: TwinBindingTarget): TwinBinding | null {
     const binding = getBindingByTarget(target)
     if (!binding) return null
-    bindings.value = bindings.value.filter((item) => item.id !== binding.id)
+    bindings.value = bindings.value.filter(item => item.id !== binding.id)
     const nextValues = { ...runtimeValues.value }
     for (const key of Object.keys(nextValues)) {
       if (key.startsWith(`${binding.id}:`)) delete nextValues[key]
@@ -103,13 +103,13 @@ export function createTwinState(onConfigurationChanged: () => void = () => {} ) 
 
   function removeBindingsForTargets(targets: readonly TwinBindingTarget[]): TwinBinding[] {
     const targetKeys = new Set(targets.map(twinBindingTargetKey))
-    const removed = bindings.value.filter((binding) => targetKeys.has(twinBindingTargetKey(binding.target)))
+    const removed = bindings.value.filter(binding => targetKeys.has(twinBindingTargetKey(binding.target)))
     if (!removed.length) return []
-    const removedIds = new Set(removed.map((binding) => binding.id))
-    bindings.value = bindings.value.filter((binding) => !removedIds.has(binding.id))
+    const removedIds = new Set(removed.map(binding => binding.id))
+    bindings.value = bindings.value.filter(binding => !removedIds.has(binding.id))
     const nextValues = { ...runtimeValues.value }
     for (const key of Object.keys(nextValues)) {
-      if (removed.some((binding) => key.startsWith(`${binding.id}:`))) delete nextValues[key]
+      if (removed.some(binding => key.startsWith(`${binding.id}:`))) delete nextValues[key]
     }
     runtimeValues.value = nextValues
     bindingRevision.value += 1
@@ -120,10 +120,12 @@ export function createTwinState(onConfigurationChanged: () => void = () => {} ) 
 
   function restoreBindings(restored: readonly TwinBinding[]): void {
     if (!restored.length) return
-    const restoredIds = new Set(restored.map((binding) => binding.id))
-    const restoredTargets = new Set(restored.map((binding) => twinBindingTargetKey(binding.target)))
+    const restoredIds = new Set(restored.map(binding => binding.id))
+    const restoredTargets = new Set(restored.map(binding => twinBindingTargetKey(binding.target)))
     bindings.value = [
-      ...bindings.value.filter((binding) => !restoredIds.has(binding.id) && !restoredTargets.has(twinBindingTargetKey(binding.target))),
+      ...bindings.value.filter(
+        binding => !restoredIds.has(binding.id) && !restoredTargets.has(twinBindingTargetKey(binding.target)),
+      ),
       ...restored.map(cloneBinding),
     ]
     bindingRevision.value += 1
@@ -159,15 +161,23 @@ export function createTwinState(onConfigurationChanged: () => void = () => {} ) 
     resolutionRevision.value += 1
   }
 
-  function setMockRunning(value: boolean): void { mockRunning.value = value }
-  function recordMockTick(): void { mockTickCount.value += 1 }
+  function setMockRunning(value: boolean): void {
+    mockRunning.value = value
+  }
+  function recordMockTick(): void {
+    mockTickCount.value += 1
+  }
   function setDataSourceState(type: DataSourceType, status: DataSourceConnectionStatus, error?: string): void {
     dataSourceType.value = type
     dataSourceStatus.value = status
     dataSourceError.value = error ?? null
   }
-  function recordDataSourceMessage(): void { dataSourceMessageCount.value += 1 }
-  function resetDataSourceMessages(): void { dataSourceMessageCount.value = 0 }
+  function recordDataSourceMessage(): void {
+    dataSourceMessageCount.value += 1
+  }
+  function resetDataSourceMessages(): void {
+    dataSourceMessageCount.value = 0
+  }
 
   return {
     projectId,

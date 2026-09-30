@@ -37,9 +37,17 @@ function handleResize(event: PointerEvent): void {
   if (!bounds || !activePanel) return
 
   if (activePanel === 'left') {
-    leftPanelWidth.value = clamp(event.clientX - bounds.left, 180, Math.min(480, bounds.width - rightPanelWidth.value - 420))
+    leftPanelWidth.value = clamp(
+      event.clientX - bounds.left,
+      180,
+      Math.min(480, bounds.width - rightPanelWidth.value - 420),
+    )
   } else if (activePanel === 'right') {
-    rightPanelWidth.value = clamp(bounds.right - event.clientX, 240, Math.min(520, bounds.width - leftPanelWidth.value - 420))
+    rightPanelWidth.value = clamp(
+      bounds.right - event.clientX,
+      240,
+      Math.min(520, bounds.width - leftPanelWidth.value - 420),
+    )
   } else {
     bottomPanelHeight.value = clamp(bounds.bottom - event.clientY, 112, Math.min(420, bounds.height - 240))
   }
@@ -91,11 +99,7 @@ onBeforeUnmount(() => {
           role="separator"
           @pointerdown="startResize('left', $event)"
         />
-        <ThreeViewport
-          :key="projectId"
-          :project-id="projectId"
-          :project-name="projectName"
-        />
+        <ThreeViewport :key="projectId" :project-id="projectId" :project-name="projectName" />
         <div
           data-testid="resize-right-panel"
           aria-label="调整属性面板宽度"

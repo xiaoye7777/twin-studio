@@ -16,8 +16,12 @@ export function isTwinBindingTarget(value: unknown): value is TwinBindingTarget 
   }
   if (value.type === 'asset-node') {
     return (
-      'instanceId' in value && typeof value.instanceId === 'string' && value.instanceId.length > 0 &&
-      'assetNodeId' in value && typeof value.assetNodeId === 'string' && value.assetNodeId.length > 0
+      'instanceId' in value &&
+      typeof value.instanceId === 'string' &&
+      value.instanceId.length > 0 &&
+      'assetNodeId' in value &&
+      typeof value.assetNodeId === 'string' &&
+      value.assetNodeId.length > 0
     )
   }
   return value.type === 'primitive' && 'nodeId' in value && typeof value.nodeId === 'string' && value.nodeId.length > 0

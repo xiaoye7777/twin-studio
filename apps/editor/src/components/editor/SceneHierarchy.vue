@@ -58,9 +58,7 @@ function buildTreeNode(object: Object3D): SceneTreeNode | null {
   if (isEditorInfrastructure(object)) return null
 
   const bid = typeof object.userData.bid === 'string' ? object.userData.bid : undefined
-  const children = object.children
-    .map(buildTreeNode)
-    .filter((child): child is SceneTreeNode => child !== null)
+  const children = object.children.map(buildTreeNode).filter((child): child is SceneTreeNode => child !== null)
 
   const target = bindingTargetFromObject(object)
   return {
@@ -77,9 +75,7 @@ function buildTreeNode(object: Object3D): SceneTreeNode | null {
 const treeData = computed<SceneTreeNode[]>(() => {
   void editorStore.sceneRevision
   void twinStore.bindingRevision
-  return editorStore.sceneRoots
-    .map(buildTreeNode)
-    .filter((node): node is SceneTreeNode => node !== null)
+  return editorStore.sceneRoots.map(buildTreeNode).filter((node): node is SceneTreeNode => node !== null)
 })
 
 const selectedNodeKey = computed(() => editorStore.selectedObject?.uuid ?? null)
@@ -117,7 +113,12 @@ watch(
     <div class="border-b border-line px-2 py-1.5">
       <label class="search">
         <el-icon class="text-fg-3"><Search /></el-icon>
-        <input v-model="query" aria-label="搜索场景对象" placeholder="搜索对象" class="min-w-0 flex-1 bg-transparent outline-none placeholder:text-fg-3" />
+        <input
+          v-model="query"
+          aria-label="搜索场景对象"
+          placeholder="搜索对象"
+          class="min-w-0 flex-1 bg-transparent outline-none placeholder:text-fg-3"
+        />
       </label>
     </div>
 
@@ -155,14 +156,14 @@ watch(
               class="row__eye"
               type="button"
               @click.stop="editorStore.toggleVisibility(data.object)"
-            ><el-icon><component :is="data.object.visible ? View : Hide" /></el-icon></button>
+            >
+              <el-icon><component :is="data.object.visible ? View : Hide" /></el-icon>
+            </button>
           </div>
         </template>
       </el-tree>
 
-      <div v-if="treeData.length === 0" class="px-6 py-8 text-center text-[11px] text-fg-3">
-        场景中暂无可编辑对象
-      </div>
+      <div v-if="treeData.length === 0" class="px-6 py-8 text-center text-[11px] text-fg-3">场景中暂无可编辑对象</div>
     </div>
   </aside>
 </template>
@@ -253,7 +254,9 @@ watch(
   font-size: 12px;
   color: var(--color-fg-3);
   opacity: 0;
-  transition: opacity 120ms ease, background-color 120ms ease;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease;
 }
 
 .row:hover .row__eye,

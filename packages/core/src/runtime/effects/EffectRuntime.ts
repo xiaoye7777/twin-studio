@@ -1,7 +1,22 @@
 import {
-  AdditiveBlending, Box3, BoxGeometry, CanvasTexture, Color, DoubleSide, EdgesGeometry,
-  Group, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, Path, Shape,
-  ShapeGeometry, Sprite, SpriteMaterial, Vector3,
+  AdditiveBlending,
+  Box3,
+  BoxGeometry,
+  CanvasTexture,
+  Color,
+  DoubleSide,
+  EdgesGeometry,
+  Group,
+  LineBasicMaterial,
+  LineSegments,
+  Mesh,
+  MeshBasicMaterial,
+  Path,
+  Shape,
+  ShapeGeometry,
+  Sprite,
+  SpriteMaterial,
+  Vector3,
 } from 'three'
 import type { Material, Object3D } from 'three'
 import { cloneEffects, isEffectInstance, type EffectInstance } from '../../domain/effects'
@@ -15,9 +30,16 @@ interface Visual {
   materials: Array<LineBasicMaterial | MeshBasicMaterial | SpriteMaterial>
   dispose(): void
 }
-interface IsolatedMaterial { mesh: Mesh; original: Material | Material[]; clones: Material[]; signature: string }
+interface IsolatedMaterial {
+  mesh: Mesh
+  original: Material | Material[]
+  clones: Material[]
+  signature: string
+}
 let activeLoops = 0
-export function getEffectDiagnostics(): { activeLoops: number } { return { activeLoops } }
+export function getEffectDiagnostics(): { activeLoops: number } {
+  return { activeLoops }
+}
 
 /** Shared atomic effects. Configuration is pure data; Three resources belong here. */
 export class EffectRuntime {
@@ -35,7 +57,10 @@ export class EffectRuntime {
   private readonly size = new Vector3()
   private readonly center = new Vector3()
 
-  constructor(private readonly meteor: MeteorScene, getRoots: () => readonly Object3D[]) {
+  constructor(
+    private readonly meteor: MeteorScene,
+    getRoots: () => readonly Object3D[],
+  ) {
     this.resolver = new BindingTargetResolver(getRoots, meteor)
     this.root.name = 'Runtime Effects'
     this.root.userData.editorInternal = true
@@ -70,7 +95,10 @@ export class EffectRuntime {
     const highlights: Array<{ target: Object3D; instance: EffectInstance }> = []
     for (const instance of rendered) {
       const target = this.resolver.resolve(instance.target)
-      if (!target) { this.unresolved.add(instance.id); continue }
+      if (!target) {
+        this.unresolved.add(instance.id)
+        continue
+      }
       if (instance.kind === 'outline') {
         const bid: unknown = target.userData.bid
         if (typeof bid === 'string') outlined.add(bid)
@@ -78,7 +106,8 @@ export class EffectRuntime {
       else {
         const previous = oldVisuals.get(instance.id)
         if (previous && previous.target === target && JSON.stringify(previous.instance) === JSON.stringify(instance)) {
-          visuals.push(previous); oldVisuals.delete(instance.id)
+          visuals.push(previous)
+          oldVisuals.delete(instance.id)
         } else visuals.push(this.createVisual(instance, target))
       }
     }
@@ -94,24 +123,54 @@ export class EffectRuntime {
       activeLoops += 1
       this.frame = requestAnimationFrame(this.tick)
     }
-    if (!this.visuals.length && this.frame !== null) { cancelAnimationFrame(this.frame); this.frame = null; activeLoops-- }
+    if (!this.visuals.length && this.frame !== null) {
+      cancelAnimationFrame(this.frame)
+      this.frame = null
+      activeLoops--
+    }
   }
 
-  getSnapshot(): EffectInstance[] { return cloneEffects(this.instances) }
-  getDiagnostics(): { effects: number; transientOwners: number; helpers: number; isolatedMeshes: number; outlined: number; unresolved: string[] } {
-    return { effects: this.instances.length, transientOwners: this.transient.size, helpers: this.visuals.length, isolatedMeshes: this.materials.length, outlined: this.outlined.size, unresolved: [...this.unresolved] }
+  getSnapshot(): EffectInstance[] {
+    return cloneEffects(this.instances)
+  }
+  getDiagnostics(): {
+    effects: number
+    transientOwners: number
+    helpers: number
+    isolatedMeshes: number
+    outlined: number
+    unresolved: string[]
+  } {
+    return {
+      effects: this.instances.length,
+      transientOwners: this.transient.size,
+      helpers: this.visuals.length,
+      isolatedMeshes: this.materials.length,
+      outlined: this.outlined.size,
+      unresolved: [...this.unresolved],
+    }
   }
 
   private applyHighlights(effects: Array<{ target: Object3D; instance: EffectInstance }>): void {
-    const depth = (node: Object3D): number => { let value = 0; for (let p = node.parent; p; p = p.parent) value++; return value }
+    const depth = (node: Object3D): number => {
+      let value = 0
+      for (let p = node.parent; p; p = p.parent) value++
+      return value
+    }
     // More-specific child wins; a deterministic single clone per mesh avoids stacked restoration bugs.
     effects.sort((a, b) => depth(a.target) - depth(b.target))
     const byMesh = new Map<Mesh, EffectInstance>()
-    for (const effect of effects) effect.target.traverse(node => { if (node instanceof Mesh) byMesh.set(node, effect.instance) })
+    for (const effect of effects)
+      effect.target.traverse(node => {
+        if (node instanceof Mesh) byMesh.set(node, effect.instance)
+      })
     const signature = (effect: EffectInstance) => JSON.stringify([effect.parameters.color, effect.parameters.opacity])
     this.materials = this.materials.filter(record => {
       const desired = byMesh.get(record.mesh)
-      if (desired && signature(desired) === record.signature) { byMesh.delete(record.mesh); return true }
+      if (desired && signature(desired) === record.signature) {
+        byMesh.delete(record.mesh)
+        return true
+      }
       record.mesh.material = record.original
       record.clones.forEach(material => material.dispose())
       return false
@@ -123,7 +182,8 @@ export class EffectRuntime {
         if ('emissive' in clone && clone.emissive instanceof Color) {
           clone.emissive.set(effect.parameters.color)
           if ('emissiveIntensity' in clone) clone.emissiveIntensity = effect.parameters.opacity * 2
-        } else if ('color' in clone && clone.color instanceof Color) clone.color.lerp(new Color(effect.parameters.color), effect.parameters.opacity)
+        } else if ('color' in clone && clone.color instanceof Color)
+          clone.color.lerp(new Color(effect.parameters.color), effect.parameters.opacity)
         return clone
       })
       mesh.material = Array.isArray(original) ? clones : clones[0]!
@@ -138,36 +198,93 @@ export class EffectRuntime {
     let helper: Object3D
     if (instance.kind === 'floating-label') {
       const canvas = document.createElement('canvas')
-      canvas.width = 768; canvas.height = 128
+      canvas.width = 768
+      canvas.height = 128
       const context = canvas.getContext('2d')
       if (!context) throw new Error('无法创建 Label Canvas')
-      context.fillStyle = 'rgba(15,23,42,0.85)'; context.fillRect(0, 0, 768, 128)
-      context.font = '48px sans-serif'; context.fillStyle = color; context.textAlign = 'center'; context.textBaseline = 'middle'
+      context.fillStyle = 'rgba(15,23,42,0.85)'
+      context.fillRect(0, 0, 768, 128)
+      context.font = '48px sans-serif'
+      context.fillStyle = color
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
       context.fillText(text || ' ', 384, 64, 728)
       const texture = new CanvasTexture(canvas)
       const material = new SpriteMaterial({ map: texture, transparent: true, opacity, depthWrite: false })
-      materials.push(material); disposers.push(() => texture.dispose())
+      materials.push(material)
+      disposers.push(() => texture.dispose())
       helper = new Sprite(material)
     } else if (instance.kind === 'ground-pulse') {
       const shape = new Shape()
-      shape.moveTo(-0.5,-0.5); shape.lineTo(0.5,-0.5); shape.lineTo(0.5,0.5); shape.lineTo(-0.5,0.5); shape.closePath()
+      shape.moveTo(-0.5, -0.5)
+      shape.lineTo(0.5, -0.5)
+      shape.lineTo(0.5, 0.5)
+      shape.lineTo(-0.5, 0.5)
+      shape.closePath()
       const hole = new Path()
-      hole.moveTo(-0.45,-0.45); hole.lineTo(-0.45,0.45); hole.lineTo(0.45,0.45); hole.lineTo(0.45,-0.45); hole.closePath(); shape.holes.push(hole)
-      const geometry = new ShapeGeometry(shape); geometry.rotateX(-Math.PI/2)
-      const material = new MeshBasicMaterial({ color, transparent: true, opacity, side: DoubleSide, depthWrite: false, blending: AdditiveBlending })
+      hole.moveTo(-0.45, -0.45)
+      hole.lineTo(-0.45, 0.45)
+      hole.lineTo(0.45, 0.45)
+      hole.lineTo(0.45, -0.45)
+      hole.closePath()
+      shape.holes.push(hole)
+      const geometry = new ShapeGeometry(shape)
+      geometry.rotateX(-Math.PI / 2)
+      const material = new MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        side: DoubleSide,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      })
       helper = new Mesh(geometry, material)
-      materials.push(material); disposers.push(() => geometry.dispose())
+      materials.push(material)
+      disposers.push(() => geometry.dispose())
     } else {
-      const geometry = new BoxGeometry(1,1,1), edges = new EdgesGeometry(geometry)
-      const surface = new MeshBasicMaterial({ color, transparent: true, opacity: opacity * 0.12, depthWrite: false, blending: AdditiveBlending })
-      const line = new LineBasicMaterial({ color, transparent: true, opacity, depthWrite: false, blending: AdditiveBlending })
-      const group = new Group(); group.add(new Mesh(geometry, surface), new LineSegments(edges, line)); helper = group
-      materials.push(surface, line); disposers.push(() => geometry.dispose(), () => edges.dispose())
+      const geometry = new BoxGeometry(1, 1, 1),
+        edges = new EdgesGeometry(geometry)
+      const surface = new MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: opacity * 0.12,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      })
+      const line = new LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      })
+      const group = new Group()
+      group.add(new Mesh(geometry, surface), new LineSegments(edges, line))
+      helper = group
+      materials.push(surface, line)
+      disposers.push(
+        () => geometry.dispose(),
+        () => edges.dispose(),
+      )
     }
     helper.name = `Effect:${instance.id}`
-    helper.traverse(node => { node.userData.runtimeEffect = true; node.userData.editorInternal = true; node.raycast = () => {} })
+    helper.traverse(node => {
+      node.userData.runtimeEffect = true
+      node.userData.editorInternal = true
+      node.raycast = () => {}
+    })
     this.root.add(helper)
-    return { instance, target, helper, materials, dispose: () => { helper.removeFromParent(); disposers.forEach(dispose => dispose()); materials.forEach(material => material.dispose()) } }
+    return {
+      instance,
+      target,
+      helper,
+      materials,
+      dispose: () => {
+        helper.removeFromParent()
+        disposers.forEach(dispose => dispose())
+        materials.forEach(material => material.dispose())
+      },
+    }
   }
 
   private readonly tick = (time: number): void => {
@@ -184,13 +301,16 @@ export class EffectRuntime {
       helper.visible = visible && !this.bounds.isEmpty()
       if (!helper.visible) continue
       const { padding, speed, opacity } = instance.parameters
-      this.bounds.getSize(this.size).addScalar(2 * padding).max(new Vector3(0.01,0.01,0.01))
+      this.bounds
+        .getSize(this.size)
+        .addScalar(2 * padding)
+        .max(new Vector3(0.01, 0.01, 0.01))
       this.bounds.getCenter(this.center)
-      const phase = time / 1000 * speed
+      const phase = (time / 1000) * speed
       helper.position.copy(this.center)
       if (instance.kind === 'floating-label') {
         helper.position.y = this.bounds.max.y + padding + 0.4
-        helper.scale.set(3,0.5,1)
+        helper.scale.set(3, 0.5, 1)
       } else if (instance.kind === 'ground-pulse') {
         const pulse = speed === 0 ? 0.5 : phase % 1
         helper.position.y = this.bounds.min.y + 0.025
@@ -206,15 +326,28 @@ export class EffectRuntime {
   }
 
   private clear(): void {
-    if (this.frame !== null) { cancelAnimationFrame(this.frame); this.frame = null; activeLoops -= 1 }
-    this.visuals.forEach(visual => visual.dispose()); this.visuals = []
-    for (const { mesh, original, clones } of this.materials) { mesh.material = original; clones.forEach(material => material.dispose()) }
+    if (this.frame !== null) {
+      cancelAnimationFrame(this.frame)
+      this.frame = null
+      activeLoops -= 1
+    }
+    this.visuals.forEach(visual => visual.dispose())
+    this.visuals = []
+    for (const { mesh, original, clones } of this.materials) {
+      mesh.material = original
+      clones.forEach(material => material.dispose())
+    }
     this.materials = []
     for (const bid of this.outlined) this.meteor.setOutline(bid, false)
-    this.outlined.clear(); this.unresolved.clear()
+    this.outlined.clear()
+    this.unresolved.clear()
   }
   dispose(): void {
     if (this.disposed) return
-    this.clear(); this.instances = []; this.transient.clear(); this.root.removeFromParent(); this.disposed = true
+    this.clear()
+    this.instances = []
+    this.transient.clear()
+    this.root.removeFromParent()
+    this.disposed = true
   }
 }

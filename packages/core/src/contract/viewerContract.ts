@@ -1,5 +1,11 @@
 import type { DeepReadonly } from 'vue'
-import type { TwinBinding, TwinBindingResolution, TwinBindingTarget, TwinDevice, TwinRuntimeValue } from '../domain/twin'
+import type {
+  TwinBinding,
+  TwinBindingResolution,
+  TwinBindingTarget,
+  TwinDevice,
+  TwinRuntimeValue,
+} from '../domain/twin'
 import type { InteractionMetadata, InteractionTrigger } from '../domain/interactions'
 import type { DataSourceConnectionStatus, DataSourceType } from '../infrastructure/data'
 

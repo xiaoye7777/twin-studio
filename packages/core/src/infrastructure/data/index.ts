@@ -1,5 +1,9 @@
 export type { DataSource, DataSourceConnectionStatus, DataSourceType, ViewerDataSourceConfig } from './DataSource'
 export { getMockDataSourceDiagnostics, MockDataSource } from './MockDataSource'
 export type { MockDataSourceOptions } from './MockDataSource'
-export { getWebSocketDataSourceDiagnostics, mapWebSocketDeviceMessage, WebSocketDataSource } from './WebSocketDataSource'
+export {
+  getWebSocketDataSourceDiagnostics,
+  mapWebSocketDeviceMessage,
+  WebSocketDataSource,
+} from './WebSocketDataSource'
 export type { WebSocketDataSourceOptions, WebSocketDeviceMessage } from './WebSocketDataSource'
