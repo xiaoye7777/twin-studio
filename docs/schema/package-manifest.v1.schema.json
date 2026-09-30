@@ -1,0 +1,129 @@
+{
+  "title": "Twin Studio project package manifest v1",
+  "description": "manifest.json inside a .twin.zip project package. Generated from the Zod schema in @twin-studio/core.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "exportedAt": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ],
+      "additionalProperties": false
+    },
+    "scene": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "const": "scene.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^assets\\/[0-9]+\\.(glb|hdr)$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "assetType": {
+            "type": "string",
+            "enum": [
+              "model",
+              "environment"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 134217728
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "lastModified": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "name",
+          "mimeType",
+          "assetType",
+          "size",
+          "sha256",
+          "lastModified",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "format": {
+      "type": "string",
+      "const": "twin-studio-project"
+    },
+    "packageVersion": {
+      "type": "number",
+      "const": 1
+    }
+  },
+  "required": [
+    "project",
+    "scene",
+    "assets",
+    "format",
+    "packageVersion"
+  ],
+  "additionalProperties": false
+}
