@@ -17,6 +17,7 @@
   "dependencies": {
     "@meteor3d/core": "workspace:*",
     "fflate": "0.8.3",
+    "immer": "11.1.18",
     "zod": "4.6.5"
   },
   "peerDependencies": {

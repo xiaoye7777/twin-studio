@@ -33,3 +33,5 @@ export * from './runtime/effects/EffectRuntime'
 export * from './runtime/effects/VisualRuleRuntime'
 export * from './runtime/interactions/InteractionRuntime'
 export * from './runtime/interactions/runtimeVisibility'
+
+export * from './document/DocumentStore'
