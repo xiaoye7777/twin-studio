@@ -1,4 +1,4 @@
-import { isSceneDocumentV1, type SceneDocumentV1 } from '../../domain/scene'
+import { loadSceneDocument, type SceneDocumentV1 } from '../../domain/scene'
 import type { AssetMetadata, AssetRecord, AssetRepository } from '../assets/AssetRepository'
 import type { SceneRepository } from '../scenes/SceneRepository'
 import {
@@ -81,8 +81,8 @@ export async function loadTwinPackage(
   const manifest = manifestValue
   const sceneBytes = files.get(manifest.scene.path)
   if (!sceneBytes || (await sha256(sceneBytes)) !== manifest.scene.sha256) throw new Error('scene.json 校验失败')
-  const sceneValue = json(sceneBytes, 'scene.json')
-  if (!isSceneDocumentV1(sceneValue)) throw new Error('SceneDocument 损坏或 version 不受支持')
+  // Throws SceneDocumentVersionError for packages from a newer editor, with an upgrade hint.
+  const { document: sceneValue } = loadSceneDocument(json(sceneBytes, 'scene.json'))
   if (sceneValue.projectId !== manifest.project.id) throw new Error('manifest 与 SceneDocument 项目 ID 不一致')
   const dependencies = collectSceneAssets(sceneValue)
   if (files.size !== manifest.assets.length + 2 || dependencies.size !== manifest.assets.length)

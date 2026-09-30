@@ -2,7 +2,7 @@ import {
   type AssetRecord,
   type AssetRepository,
   collectSceneAssets,
-  isSceneDocumentV1,
+  loadSceneDocument,
   json,
   PACKAGE_FORMAT,
   PACKAGE_LIMITS,
@@ -29,8 +29,9 @@ interface PackageProjects {
   addImportedProject(project: Project): void
 }
 
-function validateScene(value: unknown): asserts value is SceneDocumentV1 {
-  if (!isSceneDocumentV1(value)) throw new Error('SceneDocument 损坏或 version 不受支持')
+/** Package rules on top of the scene schema: business IDs present and unique, geometry within range. */
+function validatePackageScene(raw: unknown): SceneDocumentV1 {
+  const { document: value } = loadSceneDocument(raw)
   const unique = (ids: string[]) => ids.every(id => !!id) && new Set(ids).size === ids.length
   if (
     !unique(value.instances.map(item => item.instanceId)) ||
@@ -51,14 +52,7 @@ function validateScene(value: unknown): asserts value is SceneDocumentV1 {
         throw new Error('Primitive 分段数超出支持范围')
     }
   }
-  for (const item of [
-    ...value.instances,
-    ...value.primitives,
-    ...value.instances.flatMap(root => root.nodeOverrides),
-  ]) {
-    if (item.visible !== undefined && typeof item.visible !== 'boolean') throw new Error('场景 visibility 无效')
-    if (item.runtimeBid !== undefined && typeof item.runtimeBid !== 'string') throw new Error('场景 runtimeBid 无效')
-  }
+  return value
 }
 
 /** Portable boundary only. Neither Editor nor Viewer consumes ZIP files. */
@@ -72,7 +66,7 @@ export class ProjectPackageService {
   async exportProject(project: Project): Promise<Blob> {
     const scene = await this.scenes.load(project.id)
     if (!scene) throw new Error('项目尚未保存场景，请先进入编辑器保存')
-    validateScene(scene)
+    validatePackageScene(scene)
     const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value))
     const sceneBytes = encode(scene)
     if (sceneBytes.length > PACKAGE_LIMITS.jsonBytes) throw new Error('场景 JSON 超过大小限制')
@@ -123,8 +117,7 @@ export class ProjectPackageService {
     validateManifest(manifest)
     const sceneBytes = files.get('scene.json')!
     if ((await sha256(sceneBytes)) !== manifest.scene.sha256) throw new Error('scene.json 校验失败')
-    const scene = json(sceneBytes, 'scene.json')
-    validateScene(scene)
+    const scene = validatePackageScene(json(sceneBytes, 'scene.json'))
     if (scene.projectId !== manifest.project.id) throw new Error('manifest 与 SceneDocument 项目 ID 不一致')
     const dependencies = collectSceneAssets(scene)
     if (files.size !== manifest.assets.length + 2 || dependencies.size !== manifest.assets.length)

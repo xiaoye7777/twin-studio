@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright-core'
 
 // Both dev servers must be running. All Editor data is isolated in this browser context.
@@ -119,6 +119,24 @@ try {
     page.locator('[data-testid="export-project"]:visible').click(),
   ])
   const bytes = await readFile(await download.path())
+  // The same package re-stamped as a future scene format, for the SDK's upgrade message.
+  const newer = await page.evaluate(
+    async bytes => {
+      const core = window.__twinCore
+      const files = core.readPackageZip(new Uint8Array(bytes))
+      const scene = JSON.parse(new TextDecoder().decode(files.get('scene.json')))
+      scene.version = core.SCENE_DOCUMENT_VERSION + 1
+      const sceneBytes = new TextEncoder().encode(JSON.stringify(scene))
+      const manifest = JSON.parse(new TextDecoder().decode(files.get('manifest.json')))
+      manifest.scene.sha256 = await core.sha256(sceneBytes)
+      files.set('scene.json', sceneBytes)
+      files.set('manifest.json', new TextEncoder().encode(JSON.stringify(manifest)))
+      const zip = await core.writePackageZip(Object.fromEntries(files))
+      return [...new Uint8Array(await zip.arrayBuffer())]
+    },
+    [...bytes],
+  )
+  await writeFile(new URL('../public/e2e-newer.twin.zip', import.meta.url), Buffer.from(newer))
   await download.saveAs(new URL('../public/e2e-project.twin.zip', import.meta.url).pathname)
   // Parse with the actual project ZIP reader and exercise import through the UI.
   const contents = await page.evaluate(
@@ -142,6 +160,13 @@ try {
   })
   assert.deepEqual(imported.dataSources, config)
   assert.notEqual(imported.projectId, id)
+
+  await page.goto(dashboard + '/?package=/e2e-newer.twin.zip')
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="twin-scene-viewer"]')?.textContent.includes('请升级 Viewer SDK'),
+  )
+  const newerMessage = await page.getByTestId('twin-scene-viewer').textContent()
+  assert(newerMessage.includes('场景文件格式为 v2'), newerMessage)
 
   await page.goto(dashboard + '/?package=/e2e-project.twin.zip')
   await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]')
@@ -226,6 +251,7 @@ try {
         diagnostics,
         selectionFocusEvent: 'PASS',
         legacyPackageNoData: 'PASS',
+        newerFormatMessage: newerMessage.trim(),
         sourceSwitchAndDispose: 'PASS',
       },
       null,

@@ -12,6 +12,15 @@ export {
   Vector3TupleSchema,
 } from './sceneSchema'
 export { cloneSceneSettings, createDefaultSceneSettings } from './sceneSettings'
+export {
+  describeSceneIssues,
+  loadSceneDocument,
+  migrateSceneDocument,
+  SCENE_DOCUMENT_VERSION,
+  SceneDocumentError,
+  SceneDocumentVersionError,
+} from './sceneVersioning'
+export type { LoadedSceneDocument, SceneDocument, SceneMigration } from './sceneVersioning'
 export type {
   SceneCameraViewV1,
   SceneAssetInstanceV1,
