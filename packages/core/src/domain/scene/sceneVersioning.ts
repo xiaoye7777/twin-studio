@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { isRecord } from '../schemaHelpers'
+import { migrateSceneV1ToV2 } from './sceneMigrations'
 import { SceneDocumentSchemaV1 } from './sceneSchema'
-import type { SceneDocumentV1 } from './sceneTypes'
+import { SceneDocumentSchemaV2 } from './sceneSchemaV2'
+import type { SceneDocumentV1, SceneDocumentV2 } from './sceneTypes'
 
 /** The scene format this build reads and writes. Bump it together with a migration and a schema. */
 export const SCENE_DOCUMENT_VERSION = 1
@@ -13,8 +15,16 @@ const CurrentSceneDocumentSchema = SceneDocumentSchemaV1
 /** A migration upgrades a document of version N to N + 1. It receives a private copy it may mutate. */
 export type SceneMigration = (document: Record<string, unknown>) => Record<string, unknown>
 
-/** migrations[N] upgrades version N to N + 1. Empty while v1 is the only format. */
-const migrations: Readonly<Record<number, SceneMigration>> = {}
+/** The schema of every format this build can read, keyed by version. */
+const schemas: Readonly<Record<number, z.ZodType>> = { 1: SceneDocumentSchemaV1, 2: SceneDocumentSchemaV2 }
+
+/**
+ * migrations[N] upgrades a validated version-N document to N + 1. v1 → v2 is registered ahead of the switch:
+ * while SCENE_DOCUMENT_VERSION is 1 it is used through toSceneDocumentV2 only.
+ */
+const migrations: Readonly<Record<number, SceneMigration>> = {
+  1: document => migrateSceneV1ToV2(document as SceneDocumentV1),
+}
 
 export class SceneDocumentError extends Error {
   constructor(
@@ -90,13 +100,33 @@ export function loadSceneDocument(raw: unknown): LoadedSceneDocument {
     throw new SceneDocumentError('场景文件缺少有效的格式版本（version）')
   }
   if (version > SCENE_DOCUMENT_VERSION) throw new SceneDocumentVersionError(version)
-  const upgraded = version < SCENE_DOCUMENT_VERSION ? migrateSceneDocument(raw, version, SCENE_DOCUMENT_VERSION) : raw
-  const result = CurrentSceneDocumentSchema.safeParse(upgraded, { error: zhCN })
-  if (!result.success) {
-    const issues = describeSceneIssues(result.error)
-    const shown = issues.slice(0, 3).join('；')
-    const more = issues.length > 3 ? `（另有 ${issues.length - 3} 处问题）` : ''
-    throw new SceneDocumentError(`场景文件校验失败：${shown}${more}`, issues)
-  }
-  return { document: result.data, migratedFrom: version === SCENE_DOCUMENT_VERSION ? null : version }
+  // Validate against the file's own format first, so errors point at what is actually in the file.
+  const source = validate(schemas[version], raw)
+  if (version === SCENE_DOCUMENT_VERSION) return { document: source as SceneDocument, migratedFrom: null }
+  const upgraded = migrateSceneDocument(source as Record<string, unknown>, version, SCENE_DOCUMENT_VERSION)
+  return { document: validate(CurrentSceneDocumentSchema, upgraded) as SceneDocument, migratedFrom: version }
+}
+
+function validate(schema: z.ZodType | undefined, value: unknown): unknown {
+  if (!schema) throw new SceneDocumentError('不支持的场景格式版本')
+  const result = schema.safeParse(value, { error: zhCN })
+  if (result.success) return result.data
+  const issues = describeSceneIssues(result.error)
+  const shown = issues.slice(0, 3).join('；')
+  const more = issues.length > 3 ? `（另有 ${issues.length - 3} 处问题）` : ''
+  throw new SceneDocumentError(`场景文件校验失败：${shown}${more}`, issues)
+}
+
+/**
+ * The v2 view of any readable document, for runtimes already built on v2 (SceneSync) while files are still
+ * written as v1.
+ */
+export function toSceneDocumentV2(raw: unknown): SceneDocumentV2 {
+  const { document } = loadSceneDocument(raw)
+  // migrateSceneV1ToV2 validates its output against the v2 schema.
+  return migrateSceneDocument(
+    document as Record<string, unknown>,
+    SCENE_DOCUMENT_VERSION,
+    2,
+  ) as unknown as SceneDocumentV2
 }

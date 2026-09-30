@@ -19,7 +19,18 @@ export {
   SCENE_DOCUMENT_VERSION,
   SceneDocumentError,
   SceneDocumentVersionError,
+  toSceneDocumentV2,
 } from './sceneVersioning'
+export { migrateSceneV1ToV2 } from './sceneMigrations'
+export {
+  GroupNodeSchemaV2,
+  isSceneDocumentV2,
+  ModelNodeOverrideSchemaV2,
+  ModelNodeSchemaV2,
+  PrimitiveNodeSchemaV2,
+  SceneDocumentSchemaV2,
+  SceneNodeSchemaV2,
+} from './sceneSchemaV2'
 export type { LoadedSceneDocument, SceneDocument, SceneMigration } from './sceneVersioning'
 export type {
   SceneCameraViewV1,
@@ -33,4 +44,10 @@ export type {
   SceneSettingsV1,
   SceneTransformV1,
   Vector3Tuple,
+  GroupNodeV2,
+  ModelNodeOverrideV2,
+  ModelNodeV2,
+  PrimitiveNodeV2,
+  SceneDocumentV2,
+  SceneNodeV2,
 } from './sceneTypes'
