@@ -507,7 +507,7 @@ try {
       ambient: scene.getObjectByName('Editor Ambient Light').intensity,
       directional: scene.getObjectByName('Editor Directional Light').intensity,
       environment: !!scene.environment,
-      environmentStatus: runtime.loader.environmentStatus,
+      environmentStatus: runtime.sync.environmentStatus,
       click: { x: rect.left + ((center.x + 1) * rect.width) / 2, y: rect.top + ((1 - center.y) * rect.height) / 2 },
     }
   }, projectId)

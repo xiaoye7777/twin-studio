@@ -8,7 +8,8 @@ import { createViewerRuntimeState } from './viewerRuntimeState'
 import type { SceneRepository } from '../../infrastructure/scenes/SceneRepository'
 import type { AssetRepository } from '../../infrastructure/assets/AssetRepository'
 import { MeteorScene } from '../../infrastructure/meteor3d'
-import { SceneRuntimeLoader } from '../scene/SceneRuntimeLoader'
+import { SceneSync } from '../scene/SceneSync'
+import { toSceneDocumentV2 } from '../../domain/scene'
 import { BindingTargetResolver, bindingTargetFromObject } from './BindingTargetResolver'
 import { createTwinState } from './createTwinState'
 import { TwinDataRuntime } from './TwinDataRuntime'
@@ -22,7 +23,7 @@ export class TwinSceneRuntime {
   readonly runtimeState = createViewerRuntimeState(this.twin)
   private selection: ViewerSelection = null
   readonly meteor: MeteorScene
-  readonly loader: SceneRuntimeLoader
+  readonly sync: SceneSync
   roots: Object3D[] = []
   private readonly resolver: BindingTargetResolver
   private readonly data: TwinDataRuntime
@@ -42,7 +43,7 @@ export class TwinSceneRuntime {
     private readonly onInteractionEvent: (event: ViewerInteractionEvent) => void = () => {},
   ) {
     this.meteor = new MeteorScene(canvas)
-    this.loader = new SceneRuntimeLoader(this.meteor, assets)
+    this.sync = new SceneSync(this.meteor, assets)
     this.resolver = new BindingTargetResolver(() => this.roots, this.meteor)
     this.data = new TwinDataRuntime(this.twin, this.resolver)
   }
@@ -56,9 +57,9 @@ export class TwinSceneRuntime {
       if (!document) throw new Error('该项目尚未保存场景，请先在 Editor 中保存')
       await this.meteor.initialize()
       if (this.disposed) return []
-      const restored = await this.loader.restore(document)
+      const { warnings } = await this.sync.mount(toSceneDocumentV2(document))
       if (this.disposed) return []
-      this.roots = restored.roots
+      this.roots = this.sync.roots
       this.effects = new EffectRuntime(this.meteor, () => this.roots)
       this.data.initialize(projectId, document.bindings ?? [])
       this.visualRules = new VisualRuleRuntime(
@@ -108,7 +109,7 @@ export class TwinSceneRuntime {
       const unresolved = this.twin.bindings.filter(
         binding => this.twin.resolutionByBindingId[binding.id] === 'unresolved',
       )
-      return [...restored.warnings, ...unresolved.map(binding => `设备绑定未解析: ${binding.device.id}`)]
+      return [...warnings, ...unresolved.map(binding => `设备绑定未解析: ${binding.device.id}`)]
     } catch (error) {
       this.dispose()
       throw error
@@ -215,7 +216,7 @@ export class TwinSceneRuntime {
     this.data.stop()
     this.effects?.dispose()
     this.effects = null
-    this.loader.dispose()
+    this.sync.dispose()
     this.meteor.dispose()
     this.roots = []
     if (this.twin.projectId) this.twin.resetProject(this.twin.projectId)
