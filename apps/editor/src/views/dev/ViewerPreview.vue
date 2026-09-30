@@ -22,7 +22,8 @@ function load(): void { clicked.value = null; status.value = '正在加载'; voi
       <RouterLink to="/projects" class="ml-auto text-slate-400">项目列表</RouterLink>
     </form>
     <div class="min-h-0 flex-1">
-      <TwinSceneViewer v-if="projectId" :project-id="projectId"
+      <TwinSceneViewer
+v-if="projectId" :project-id="projectId"
         @loaded="status = `已加载 · ${$event.objectCount} Objects · ${$event.bindingCount} Bindings`"
         @error="status = $event" @target-click="clicked = $event" />
       <p v-else class="p-8 text-sm text-slate-400">输入已在 Editor 保存过的 Project ID。</p>

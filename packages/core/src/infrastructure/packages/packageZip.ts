@@ -48,7 +48,7 @@ export function readPackageZip(bytes: Uint8Array): Map<string, Uint8Array> {
     if (files.size !== entries.size || !files.has('manifest.json') || !files.has('scene.json')) throw new Error('项目包缺少 manifest.json / scene.json 或文件不完整')
     return files
   } catch (error) {
-    throw new Error(`无法读取项目 ZIP：${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`无法读取项目 ZIP：${error instanceof Error ? error.message : String(error)}`, { cause: error })
   }
 }
 

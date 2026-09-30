@@ -122,8 +122,8 @@ export class ProjectPackageService {
       return project
     } catch (error) {
       const cleanup = await Promise.allSettled([this.scenes.remove(projectId), ...(assetsCommitted ? [this.assets.removeBatch(records.map(item => item.id))] : [])])
-      if (cleanup.some(result => result.status === 'rejected')) throw new Error('导入失败且回滚未完成；请检查浏览器存储状态')
-      throw new Error(`导入失败，已回滚：${error instanceof Error ? error.message : String(error)}`)
+      if (cleanup.some(result => result.status === 'rejected')) throw new Error('导入失败且回滚未完成；请检查浏览器存储状态', { cause: error })
+      throw new Error(`导入失败，已回滚：${error instanceof Error ? error.message : String(error)}`, { cause: error })
     }
   }
 }

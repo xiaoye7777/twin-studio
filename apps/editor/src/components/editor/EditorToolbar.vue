@@ -49,7 +49,7 @@ function handleKeydown(event: KeyboardEvent): void {
 
   const modifier = event.ctrlKey || event.metaKey
   const key = event.key.toLowerCase()
-  if (modifier && key === 'z') { event.preventDefault(); event.shiftKey ? editorStore.redo() : editorStore.undo(); return }
+  if (modifier && key === 'z') { event.preventDefault(); if (event.shiftKey) editorStore.redo(); else editorStore.undo(); return }
   if (modifier && key === 'y') { event.preventDefault(); editorStore.redo(); return }
   if (modifier && key === 'd') { event.preventDefault(); editorStore.duplicateSelected(); return }
   if (event.altKey || modifier) return

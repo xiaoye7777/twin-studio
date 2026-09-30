@@ -37,15 +37,15 @@ const target = computed(() => {
   return object ? bindingTargetFromObject(object) : null
 })
 const binding = computed(() => {
-  twinStore.bindingRevision
+  void twinStore.bindingRevision
   return target.value ? twinStore.getBindingByTarget(target.value) : null
 })
 const resolution = computed(() => {
-  twinStore.resolutionRevision
+  void twinStore.resolutionRevision
   return binding.value ? twinStore.resolutionByBindingId[binding.value.id] ?? 'unresolved' : null
 })
 const runtimeRows = computed(() => {
-  twinStore.runtimeRevision
+  void twinStore.runtimeRevision
   if (!binding.value) return []
   return binding.value.variables.map((variable) => ({
     variable,
@@ -217,9 +217,9 @@ watch(() => editorStore.selectedObject, () => { dialogVisible.value = false })
     <el-dialog v-model="dialogVisible" data-testid="twin-binding-dialog" title="设备与变量绑定" width="680px" append-to-body destroy-on-close>
       <div class="space-y-5">
         <div class="grid grid-cols-3 gap-3">
-          <label class="block"><span class="field-label">设备 ID <em>*</em></span><el-input data-testid="binding-device-id" v-model="form.deviceId" placeholder="ESS-001" /></label>
-          <label class="block"><span class="field-label">设备名称</span><el-input data-testid="binding-device-name" v-model="form.deviceName" placeholder="储能柜 01" /></label>
-          <label class="block"><span class="field-label">设备类型</span><el-input data-testid="binding-device-type" v-model="form.deviceType" placeholder="energy-storage-cabinet" /></label>
+          <label class="block"><span class="field-label">设备 ID <em>*</em></span><el-input v-model="form.deviceId" data-testid="binding-device-id" placeholder="ESS-001" /></label>
+          <label class="block"><span class="field-label">设备名称</span><el-input v-model="form.deviceName" data-testid="binding-device-name" placeholder="储能柜 01" /></label>
+          <label class="block"><span class="field-label">设备类型</span><el-input v-model="form.deviceType" data-testid="binding-device-type" placeholder="energy-storage-cabinet" /></label>
         </div>
 
         <div>

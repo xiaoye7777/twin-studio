@@ -273,7 +273,7 @@ try {
   await page.setViewportSize({width:1280,height:850});await page.waitForTimeout(200)
   assert(await page.evaluate(()=>window.qaRuntime.meteor.getDiagnostics().resize))
   report.runtimeDetails={...runtimeDetails,hit,orbit,focus,resize:'PASS'}
-  await page.evaluate(()=>{window.qaRuntime.dispose();window.qaRuntime.meteor;document.querySelector('canvas').remove()})
+  await page.evaluate(()=>{window.qaRuntime.dispose();void window.qaRuntime.meteor;document.querySelector('canvas').remove()})
   await page.waitForTimeout(200)
   assert.deepEqual(await page.evaluate(()=>window.qaResources()),{urls:0,raf:0})
   // Component prop change recreates its canvas after forceContextLoss.

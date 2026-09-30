@@ -14,7 +14,8 @@ function handleError(message:string) { twin.loadStatus.value = message }
 
 <template>
   <main class="screen" data-testid="dashboard-demo" :data-selected-device-id="twin.selectedDeviceId.value ?? ''">
-    <TwinSceneViewer ref="viewerRef" :source="packageSource" @loaded="twin.handleLoaded"
+    <TwinSceneViewer
+ref="viewerRef" :source="packageSource" @loaded="twin.handleLoaded"
       @selection-change="twin.handleSelection" @interaction-event="twin.handleInteraction"
       @error="handleError" />
     <header class="topbar panel">

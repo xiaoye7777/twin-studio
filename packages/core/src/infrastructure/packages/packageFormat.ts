@@ -61,6 +61,7 @@ export function validateManifest(value: unknown): asserts value is PackageManife
   const ids = new Set<string>(), paths = new Set<string>()
   for (const a of value.assets) {
     if (!record(a) || typeof a.id !== 'string' || !a.id || typeof a.path !== 'string' || !/^assets\/[0-9]+\.(glb|hdr)$/.test(a.path) ||
+      // eslint-disable-next-line no-control-regex -- asset names must not smuggle control characters
       typeof a.name !== 'string' || !a.name || /[\\/\x00-\x1f]/.test(a.name) || a.name.length > 255 ||
       (a.assetType !== 'model' && a.assetType !== 'environment') || typeof a.mimeType !== 'string' ||
       typeof a.size !== 'number' || !Number.isSafeInteger(a.size) || a.size <= 0 || a.size > PACKAGE_LIMITS.fileBytes ||

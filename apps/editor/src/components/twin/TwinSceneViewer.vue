@@ -86,7 +86,8 @@ defineExpose({
 </script>
 
 <template>
-  <div class="relative h-full min-h-0 w-full overflow-hidden bg-slate-900" data-testid="twin-scene-viewer"
+  <div
+class="relative h-full min-h-0 w-full overflow-hidden bg-slate-900" data-testid="twin-scene-viewer"
     :data-loaded="!loading && !error && !!session" :data-object-count="session?.roots.length ?? 0"
     :data-binding-count="session?.twin.bindings.length ?? 0" :data-mock-running="session?.twin.mockRunning ?? false"
     :data-mock-ticks="session?.twin.mockTickCount ?? 0">

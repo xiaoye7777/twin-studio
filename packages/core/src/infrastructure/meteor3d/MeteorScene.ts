@@ -1,3 +1,5 @@
+// The vendored engine ships no types; this ambient declaration is not a module, so it cannot be imported.
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="../../types/meteor3d-core.d.ts" />
 import type {
   PersistenceManager as PersistenceManagerType,

@@ -37,6 +37,8 @@ async function exportProject(project: Project): Promise<void> {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
+    // Control characters are deliberately stripped from download file names.
+    // eslint-disable-next-line no-control-regex
     link.download = `${project.name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').slice(0, 100) || 'project'}.twin.zip`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)

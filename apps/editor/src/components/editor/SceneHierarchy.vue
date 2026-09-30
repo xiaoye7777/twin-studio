@@ -75,8 +75,8 @@ function buildTreeNode(object: Object3D): SceneTreeNode | null {
 }
 
 const treeData = computed<SceneTreeNode[]>(() => {
-  editorStore.sceneRevision
-  twinStore.bindingRevision
+  void editorStore.sceneRevision
+  void twinStore.bindingRevision
   return editorStore.sceneRoots
     .map(buildTreeNode)
     .filter((node): node is SceneTreeNode => node !== null)

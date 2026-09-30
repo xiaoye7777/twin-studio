@@ -125,13 +125,13 @@ const history = new HistoryManager(() => {
 })
 
 const selectedLabel = computed(() => {
-  editorStore.sceneRevision
+  void editorStore.sceneRevision
   if (!editorStore.selectedObject) return '未选择对象'
   return `${editorStore.selectedObject.name || 'Object3D'} · ${editorStore.selectedBid ?? 'No BID'}`
 })
 
 const infrastructureCounts = computed(() => {
-  sceneSettingsStore.revision
+  void sceneSettingsStore.revision
   if (initializing.value || !editorStore.runtimeReady) {
     return { ground: 0, ambient: 0, directional: 0 }
   }
@@ -145,18 +145,18 @@ const infrastructureCounts = computed(() => {
 })
 
 const unresolvedBindingCount = computed(() => {
-  twinStore.resolutionRevision
+  void twinStore.resolutionRevision
   return twinStore.bindings.filter((binding) => twinStore.resolutionByBindingId[binding.id] === 'unresolved').length
 })
 
 const mockDiagnostics = computed(() => {
-  twinStore.mockRunning
-  twinStore.mockTickCount
+  void twinStore.mockRunning
+  void twinStore.mockTickCount
   return getMockDataSourceDiagnostics()
 })
 
 const bindingResolverDiagnostics = computed(() => {
-  twinStore.resolutionRevision
+  void twinStore.resolutionRevision
   return bindingTargetResolver?.getDiagnostics() ?? { platformLookupCount: 0, meteorLookupCount: 0 }
 })
 
