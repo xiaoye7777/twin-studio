@@ -1,0 +1,2856 @@
+{
+  "version": 1,
+  "dataSources": [
+    {
+      "id": "realtime",
+      "name": "实时设备数据",
+      "type": "websocket",
+      "enabled": true,
+      "url": "ws://127.0.0.1:8787/realtime"
+    }
+  ],
+  "projectId": "zero-carbon-84ee0db8-4592-413c-be6c-d075dfef63ad",
+  "metadata": {
+    "name": "零碳智慧园区 Demo",
+    "updatedAt": "2026-09-29T07:24:37.971Z"
+  },
+  "instances": [
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-1",
+      "name": "储能柜 01",
+      "transform": {
+        "position": [-11.2, 0.28, 4.25],
+        "rotation": [0, 3.141592653589793, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_23527eec-6054-4843-bb87-5a34f46fb151",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-2",
+      "name": "储能柜 02",
+      "transform": {
+        "position": [-8.7, 0.28, 4.25],
+        "rotation": [0, 3.141592653589793, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_018cbe55-98fb-4991-bd7b-b3afa9c4a4c7",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-3",
+      "name": "储能柜 03",
+      "transform": {
+        "position": [-6.199999999999999, 0.28, 4.25],
+        "rotation": [0, 3.141592653589793, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_a4fdb730-35e1-49e1-92b8-fd5472d8002d",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-4",
+      "name": "储能柜 04",
+      "transform": {
+        "position": [-3.6999999999999993, 0.28, 4.25],
+        "rotation": [0, 3.141592653589793, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_965dee50-0923-4dbc-97ed-292f1e129ccc",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-5",
+      "name": "储能柜 05",
+      "transform": {
+        "position": [-11.2, 0.28, 8.55],
+        "rotation": [0, 0, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_6df05bd5-03ee-477f-a0e7-a76c2a28c81f",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-6",
+      "name": "储能柜 06",
+      "transform": {
+        "position": [-8.7, 0.28, 8.55],
+        "rotation": [0, 0, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_558f708e-4b09-40d9-8701-d3cc9b6edc2d",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-7",
+      "name": "储能柜 07",
+      "transform": {
+        "position": [-6.199999999999999, 0.28, 8.55],
+        "rotation": [0, 0, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_a5e33012-b80f-4349-b57d-eaa7a5b8cfa1",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_97bcb711-df4c-4990-8789-d31d5c32ad3b",
+      "instanceId": "instance_ess-8",
+      "name": "储能柜 08",
+      "transform": {
+        "position": [-3.6999999999999993, 0.28, 8.55],
+        "rotation": [0, 0, 0],
+        "scale": [4.4, 4.4, 4.4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_ed8e3e52-044d-40a8-98c1-8ea2e807b6a4",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-0-0",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [4.3, 0.28, 3.7],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_c3721313-8930-45cc-996b-74c2b6417380",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-0-1",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [6.5, 0.28, 3.7],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_fab957d5-5d81-40a1-a2c5-411e58efab5a",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-0-2",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [8.7, 0.28, 3.7],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_e8bdbf07-c689-4182-8460-85dde2c8c9e5",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-0-3",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [10.9, 0.28, 3.7],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_af8e929f-8cf5-4052-bc28-0805c326079a",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-1-0",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [4.3, 0.28, 6.4],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_1c3549ba-9aa9-4e59-ac7f-e53ca6e52678",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-1-1",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [6.5, 0.28, 6.4],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_3e3b688d-dcb8-4178-8221-dc4fa19323a9",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-1-2",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [8.7, 0.28, 6.4],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_303a61be-445c-4a82-9a80-6c3586918a4a",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-1-3",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [10.9, 0.28, 6.4],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_110e6cfb-37c9-4961-bfe6-5110e31aa9e2",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-2-0",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [4.3, 0.28, 9.100000000000001],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_5507a21f-9e10-49e7-83f3-eaeea16e154f",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-2-1",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [6.5, 0.28, 9.100000000000001],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_2e295dc1-f9a9-4826-8c08-46cb5377192d",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-2-2",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [8.7, 0.28, 9.100000000000001],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_04c02981-7e78-4356-9dcc-ba522c3e1ec4",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_1507aaaa-0b21-44c3-a178-36edecce279c",
+      "instanceId": "instance_pv-2-3",
+      "name": "光伏阵列",
+      "transform": {
+        "position": [10.9, 0.28, 9.100000000000001],
+        "rotation": [0, 0, 0],
+        "scale": [2, 2, 2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_ee78353f-9c93-46fd-a9be-4b0dd7e6178c",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_62b48ad4-d79c-48bc-a5e9-b51091f9c443",
+      "instanceId": "instance_wind-1",
+      "name": "风力发电机 01",
+      "transform": {
+        "position": [13.8, 0, 3.4],
+        "rotation": [0, 2.2, 0],
+        "scale": [2.6, 2.6, 2.6]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_fca339fc-0e94-4072-8b6b-67b3ae147fb2",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_62b48ad4-d79c-48bc-a5e9-b51091f9c443",
+      "instanceId": "instance_wind-2",
+      "name": "风力发电机 02",
+      "transform": {
+        "position": [13.8, 0, 6.8],
+        "rotation": [0, 2.2, 0],
+        "scale": [2.6, 2.6, 2.6]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_d8a8be8d-b266-4508-a6f8-60e2c48f6431",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_62b48ad4-d79c-48bc-a5e9-b51091f9c443",
+      "instanceId": "instance_wind-3",
+      "name": "风力发电机 03",
+      "transform": {
+        "position": [13.8, 0, 10.2],
+        "rotation": [0, 2.2, 0],
+        "scale": [2.6, 2.6, 2.6]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_3f836af5-1802-42b5-a20a-c1082e7564ff",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_638d3222-6495-4098-a0a8-9d3fbada4b57",
+      "instanceId": "instance_energy-center",
+      "name": "综合能源站",
+      "transform": {
+        "position": [-8, 0, -5.5],
+        "rotation": [0, 0, 0],
+        "scale": [4, 4, 4]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_44ed7677-3cac-42bf-8886-8450b998a08e",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_5d07ac57-a4cf-4490-a1ac-92b01ebc7133",
+      "instanceId": "instance_thermal-tank",
+      "name": "储热罐",
+      "transform": {
+        "position": [-13, 0, -2.6],
+        "rotation": [0, 0, 0],
+        "scale": [1.6, 1.6, 1.6]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_64791d0e-577a-48ce-a423-4a28f6f096cb",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_accb3864-2c80-4aec-ad50-fa67bfa121dc",
+      "instanceId": "instance_office",
+      "name": "绿色办公楼",
+      "transform": {
+        "position": [5.5, 0, -6],
+        "rotation": [0, 0, 0],
+        "scale": [2.2, 2.2, 2.2]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_e8844f53-6ec3-44b2-b288-b3496d901d7c",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_20c57b25-e9c1-417a-a16b-c9869467b384",
+      "instanceId": "instance_factory",
+      "name": "低碳制造车间",
+      "transform": {
+        "position": [11.2, 0, -8],
+        "rotation": [0, 0, 0],
+        "scale": [3, 3, 3]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_a9d261e3-1ffa-494e-80ba-b5c309977960",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    },
+    {
+      "assetId": "asset_d6baa430-d72a-4b0b-b788-e5ac2289b880",
+      "instanceId": "instance_warehouse",
+      "name": "智慧仓储中心",
+      "transform": {
+        "position": [11.5, 0, -3.8],
+        "rotation": [0, 0, 0],
+        "scale": [3, 3, 3]
+      },
+      "nodeOverrides": [],
+      "runtimeBid": "bid_a300c8f1-7125-4bb7-80e5-b24367c9b5ed",
+      "visible": true,
+      "deletedAssetNodeIds": []
+    }
+  ],
+  "primitives": [
+    {
+      "nodeId": "park-ground",
+      "type": "plane",
+      "name": "园区地面",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#334d53",
+        "width": 30,
+        "height": 24
+      },
+      "runtimeBid": "bid_22060b9a-42d8-4b1a-ade9-93f2eeb8f180",
+      "visible": true
+    },
+    {
+      "nodeId": "road-main",
+      "type": "box",
+      "name": "中央主干道",
+      "transform": {
+        "position": [0, 0.02, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#1e2b38",
+        "width": 3,
+        "height": 0.08,
+        "depth": 24
+      },
+      "runtimeBid": "bid_711fc489-e9c3-4836-ba1c-e06ac5539782",
+      "visible": true
+    },
+    {
+      "nodeId": "road-cross",
+      "type": "box",
+      "name": "园区环通道路",
+      "transform": {
+        "position": [0, 0.03, 1],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#1e2b38",
+        "width": 30,
+        "height": 0.08,
+        "depth": 2.2
+      },
+      "runtimeBid": "bid_a5ee0b22-6e15-433c-a460-f8f3efa09290",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-0",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, -10],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_c35ddd3a-e46f-47f2-a9ab-e4483a59d3c8",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-1",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, -7],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_973ac632-9546-464b-8f6c-73902d482a64",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-2",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, -4],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_88b79fb2-c1f6-460c-985d-8362a50b6d19",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-3",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, -1],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_d7a51b72-e9b6-456b-889c-e4fc4fe4f342",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-4",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, 2],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_83b31482-940b-4f70-8f1b-8ed52936448f",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-5",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, 5],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_dec20871-295d-494c-844b-8b09f0973631",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-6",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, 8],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_f9d438dc-b168-4932-b255-6dbc907c5970",
+      "visible": true
+    },
+    {
+      "nodeId": "road-line-7",
+      "type": "box",
+      "name": "道路引导线",
+      "transform": {
+        "position": [0, 0.12, 11],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#cfddc9",
+        "width": 0.08,
+        "height": 0.02,
+        "depth": 1.2
+      },
+      "runtimeBid": "bid_a5d7af8b-7820-4b24-8ff7-239d1a062590",
+      "visible": true
+    },
+    {
+      "nodeId": "storage-pad",
+      "type": "box",
+      "name": "储能区基座",
+      "transform": {
+        "position": [-7, 0.1, 6.4],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#567378",
+        "width": 11,
+        "height": 0.18,
+        "depth": 8
+      },
+      "runtimeBid": "bid_48c512a8-8059-4917-9a02-09ff31c00ab5",
+      "visible": true
+    },
+    {
+      "nodeId": "solar-pad",
+      "type": "box",
+      "name": "光伏区基座",
+      "transform": {
+        "position": [7.5, 0.1, 6.4],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#42655b",
+        "width": 10,
+        "height": 0.18,
+        "depth": 8
+      },
+      "runtimeBid": "bid_ba62a438-0904-46c6-b298-28edf9f436fe",
+      "visible": true
+    },
+    {
+      "nodeId": "tree-0",
+      "type": "cylinder",
+      "name": "园区绿化",
+      "transform": {
+        "position": [-13.7, 0.1, -10.5],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#39846f",
+        "height": 1.3,
+        "radiusTop": 0.6,
+        "radiusBottom": 0.6,
+        "radialSegments": 12
+      },
+      "runtimeBid": "bid_872ce767-b569-4b7a-af7b-da28e9c71a97",
+      "visible": true
+    },
+    {
+      "nodeId": "tree-1",
+      "type": "cylinder",
+      "name": "园区绿化",
+      "transform": {
+        "position": [-13.7, 0.1, -9.2],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#39846f",
+        "height": 1.3,
+        "radiusTop": 0.6,
+        "radiusBottom": 0.6,
+        "radialSegments": 12
+      },
+      "runtimeBid": "bid_241d1d7f-7bc9-4866-b4ba-e84a953edb40",
+      "visible": true
+    },
+    {
+      "nodeId": "tree-2",
+      "type": "cylinder",
+      "name": "园区绿化",
+      "transform": {
+        "position": [-13.7, 0.1, -7.9],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#39846f",
+        "height": 1.3,
+        "radiusTop": 0.6,
+        "radiusBottom": 0.6,
+        "radialSegments": 12
+      },
+      "runtimeBid": "bid_2111c338-4f4f-42d6-afdf-e5450bb30590",
+      "visible": true
+    },
+    {
+      "nodeId": "tree-3",
+      "type": "cylinder",
+      "name": "园区绿化",
+      "transform": {
+        "position": [-13.7, 0.1, -6.6],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#39846f",
+        "height": 1.3,
+        "radiusTop": 0.6,
+        "radiusBottom": 0.6,
+        "radialSegments": 12
+      },
+      "runtimeBid": "bid_112333a5-1dfa-45a1-95a4-13a5d1c19d09",
+      "visible": true
+    },
+    {
+      "nodeId": "tree-4",
+      "type": "cylinder",
+      "name": "园区绿化",
+      "transform": {
+        "position": [-13.7, 0.1, -5.3],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#39846f",
+        "height": 1.3,
+        "radiusTop": 0.6,
+        "radiusBottom": 0.6,
+        "radialSegments": 12
+      },
+      "runtimeBid": "bid_2900ab5e-1cda-413f-9f82-ce3c4330991e",
+      "visible": true
+    },
+    {
+      "nodeId": "tree-5",
+      "type": "cylinder",
+      "name": "园区绿化",
+      "transform": {
+        "position": [-13.7, 0.1, -4],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "properties": {
+        "color": "#39846f",
+        "height": 1.3,
+        "radiusTop": 0.6,
+        "radiusBottom": 0.6,
+        "radialSegments": 12
+      },
+      "runtimeBid": "bid_66260634-87a2-4f54-878c-7e38bbc7671d",
+      "visible": true
+    }
+  ],
+  "sceneSettings": {
+    "gridEnabled": false,
+    "axesEnabled": false,
+    "ground": {
+      "enabled": false,
+      "size": 40,
+      "color": "#273e48"
+    },
+    "lighting": {
+      "ambientIntensity": 1.8,
+      "directionalIntensity": 2.5,
+      "directionalPosition": [12, 25, 18]
+    },
+    "environmentAssetId": null
+  },
+  "cameraView": {
+    "position": [27, 30, 36],
+    "target": [0, 0, 0],
+    "fov": 42
+  },
+  "bindings": [
+    {
+      "id": "binding-ess-1",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "device": {
+        "id": "ESS-001",
+        "name": "储能柜 01",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-1-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-1-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-1-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-1-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-1-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-2",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "device": {
+        "id": "ESS-002",
+        "name": "储能柜 02",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-2-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-2-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-2-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-2-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-2-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-3",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "device": {
+        "id": "ESS-003",
+        "name": "储能柜 03",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-3-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-3-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-3-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-3-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-3-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-4",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "device": {
+        "id": "ESS-004",
+        "name": "储能柜 04",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-4-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-4-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-4-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-4-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-4-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-5",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "device": {
+        "id": "ESS-005",
+        "name": "储能柜 05",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-5-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-5-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-5-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-5-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-5-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-6",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "device": {
+        "id": "ESS-006",
+        "name": "储能柜 06",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-6-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-6-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-6-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-6-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-6-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-7",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "device": {
+        "id": "ESS-007",
+        "name": "储能柜 07",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-7-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-7-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-7-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-7-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-7-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "id": "binding-ess-8",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "device": {
+        "id": "ESS-008",
+        "name": "储能柜 08",
+        "type": "energy-storage-cabinet"
+      },
+      "variables": [
+        {
+          "id": "ess-8-soc",
+          "key": "soc",
+          "name": "SOC",
+          "dataType": "number",
+          "unit": "%"
+        },
+        {
+          "id": "ess-8-temperature",
+          "key": "temperature",
+          "name": "温度",
+          "dataType": "number",
+          "unit": "℃"
+        },
+        {
+          "id": "ess-8-power",
+          "key": "power",
+          "name": "功率",
+          "dataType": "number",
+          "unit": "kW"
+        },
+        {
+          "id": "ess-8-alarm",
+          "key": "alarm",
+          "name": "告警",
+          "dataType": "boolean"
+        },
+        {
+          "id": "ess-8-status",
+          "key": "status",
+          "name": "状态",
+          "dataType": "string"
+        }
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "id": "effect_8cd17366-109e-460a-87f4-1b1bc1270c13",
+      "kind": "floating-label",
+      "target": {
+        "type": "primitive",
+        "nodeId": "storage-pad"
+      },
+      "parameters": {
+        "color": "#9fe0d3",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "储能区"
+      }
+    },
+    {
+      "id": "effect_726f9565-12ed-4cea-aa67-0d0bd5a0d918",
+      "kind": "floating-label",
+      "target": {
+        "type": "primitive",
+        "nodeId": "solar-pad"
+      },
+      "parameters": {
+        "color": "#88c4ff",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "光伏发电区"
+      }
+    },
+    {
+      "id": "effect_0a9b6c6c-0410-4b37-8475-b40272b7c001",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-001"
+      }
+    },
+    {
+      "id": "effect_4a2d8b25-ebd9-4be1-a35a-d8fcfb1d6806",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-002"
+      }
+    },
+    {
+      "id": "effect_f7a48cba-4538-415c-a021-1d91ac10a484",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-003"
+      }
+    },
+    {
+      "id": "effect_b96c49e5-33db-406e-8a79-c71d0eebd23b",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-004"
+      }
+    },
+    {
+      "id": "effect_4b2755a8-6b03-4620-bb99-41d4478a2627",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-005"
+      }
+    },
+    {
+      "id": "effect_258e89ef-1551-4fd7-81a1-57077010de5f",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-006"
+      }
+    },
+    {
+      "id": "effect_caa17673-d893-4160-9f7e-c755aaa649da",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-007"
+      }
+    },
+    {
+      "id": "effect_a76d1831-f35e-4bf3-a27c-0720df05dce2",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "ESS-008"
+      }
+    },
+    {
+      "id": "effect_efc20b1c-70cb-4c55-ac09-f49e45b92290",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_energy-center"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "综合能源站"
+      }
+    },
+    {
+      "id": "effect_8a3bd86b-aeb0-40dd-b2f9-6ac5d47bab5a",
+      "kind": "floating-label",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_office"
+      },
+      "parameters": {
+        "color": "#b9f6ef",
+        "opacity": 1,
+        "speed": 1,
+        "padding": 0.55,
+        "text": "绿色办公楼"
+      }
+    }
+  ],
+  "visualRules": [
+    {
+      "id": "ess-1-hot",
+      "bindingId": "binding-ess-1",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-1-alarm",
+      "bindingId": "binding-ess-1",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-2-hot",
+      "bindingId": "binding-ess-2",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-2-alarm",
+      "bindingId": "binding-ess-2",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-3-hot",
+      "bindingId": "binding-ess-3",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-3-alarm",
+      "bindingId": "binding-ess-3",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-4-hot",
+      "bindingId": "binding-ess-4",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-4-alarm",
+      "bindingId": "binding-ess-4",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-5-hot",
+      "bindingId": "binding-ess-5",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-5-alarm",
+      "bindingId": "binding-ess-5",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-6-hot",
+      "bindingId": "binding-ess-6",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-6-alarm",
+      "bindingId": "binding-ess-6",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-7-hot",
+      "bindingId": "binding-ess-7",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-7-alarm",
+      "bindingId": "binding-ess-7",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-8-hot",
+      "bindingId": "binding-ess-8",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "variableKey": "temperature",
+      "condition": {
+        "dataType": "number",
+        "operator": ">",
+        "value": 60
+      },
+      "enabled": true,
+      "priority": 10,
+      "template": {
+        "version": 1,
+        "id": "builtin:warning",
+        "origin": "builtin",
+        "name": "高温预警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "warning:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          },
+          {
+            "id": "warning:1",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff9900",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "高温预警"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ess-8-alarm",
+      "bindingId": "binding-ess-8",
+      "target": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "variableKey": "alarm",
+      "condition": {
+        "dataType": "boolean",
+        "operator": "==",
+        "value": true
+      },
+      "enabled": true,
+      "priority": 20,
+      "template": {
+        "version": 1,
+        "id": "builtin:critical",
+        "origin": "builtin",
+        "name": "严重告警",
+        "description": "内置只读方案，可复制为自定义模板",
+        "category": "告警",
+        "effects": [
+          {
+            "id": "critical:0",
+            "kind": "box-glow",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:1",
+            "kind": "ground-pulse",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:2",
+            "kind": "outline",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          },
+          {
+            "id": "critical:3",
+            "kind": "floating-label",
+            "target": {
+              "mode": "current-target"
+            },
+            "parameters": {
+              "color": "#ff3030",
+              "opacity": 0.65,
+              "speed": 1,
+              "padding": 0.2,
+              "text": "严重告警"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "id": "ess-1-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-1-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-1-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-1-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-1"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-2-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-2-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-2-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-2-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-2"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-3-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-3-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-3-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-3-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-3"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-4-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-4-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-4-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-4-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-4"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-5-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-5-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-5-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-5-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-5"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-6-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-6-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-6-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-6-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-6"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-7-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-7-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-7-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-7-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-7"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    },
+    {
+      "id": "ess-8-interaction-0",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "select"
+      }
+    },
+    {
+      "id": "ess-8-interaction-1",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "trigger": "double-click",
+      "action": {
+        "type": "focus"
+      }
+    },
+    {
+      "id": "ess-8-interaction-2",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "trigger": "hover-enter",
+      "action": {
+        "type": "highlight"
+      }
+    },
+    {
+      "id": "ess-8-interaction-3",
+      "enabled": true,
+      "source": {
+        "type": "asset-instance",
+        "instanceId": "instance_ess-8"
+      },
+      "trigger": "click",
+      "action": {
+        "type": "emit-event",
+        "eventName": "open-device-detail",
+        "metadata": {
+          "zone": "储能区",
+          "demo": "zero-carbon-park"
+        }
+      }
+    }
+  ]
+}
