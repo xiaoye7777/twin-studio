@@ -1,95 +1,24 @@
-import type { ProjectDataSource } from '../dataSources'
-import type { TwinBinding } from '../twin'
-import type { EffectInstance } from '../effects'
-import type { VisualRule } from '../visualRules'
-import type { SceneInteraction } from '../interactions'
+import type { z } from 'zod'
+import type {
+  SceneAssetInstanceSchemaV1,
+  SceneBoxPropertiesSchemaV1,
+  SceneCameraViewSchemaV1,
+  SceneDocumentSchemaV1,
+  SceneNodeOverrideSchemaV1,
+  ScenePrimitiveSchemaV1,
+  SceneSettingsSchemaV1,
+  SceneTransformSchemaV1,
+  Vector3TupleSchema,
+} from './sceneSchema'
 
-export type Vector3Tuple = [number, number, number]
-
-export interface SceneGroundSettingsV1 {
-  enabled: boolean
-  size: number
-  color: string
-}
-
-export interface SceneLightingSettingsV1 {
-  ambientIntensity: number
-  directionalIntensity: number
-  directionalPosition: Vector3Tuple
-}
-
-export interface SceneSettingsV1 {
-  gridEnabled: boolean
-  axesEnabled: boolean
-  ground: SceneGroundSettingsV1
-  lighting: SceneLightingSettingsV1
-  environmentAssetId: string | null
-}
-
-export interface SceneCameraViewV1 {
-  position: Vector3Tuple
-  target: Vector3Tuple
-  fov?: number
-}
-
-export interface SceneTransformV1 {
-  position: Vector3Tuple
-  rotation: Vector3Tuple
-  scale: Vector3Tuple
-}
-export interface SceneNodeOverrideV1 {
-  assetNodeId: string
-  name: string
-  transform: SceneTransformV1
-  runtimeBid?: string
-  visible?: boolean
-}
-
-export interface SceneAssetInstanceV1 {
-  assetId: string
-  instanceId: string
-  name: string
-  transform: SceneTransformV1
-  nodeOverrides: SceneNodeOverrideV1[]
-  runtimeBid?: string
-  visible?: boolean
-  deletedAssetNodeIds?: string[]
-}
-
-export interface SceneBoxPropertiesV1 {
-  color: string
-  width?: number
-  height?: number
-  depth?: number
-  radiusTop?: number
-  radiusBottom?: number
-  radialSegments?: number
-}
-
-export interface ScenePrimitiveV1 {
-  nodeId: string
-  type: 'box' | 'plane' | 'cylinder'
-  name: string
-  transform: SceneTransformV1
-  properties: SceneBoxPropertiesV1
-  runtimeBid?: string
-  visible?: boolean
-}
-
-export interface SceneDocumentV1 {
-  version: 1
-  dataSources?: ProjectDataSource[]
-  projectId: string
-  metadata: {
-    name?: string
-    updatedAt: string
-  }
-  instances: SceneAssetInstanceV1[]
-  primitives: ScenePrimitiveV1[]
-  sceneSettings?: SceneSettingsV1
-  cameraView?: SceneCameraViewV1
-  bindings?: TwinBinding[]
-  effects?: EffectInstance[]
-  visualRules?: VisualRule[]
-  interactions?: SceneInteraction[]
-}
+export type Vector3Tuple = z.infer<typeof Vector3TupleSchema>
+export type SceneSettingsV1 = z.infer<typeof SceneSettingsSchemaV1>
+export type SceneGroundSettingsV1 = SceneSettingsV1['ground']
+export type SceneLightingSettingsV1 = SceneSettingsV1['lighting']
+export type SceneCameraViewV1 = z.infer<typeof SceneCameraViewSchemaV1>
+export type SceneTransformV1 = z.infer<typeof SceneTransformSchemaV1>
+export type SceneNodeOverrideV1 = z.infer<typeof SceneNodeOverrideSchemaV1>
+export type SceneAssetInstanceV1 = z.infer<typeof SceneAssetInstanceSchemaV1>
+export type SceneBoxPropertiesV1 = z.infer<typeof SceneBoxPropertiesSchemaV1>
+export type ScenePrimitiveV1 = z.infer<typeof ScenePrimitiveSchemaV1>
+export type SceneDocumentV1 = z.infer<typeof SceneDocumentSchemaV1>

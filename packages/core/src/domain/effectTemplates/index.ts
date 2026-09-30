@@ -1,31 +1,47 @@
+import { z } from 'zod'
 import {
   createEffect,
   createEffectParameters,
-  effectDefinitions,
-  isEffectParameters,
+  EffectKindSchema,
+  EffectParametersSchema,
   type EffectInstance,
   type EffectKind,
-  type EffectParameters,
 } from '../effects'
+import { nonEmptyString, trimmedString, uniqueBy } from '../schemaHelpers'
 import { twinBindingTargetKey, type TwinBindingTarget } from '../twin'
 
-export type RelativeEffectTarget =
-  { mode: 'current-target' } | { mode: 'root-instance' } | { mode: 'asset-node'; assetNodeId: string }
-export interface TemplateEffect {
-  id: string
-  kind: EffectKind
-  parameters: EffectParameters
-  target: RelativeEffectTarget
-}
-export interface EffectTemplate {
-  version: 1
-  id: string
-  origin: 'builtin' | 'local'
-  name: string
-  description: string
-  category: string
-  effects: TemplateEffect[]
-}
+/** Relative selectors only: strict objects so a template can never carry a concrete scene identity. */
+export const RelativeEffectTargetSchema = z.discriminatedUnion('mode', [
+  z.strictObject({ mode: z.literal('current-target') }),
+  z.strictObject({ mode: z.literal('root-instance') }),
+  z.strictObject({ mode: z.literal('asset-node'), assetNodeId: trimmedString }),
+])
+
+export const TemplateEffectSchema = z.object({
+  id: nonEmptyString,
+  kind: EffectKindSchema,
+  parameters: EffectParametersSchema,
+  target: RelativeEffectTargetSchema,
+})
+
+export const EffectTemplateSchema = z.object({
+  version: z.literal(1),
+  id: nonEmptyString,
+  origin: z.enum(['builtin', 'local']),
+  name: trimmedString.pipe(z.string().max(80)),
+  description: z.string().max(500),
+  category: z.string().max(40),
+  effects: z
+    .array(TemplateEffectSchema)
+    .min(1)
+    .max(50)
+    .superRefine(uniqueBy(effect => effect.id, '特效 ID')),
+})
+
+export type RelativeEffectTarget = z.infer<typeof RelativeEffectTargetSchema>
+export type TemplateEffect = z.infer<typeof TemplateEffectSchema>
+export type EffectTemplate = z.infer<typeof EffectTemplateSchema>
+
 export function createTemplateEffect(kind: EffectKind): TemplateEffect {
   return { id: crypto.randomUUID(), kind, parameters: createEffectParameters(), target: { mode: 'current-target' } }
 }
@@ -35,46 +51,8 @@ export function cloneTemplate(template: EffectTemplate): EffectTemplate {
     effects: template.effects.map(e => ({ ...e, target: { ...e.target }, parameters: { ...e.parameters } })),
   }
 }
-function record(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
 export function isEffectTemplate(value: unknown): value is EffectTemplate {
-  if (!record(value) || value.version !== 1 || typeof value.id !== 'string' || !value.id) return false
-  if (value.origin !== 'builtin' && value.origin !== 'local') return false
-  if (
-    typeof value.name !== 'string' ||
-    !value.name.trim() ||
-    value.name.length > 80 ||
-    typeof value.description !== 'string' ||
-    value.description.length > 500 ||
-    typeof value.category !== 'string' ||
-    value.category.length > 40
-  )
-    return false
-  if (!Array.isArray(value.effects) || !value.effects.length || value.effects.length > 50) return false
-  const ids = new Set<string>()
-  return value.effects.every(e => {
-    if (
-      !record(e) ||
-      typeof e.id !== 'string' ||
-      !e.id ||
-      ids.has(e.id) ||
-      !effectDefinitions.some(d => d.kind === e.kind) ||
-      !isEffectParameters(e.parameters) ||
-      !record(e.target)
-    )
-      return false
-    ids.add(e.id)
-    // Explicitly exclude concrete scene identities in relative selectors.
-    const keys = Object.keys(e.target)
-    if (e.target.mode === 'asset-node')
-      return (
-        keys.every(k => k === 'mode' || k === 'assetNodeId') &&
-        typeof e.target.assetNodeId === 'string' &&
-        !!e.target.assetNodeId.trim()
-      )
-    return keys.length === 1 && (e.target.mode === 'current-target' || e.target.mode === 'root-instance')
-  })
+  return EffectTemplateSchema.safeParse(value).success
 }
 
 /** Pure expansion, reusable by a future rule layer; no store, Three, or runtime dependency. */

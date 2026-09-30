@@ -1,11 +1,6 @@
-import type { TwinDevice, TwinVariableDefinition } from './twinTypes'
-import type { TwinBindingTarget } from './bindingTarget'
+import type { z } from 'zod'
+import type { TwinBindingSchema } from './schema'
 
-export interface TwinBinding {
-  id: string
-  target: TwinBindingTarget
-  device: TwinDevice
-  variables: TwinVariableDefinition[]
-}
+export type TwinBinding = z.infer<typeof TwinBindingSchema>
 
 export type TwinBindingResolution = 'resolved' | 'unresolved'

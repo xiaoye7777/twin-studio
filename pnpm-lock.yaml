@@ -130,6 +130,9 @@ importers:
       fflate:
         specifier: 0.8.3
         version: 0.8.3
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/node':
         specifier: 24.10.1
@@ -2575,6 +2578,9 @@ packages:
   zod@3.22.3:
     resolution: {integrity: sha512-EjIevzuJRiRPbVH4mGc8nApb/lVLKVpmUhAaR5R5doKGfAnGJ6Gr3CViAVjP+4FWSxCsybeWQdcgCtbX+7oZug==}
 
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+
 snapshots:
 
   3d-tiles-renderer@0.4.28(three@0.184.0):
@@ -4670,3 +4676,5 @@ snapshots:
       stacktracey: 2.2.0
 
   zod@3.22.3: {}
+
+  zod@4.6.5: {}

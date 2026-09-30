@@ -1,4 +1,6 @@
+import { z } from 'zod'
 import type { SceneDocumentV1 } from '../../domain/scene'
+import { nonEmptyString, trimmedString } from '../../domain/schemaHelpers'
 import type { AssetType } from '../assets/AssetRepository'
 
 export const PACKAGE_FORMAT = 'twin-studio-project'
@@ -11,25 +13,46 @@ export const PACKAGE_LIMITS = {
   files: 512,
 }
 
-export interface PackageAsset {
-  id: string
-  path: string
-  name: string
-  mimeType: string
-  assetType: AssetType
-  size: number
-  sha256: string
-  lastModified: number
-  createdAt: string
-}
-export interface PackageManifest {
-  format: typeof PACKAGE_FORMAT
-  packageVersion: 1
-  exportedAt: string
-  project: { id: string; name: string; createdAt: string; updatedAt: string }
-  scene: { path: 'scene.json'; sha256: string }
-  assets: PackageAsset[]
-}
+const isoDate = z.string().refine(value => Number.isFinite(Date.parse(value)), { message: '不是有效的日期时间' })
+const sha256Hex = z.string().regex(/^[a-f0-9]{64}$/, { message: '不是有效的 SHA-256' })
+
+export const PackageAssetSchema = z.object({
+  id: nonEmptyString,
+  path: z.string().regex(/^assets\/[0-9]+\.(glb|hdr)$/),
+  name: z
+    .string()
+    .min(1)
+    .max(255)
+    // eslint-disable-next-line no-control-regex -- asset names must not smuggle separators or control characters
+    .refine(name => !/[\\/\x00-\x1f]/.test(name), { message: '文件名包含非法字符' }),
+  mimeType: z.string(),
+  assetType: z.enum(['model', 'environment']),
+  size: z.int().positive().max(PACKAGE_LIMITS.fileBytes),
+  sha256: sha256Hex,
+  lastModified: z.number(),
+  createdAt: isoDate,
+})
+
+const PackageHeaderSchema = z.object({
+  exportedAt: z.string().optional(),
+  project: z.object({
+    id: nonEmptyString,
+    name: trimmedString.pipe(z.string().max(200)),
+    createdAt: isoDate,
+    updatedAt: isoDate,
+  }),
+  scene: z.object({ path: z.literal('scene.json'), sha256: sha256Hex }),
+  assets: z.array(z.unknown()),
+})
+
+export const PackageManifestSchema = PackageHeaderSchema.extend({
+  format: z.literal(PACKAGE_FORMAT),
+  packageVersion: z.literal(PACKAGE_VERSION),
+  assets: z.array(PackageAssetSchema),
+})
+
+export type PackageAsset = z.infer<typeof PackageAssetSchema>
+export type PackageManifest = z.infer<typeof PackageManifestSchema>
 
 /** Explicit schema dependencies. Rules embed recipes; effects/interactions have no assets. */
 export function collectSceneAssets(scene: SceneDocumentV1): Map<string, AssetType> {
@@ -60,67 +83,28 @@ export function json(bytes: Uint8Array | undefined, label: string): unknown {
   }
 }
 
+/** Staged so each failure keeps its established, user-facing message. */
 export function validateManifest(value: unknown): asserts value is PackageManifest {
   if (!record(value) || value.format !== PACKAGE_FORMAT) throw new Error('不是 Twin Studio 项目包')
   if (value.packageVersion !== PACKAGE_VERSION)
     throw new Error(`不支持的 packageVersion: ${String(value.packageVersion)}`)
-  const p = value.project,
-    s = value.scene
-  if (
-    !record(p) ||
-    typeof p.id !== 'string' ||
-    !p.id ||
-    typeof p.name !== 'string' ||
-    !p.name.trim() ||
-    p.name.length > 200 ||
-    typeof p.createdAt !== 'string' ||
-    !Number.isFinite(Date.parse(p.createdAt)) ||
-    typeof p.updatedAt !== 'string' ||
-    !Number.isFinite(Date.parse(p.updatedAt)) ||
-    !record(s) ||
-    s.path !== 'scene.json' ||
-    typeof s.sha256 !== 'string' ||
-    !/^[a-f0-9]{64}$/.test(s.sha256) ||
-    !Array.isArray(value.assets)
-  )
-    throw new Error('manifest 项目或场景信息无效')
+  const header = PackageHeaderSchema.safeParse(value)
+  if (!header.success) throw new Error('manifest 项目或场景信息无效')
   const ids = new Set<string>(),
     paths = new Set<string>()
-  for (const a of value.assets) {
+  for (const item of header.data.assets) {
+    const parsed = PackageAssetSchema.safeParse(item)
+    if (!parsed.success) throw new Error('manifest 资产信息无效')
+    const asset = parsed.data
+    const extension = asset.assetType === 'model' ? '.glb' : '.hdr'
     if (
-      !record(a) ||
-      typeof a.id !== 'string' ||
-      !a.id ||
-      typeof a.path !== 'string' ||
-      !/^assets\/[0-9]+\.(glb|hdr)$/.test(a.path) ||
-      typeof a.name !== 'string' ||
-      !a.name ||
-      // eslint-disable-next-line no-control-regex -- asset names must not smuggle control characters
-      /[\\/\x00-\x1f]/.test(a.name) ||
-      a.name.length > 255 ||
-      (a.assetType !== 'model' && a.assetType !== 'environment') ||
-      typeof a.mimeType !== 'string' ||
-      typeof a.size !== 'number' ||
-      !Number.isSafeInteger(a.size) ||
-      a.size <= 0 ||
-      a.size > PACKAGE_LIMITS.fileBytes ||
-      typeof a.sha256 !== 'string' ||
-      !/^[a-f0-9]{64}$/.test(a.sha256) ||
-      typeof a.lastModified !== 'number' ||
-      !Number.isFinite(a.lastModified) ||
-      typeof a.createdAt !== 'string' ||
-      !Number.isFinite(Date.parse(a.createdAt))
-    )
-      throw new Error('manifest 资产信息无效')
-    const extension = a.assetType === 'model' ? '.glb' : '.hdr'
-    if (
-      !a.path.endsWith(extension) ||
-      !a.name.toLowerCase().endsWith(extension) ||
-      a.mimeType !== (a.assetType === 'model' ? 'model/gltf-binary' : 'image/vnd.radiance')
+      !asset.path.endsWith(extension) ||
+      !asset.name.toLowerCase().endsWith(extension) ||
+      asset.mimeType !== (asset.assetType === 'model' ? 'model/gltf-binary' : 'image/vnd.radiance')
     )
       throw new Error('资产文件类型不匹配')
-    if (ids.has(a.id) || paths.has(a.path)) throw new Error('manifest 包含重复资产')
-    ids.add(a.id)
-    paths.add(a.path)
+    if (ids.has(asset.id) || paths.has(asset.path)) throw new Error('manifest 包含重复资产')
+    ids.add(asset.id)
+    paths.add(asset.path)
   }
 }

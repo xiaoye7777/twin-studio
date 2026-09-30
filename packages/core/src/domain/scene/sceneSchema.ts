@@ -1,127 +1,110 @@
-import { isProjectDataSources } from '../dataSources'
-import type { SceneDocumentV1, SceneTransformV1 } from './sceneTypes'
-import { isTwinBinding } from '../twin'
-import { isEffectInstance } from '../effects'
-import { isVisualRule } from '../visualRules'
-import { isSceneInteraction } from '../interactions'
+import { z } from 'zod'
+import { ProjectDataSourcesSchema } from '../dataSources'
+import { EffectInstanceSchema } from '../effects'
+import { SceneInteractionSchema } from '../interactions'
+import { uniqueBy } from '../schemaHelpers'
+import { TwinBindingSchema } from '../twin'
+import { VisualRuleSchema } from '../visualRules'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-function isNumberTuple(value: unknown): value is [number, number, number] {
-  return (
-    Array.isArray(value) && value.length === 3 && value.every(item => typeof item === 'number' && Number.isFinite(item))
-  )
-}
+// Zod numbers are finite: NaN and ±Infinity are rejected, as the v1 validators required.
+export const Vector3TupleSchema = z.tuple([z.number(), z.number(), z.number()])
 
-function isTransform(value: unknown): value is SceneTransformV1 {
-  return isRecord(value) && isNumberTuple(value.position) && isNumberTuple(value.rotation) && isNumberTuple(value.scale)
-}
+export const SceneTransformSchemaV1 = z.object({
+  position: Vector3TupleSchema,
+  rotation: Vector3TupleSchema,
+  scale: Vector3TupleSchema,
+})
 
-function isPositiveFinite(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0
-}
+export const SceneSettingsSchemaV1 = z.object({
+  gridEnabled: z.boolean(),
+  axesEnabled: z.boolean(),
+  ground: z.object({
+    enabled: z.boolean(),
+    size: z.number().positive(),
+    color: z.string(),
+  }),
+  lighting: z.object({
+    ambientIntensity: z.number().min(0),
+    directionalIntensity: z.number().min(0),
+    directionalPosition: Vector3TupleSchema,
+  }),
+  /** Required key: null means "no environment map". */
+  environmentAssetId: z.string().nullable(),
+})
 
-function isSceneSettings(value: unknown): boolean {
-  if (!isRecord(value) || typeof value.gridEnabled !== 'boolean' || typeof value.axesEnabled !== 'boolean') return false
-  const ground = value.ground
-  const lighting = value.lighting
-  return (
-    isRecord(ground) &&
-    typeof ground.enabled === 'boolean' &&
-    isPositiveFinite(ground.size) &&
-    typeof ground.color === 'string' &&
-    isRecord(lighting) &&
-    typeof lighting.ambientIntensity === 'number' &&
-    Number.isFinite(lighting.ambientIntensity) &&
-    lighting.ambientIntensity >= 0 &&
-    typeof lighting.directionalIntensity === 'number' &&
-    Number.isFinite(lighting.directionalIntensity) &&
-    lighting.directionalIntensity >= 0 &&
-    isNumberTuple(lighting.directionalPosition) &&
-    (value.environmentAssetId === null || typeof value.environmentAssetId === 'string')
-  )
-}
+export const SceneCameraViewSchemaV1 = z.object({
+  position: Vector3TupleSchema,
+  target: Vector3TupleSchema,
+  fov: z.number().positive().optional(),
+})
 
-function isCameraView(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isNumberTuple(value.position) &&
-    isNumberTuple(value.target) &&
-    (value.fov === undefined || isPositiveFinite(value.fov))
-  )
-}
+export const SceneNodeOverrideSchemaV1 = z.object({
+  assetNodeId: z.string(),
+  name: z.string(),
+  transform: SceneTransformSchemaV1,
+  runtimeBid: z.string().optional(),
+  visible: z.boolean().optional(),
+})
 
-export function isSceneDocumentV1(value: unknown): value is SceneDocumentV1 {
-  if (!isRecord(value) || value.version !== 1 || typeof value.projectId !== 'string') {
-    return false
-  }
-  if (!isRecord(value.metadata) || typeof value.metadata.updatedAt !== 'string') return false
-  if (!Array.isArray(value.instances) || !Array.isArray(value.primitives)) return false
-  if (value.sceneSettings !== undefined && !isSceneSettings(value.sceneSettings)) return false
-  if (value.cameraView !== undefined && !isCameraView(value.cameraView)) return false
-  if (value.bindings !== undefined && (!Array.isArray(value.bindings) || !value.bindings.every(isTwinBinding)))
-    return false
-  if (
-    value.effects !== undefined &&
-    (!Array.isArray(value.effects) ||
-      !value.effects.every(isEffectInstance) ||
-      new Set(value.effects.map(effect => effect.id)).size !== value.effects.length)
-  )
-    return false
-  if (
-    value.visualRules !== undefined &&
-    (!Array.isArray(value.visualRules) ||
-      !value.visualRules.every(isVisualRule) ||
-      new Set(value.visualRules.map(rule => rule.id)).size !== value.visualRules.length)
-  )
-    return false
-  if (
-    value.interactions !== undefined &&
-    (!Array.isArray(value.interactions) ||
-      !value.interactions.every(isSceneInteraction) ||
-      new Set(value.interactions.map(item => item.id)).size !== value.interactions.length)
-  )
-    return false
+export const SceneAssetInstanceSchemaV1 = z.object({
+  assetId: z.string(),
+  instanceId: z.string(),
+  name: z.string(),
+  transform: SceneTransformSchemaV1,
+  nodeOverrides: z.array(SceneNodeOverrideSchemaV1),
+  runtimeBid: z.string().optional(),
+  visible: z.boolean().optional(),
+  deletedAssetNodeIds: z.array(z.string()).optional(),
+})
 
-  if (value.dataSources !== undefined && !isProjectDataSources(value.dataSources)) return false
+export const SceneBoxPropertiesSchemaV1 = z.object({
+  color: z.string(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  depth: z.number().optional(),
+  radiusTop: z.number().optional(),
+  radiusBottom: z.number().optional(),
+  radialSegments: z.number().optional(),
+})
 
-  const validInstances = value.instances.every(instance => {
-    if (
-      !isRecord(instance) ||
-      typeof instance.assetId !== 'string' ||
-      typeof instance.instanceId !== 'string' ||
-      typeof instance.name !== 'string' ||
-      !isTransform(instance.transform) ||
-      !Array.isArray(instance.nodeOverrides)
-    ) {
-      return false
-    }
-    if (
-      instance.deletedAssetNodeIds !== undefined &&
-      (!Array.isArray(instance.deletedAssetNodeIds) ||
-        !instance.deletedAssetNodeIds.every(id => typeof id === 'string'))
-    )
-      return false
-    return instance.nodeOverrides.every(
-      override =>
-        isRecord(override) &&
-        typeof override.assetNodeId === 'string' &&
-        typeof override.name === 'string' &&
-        isTransform(override.transform),
-    )
-  })
+export const ScenePrimitiveSchemaV1 = z.object({
+  nodeId: z.string(),
+  type: z.enum(['box', 'plane', 'cylinder']),
+  name: z.string(),
+  transform: SceneTransformSchemaV1,
+  properties: SceneBoxPropertiesSchemaV1,
+  runtimeBid: z.string().optional(),
+  visible: z.boolean().optional(),
+})
 
-  const validPrimitives = value.primitives.every(
-    primitive =>
-      isRecord(primitive) &&
-      (primitive.type === 'box' || primitive.type === 'plane' || primitive.type === 'cylinder') &&
-      typeof primitive.nodeId === 'string' &&
-      typeof primitive.name === 'string' &&
-      isTransform(primitive.transform) &&
-      isRecord(primitive.properties) &&
-      typeof primitive.properties.color === 'string',
-  )
+export const SceneDocumentSchemaV1 = z.object({
+  version: z.literal(1),
+  dataSources: ProjectDataSourcesSchema.optional(),
+  projectId: z.string(),
+  metadata: z.object({
+    name: z.string().optional(),
+    updatedAt: z.string(),
+  }),
+  instances: z.array(SceneAssetInstanceSchemaV1),
+  primitives: z.array(ScenePrimitiveSchemaV1),
+  sceneSettings: SceneSettingsSchemaV1.optional(),
+  cameraView: SceneCameraViewSchemaV1.optional(),
+  // Binding ids are not required to be unique in v1; effects, rules and interactions are.
+  bindings: z.array(TwinBindingSchema).optional(),
+  effects: z
+    .array(EffectInstanceSchema)
+    .superRefine(uniqueBy(effect => effect.id, '特效 ID'))
+    .optional(),
+  visualRules: z
+    .array(VisualRuleSchema)
+    .superRefine(uniqueBy(rule => rule.id, '规则 ID'))
+    .optional(),
+  interactions: z
+    .array(SceneInteractionSchema)
+    .superRefine(uniqueBy(interaction => interaction.id, '交互 ID'))
+    .optional(),
+})
 
-  return validInstances && validPrimitives
+export function isSceneDocumentV1(value: unknown): value is z.infer<typeof SceneDocumentSchemaV1> {
+  return SceneDocumentSchemaV1.safeParse(value).success
 }
