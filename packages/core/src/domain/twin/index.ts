@@ -1,4 +1,4 @@
-export { isTwinBindingTarget, twinBindingTargetKey } from './bindingTarget'
+export { isTwinBindingTarget, targetForNode, targetNodeId, twinBindingTargetKey } from './bindingTarget'
 export { isTwinBinding } from './twinValidation'
 export type { TwinBindingResolution, TwinBinding } from './bindingTypes'
 export type { TwinBindingTarget } from './bindingTarget'

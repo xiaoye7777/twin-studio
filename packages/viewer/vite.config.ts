@@ -7,7 +7,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@sparkjsdev/spark': fileURLToPath(new URL('./src/internal/sparkStub.ts', import.meta.url)),
     },
     dedupe: ['three', 'vue'],
   },

@@ -38,6 +38,10 @@ export const InteractionActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('show'), target: actionTarget }),
   z.object({ type: z.literal('hide'), target: actionTarget }),
   z.object({ type: z.literal('highlight'), target: actionTarget }),
+  z.object({ type: z.literal('toggle'), target: actionTarget }),
+  z.object({ type: z.literal('fly-to-bookmark'), target: actionTarget, bookmarkId: nonEmptyString }),
+  z.object({ type: z.literal('play-tour'), target: actionTarget, tourId: nonEmptyString }),
+  z.object({ type: z.literal('stop-tour'), target: actionTarget }),
 ])
 
 export const SceneInteractionSchema = z
@@ -66,8 +70,33 @@ export const interactionActionTypes = [
   'emit-event',
   'show',
   'hide',
+  'toggle',
   'highlight',
+  'fly-to-bookmark',
+  'play-tour',
+  'stop-tour',
 ] as const satisfies readonly InteractionActionType[]
+
+export const interactionTriggerLabels: Record<InteractionTrigger, string> = {
+  click: '单击',
+  'double-click': '双击',
+  'hover-enter': '鼠标移入',
+  'hover-leave': '鼠标移出',
+}
+
+export const interactionActionLabels: Record<InteractionActionType, string> = {
+  select: '选中',
+  'clear-selection': '取消选中',
+  focus: '镜头聚焦',
+  'emit-event': '通知大屏',
+  show: '显示',
+  hide: '隐藏',
+  toggle: '切换显隐',
+  highlight: '临时高亮',
+  'fly-to-bookmark': '飞到视角',
+  'play-tour': '播放导览',
+  'stop-tour': '停止导览',
+}
 
 export function createInteraction(source: TwinBindingTarget): SceneInteraction {
   return {

@@ -1,34 +1,23 @@
-import {
-  AdditiveBlending,
-  Box3,
-  BoxGeometry,
-  CanvasTexture,
-  Color,
-  DoubleSide,
-  EdgesGeometry,
-  Group,
-  LineBasicMaterial,
-  LineSegments,
-  Mesh,
-  MeshBasicMaterial,
-  Path,
-  Shape,
-  ShapeGeometry,
-  Sprite,
-  SpriteMaterial,
-  Vector3,
-} from 'three'
+import { Box3, Color, Group, Mesh, Vector3 } from 'three'
 import type { Material, Object3D } from 'three'
 import { cloneEffects, isEffectInstance, type EffectInstance } from '../../domain/effects'
-import type { MeteorScene } from '../../infrastructure/meteor3d'
-import { BindingTargetResolver } from '../twin/BindingTargetResolver'
+import type { TwinBindingTarget } from '../../domain/twin'
+import type { OutlineChannel } from '../../engine/RenderPipeline'
+import type { BindingTargetResolver } from '../twin/BindingTargetResolver'
+import { createEffectVisual, type EffectDataLines, type EffectVisual, sceneTime } from './effectVisuals'
+
+/** What effects need from the engine. */
+export interface EffectHost {
+  readonly overlay: Object3D
+  setOutlined(channel: OutlineChannel, objects: readonly Object3D[]): void
+  onFrame(listener: (delta: number, elapsed: number) => void): () => void
+}
 
 interface Visual {
   instance: EffectInstance
+  signature: string
   target: Object3D
-  helper: Object3D
-  materials: Array<LineBasicMaterial | MeshBasicMaterial | SpriteMaterial>
-  dispose(): void
+  visual: EffectVisual
 }
 interface IsolatedMaterial {
   mesh: Mesh
@@ -44,29 +33,29 @@ export function getEffectDiagnostics(): { activeLoops: number } {
 /** Shared atomic effects. Configuration is pure data; Three resources belong here. */
 export class EffectRuntime {
   readonly root = new Group()
-  private readonly resolver: BindingTargetResolver
   private instances: EffectInstance[] = []
   private transient = new Map<string, EffectInstance[]>()
   private visuals: Visual[] = []
   private materials: IsolatedMaterial[] = []
-  private outlined = new Set<string>()
-  private frame: number | null = null
+  private outlined: Object3D[] = []
+  private stopFrame: (() => void) | null = null
   private disposed = false
+  private lastDataRefresh = 0
   readonly unresolved = new Set<string>()
   private readonly bounds = new Box3()
   private readonly size = new Vector3()
   private readonly center = new Vector3()
+  /** Supplies live device data for data labels. */
+  dataProvider: ((target: TwinBindingTarget, variables?: readonly string[]) => EffectDataLines | null) | null = null
 
   constructor(
-    private readonly meteor: MeteorScene,
-    getRoots: () => readonly Object3D[],
+    private readonly host: EffectHost,
+    private readonly resolver: BindingTargetResolver,
   ) {
-    this.resolver = new BindingTargetResolver(getRoots, meteor)
     this.root.name = 'Runtime Effects'
     this.root.userData.editorInternal = true
     this.root.userData.runtimeEffect = true
-    // Never add to Core's business object/BID registry or beneath a business node.
-    meteor.getScene().add(this.root)
+    host.overlay.add(this.root)
   }
 
   setEffects(effects: readonly EffectInstance[]): void {
@@ -86,12 +75,17 @@ export class EffectRuntime {
     if (this.disposed || !this.transient.delete(owner)) return
     this.reconcile()
   }
+  /** Re-resolves targets (call after the scene's objects changed). */
+  refresh(): void {
+    if (!this.disposed) this.reconcile()
+  }
+
   private reconcile(): void {
     const rendered = [...this.instances, ...[...this.transient.values()].flat()]
     this.unresolved.clear()
     const oldVisuals = new Map(this.visuals.map(visual => [visual.instance.id, visual]))
     const visuals: Visual[] = []
-    const outlined = new Set<string>()
+    const outlined: Object3D[] = []
     const highlights: Array<{ target: Object3D; instance: EffectInstance }> = []
     for (const instance of rendered) {
       const target = this.resolver.resolve(instance.target)
@@ -99,33 +93,39 @@ export class EffectRuntime {
         this.unresolved.add(instance.id)
         continue
       }
-      if (instance.kind === 'outline') {
-        const bid: unknown = target.userData.bid
-        if (typeof bid === 'string') outlined.add(bid)
-      } else if (instance.kind === 'child-highlight') highlights.push({ target, instance })
+      if (instance.kind === 'outline') outlined.push(target)
+      else if (instance.kind === 'child-highlight') highlights.push({ target, instance })
       else {
+        const signature = JSON.stringify(instance)
         const previous = oldVisuals.get(instance.id)
-        if (previous && previous.target === target && JSON.stringify(previous.instance) === JSON.stringify(instance)) {
+        if (previous && previous.target === target && previous.signature === signature) {
           visuals.push(previous)
           oldVisuals.delete(instance.id)
-        } else visuals.push(this.createVisual(instance, target))
+          continue
+        }
+        const visual = createEffectVisual(instance)
+        if (!visual) continue
+        this.root.add(visual.object)
+        visuals.push({ instance, signature, target, visual })
       }
     }
-    oldVisuals.forEach(visual => visual.dispose())
+    oldVisuals.forEach(({ visual }) => {
+      visual.object.removeFromParent()
+      visual.dispose()
+    })
     this.visuals = visuals
-    for (const bid of this.outlined) if (!outlined.has(bid)) this.meteor.setOutline(bid, false)
-    // Registration refresh may have cleared Core outlines while keeping the same BID.
-    for (const bid of outlined) this.meteor.setOutline(bid, true)
     this.outlined = outlined
+    this.host.setOutlined('effect', outlined)
     this.applyHighlights(highlights)
-    this.update(performance.now())
-    if (this.visuals.length && this.frame === null) {
+    this.lastDataRefresh = 0
+    this.update()
+    if (this.visuals.length && !this.stopFrame) {
       activeLoops += 1
-      this.frame = requestAnimationFrame(this.tick)
+      this.stopFrame = this.host.onFrame(() => this.update())
     }
-    if (!this.visuals.length && this.frame !== null) {
-      cancelAnimationFrame(this.frame)
-      this.frame = null
+    if (!this.visuals.length && this.stopFrame) {
+      this.stopFrame()
+      this.stopFrame = null
       activeLoops--
     }
   }
@@ -146,7 +146,7 @@ export class EffectRuntime {
       transientOwners: this.transient.size,
       helpers: this.visuals.length,
       isolatedMeshes: this.materials.length,
-      outlined: this.outlined.size,
+      outlined: this.outlined.length,
       unresolved: [...this.unresolved],
     }
   }
@@ -162,7 +162,7 @@ export class EffectRuntime {
     const byMesh = new Map<Mesh, EffectInstance>()
     for (const effect of effects)
       effect.target.traverse(node => {
-        if (node instanceof Mesh) byMesh.set(node, effect.instance)
+        if (node instanceof Mesh && !node.userData.editorInternal) byMesh.set(node, effect.instance)
       })
     const signature = (effect: EffectInstance) => JSON.stringify([effect.parameters.color, effect.parameters.opacity])
     this.materials = this.materials.filter(record => {
@@ -191,155 +191,48 @@ export class EffectRuntime {
     }
   }
 
-  private createVisual(instance: EffectInstance, target: Object3D): Visual {
-    const { color, opacity, text } = instance.parameters
-    const materials: Visual['materials'] = []
-    const disposers: Array<() => void> = []
-    let helper: Object3D
-    if (instance.kind === 'floating-label') {
-      const canvas = document.createElement('canvas')
-      canvas.width = 768
-      canvas.height = 128
-      const context = canvas.getContext('2d')
-      if (!context) throw new Error('无法创建 Label Canvas')
-      context.fillStyle = 'rgba(15,23,42,0.85)'
-      context.fillRect(0, 0, 768, 128)
-      context.font = '48px sans-serif'
-      context.fillStyle = color
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      context.fillText(text || ' ', 384, 64, 728)
-      const texture = new CanvasTexture(canvas)
-      const material = new SpriteMaterial({ map: texture, transparent: true, opacity, depthWrite: false })
-      materials.push(material)
-      disposers.push(() => texture.dispose())
-      helper = new Sprite(material)
-    } else if (instance.kind === 'ground-pulse') {
-      const shape = new Shape()
-      shape.moveTo(-0.5, -0.5)
-      shape.lineTo(0.5, -0.5)
-      shape.lineTo(0.5, 0.5)
-      shape.lineTo(-0.5, 0.5)
-      shape.closePath()
-      const hole = new Path()
-      hole.moveTo(-0.45, -0.45)
-      hole.lineTo(-0.45, 0.45)
-      hole.lineTo(0.45, 0.45)
-      hole.lineTo(0.45, -0.45)
-      hole.closePath()
-      shape.holes.push(hole)
-      const geometry = new ShapeGeometry(shape)
-      geometry.rotateX(-Math.PI / 2)
-      const material = new MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        side: DoubleSide,
-        depthWrite: false,
-        blending: AdditiveBlending,
-      })
-      helper = new Mesh(geometry, material)
-      materials.push(material)
-      disposers.push(() => geometry.dispose())
-    } else {
-      const geometry = new BoxGeometry(1, 1, 1),
-        edges = new EdgesGeometry(geometry)
-      const surface = new MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: opacity * 0.12,
-        depthWrite: false,
-        blending: AdditiveBlending,
-      })
-      const line = new LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity,
-        depthWrite: false,
-        blending: AdditiveBlending,
-      })
-      const group = new Group()
-      group.add(new Mesh(geometry, surface), new LineSegments(edges, line))
-      helper = group
-      materials.push(surface, line)
-      disposers.push(
-        () => geometry.dispose(),
-        () => edges.dispose(),
-      )
-    }
-    helper.name = `Effect:${instance.id}`
-    helper.traverse(node => {
-      node.userData.runtimeEffect = true
-      node.userData.editorInternal = true
-      node.raycast = () => {}
-    })
-    this.root.add(helper)
-    return {
-      instance,
-      target,
-      helper,
-      materials,
-      dispose: () => {
-        helper.removeFromParent()
-        disposers.forEach(dispose => dispose())
-        materials.forEach(material => material.dispose())
-      },
-    }
-  }
-
-  private readonly tick = (time: number): void => {
-    this.update(time)
-    this.frame = requestAnimationFrame(this.tick)
-  }
-  private update(time: number): void {
-    for (const visual of this.visuals) {
-      const { target, helper, instance, materials } = visual
+  private update(): void {
+    const time = sceneTime()
+    // Device values change at most a few times a second; labels redraw only when their text changes.
+    const refreshData = time - this.lastDataRefresh > 0.25
+    if (refreshData) this.lastDataRefresh = time
+    for (const entry of this.visuals) {
+      const { target, visual, instance } = entry
       let visible = true
       for (let node: Object3D | null = target; node; node = node.parent) if (!node.visible) visible = false
       target.updateWorldMatrix(true, true)
       this.bounds.setFromObject(target, true)
-      helper.visible = visible && !this.bounds.isEmpty()
-      if (!helper.visible) continue
-      const { padding, speed, opacity } = instance.parameters
-      this.bounds
-        .getSize(this.size)
-        .addScalar(2 * padding)
-        .max(new Vector3(0.01, 0.01, 0.01))
+      visual.object.visible = visible && !this.bounds.isEmpty()
+      if (!visual.object.visible) continue
+      this.bounds.getSize(this.size).max(new Vector3(0.01, 0.01, 0.01))
       this.bounds.getCenter(this.center)
-      const phase = (time / 1000) * speed
-      helper.position.copy(this.center)
-      if (instance.kind === 'floating-label') {
-        helper.position.y = this.bounds.max.y + padding + 0.4
-        helper.scale.set(3, 0.5, 1)
-      } else if (instance.kind === 'ground-pulse') {
-        const pulse = speed === 0 ? 0.5 : phase % 1
-        helper.position.y = this.bounds.min.y + 0.025
-        helper.scale.set(this.size.x * (1 + pulse * 0.35), 1, this.size.z * (1 + pulse * 0.35))
-        materials[0]!.opacity = opacity * (1 - pulse)
-      } else {
-        helper.scale.copy(this.size)
-        const breath = speed === 0 ? 1 : 0.55 + 0.45 * Math.sin(phase * Math.PI * 2)
-        materials[0]!.opacity = opacity * breath * 0.12
-        materials[1]!.opacity = opacity * breath
-      }
+      const data =
+        instance.kind === 'data-label' && refreshData && this.dataProvider
+          ? this.dataProvider(instance.target, instance.parameters.variables)
+          : null
+      if (instance.kind === 'data-label' && !refreshData) continue
+      visual.update({ bounds: this.bounds, size: this.size, center: this.center, time, data })
     }
   }
 
   private clear(): void {
-    if (this.frame !== null) {
-      cancelAnimationFrame(this.frame)
-      this.frame = null
+    if (this.stopFrame) {
+      this.stopFrame()
+      this.stopFrame = null
       activeLoops -= 1
     }
-    this.visuals.forEach(visual => visual.dispose())
+    this.visuals.forEach(({ visual }) => {
+      visual.object.removeFromParent()
+      visual.dispose()
+    })
     this.visuals = []
     for (const { mesh, original, clones } of this.materials) {
       mesh.material = original
       clones.forEach(material => material.dispose())
     }
     this.materials = []
-    for (const bid of this.outlined) this.meteor.setOutline(bid, false)
-    this.outlined.clear()
+    this.host.setOutlined('effect', [])
+    this.outlined = []
     this.unresolved.clear()
   }
   dispose(): void {

@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import type { SceneDocumentV1 } from '../src/domain/scene'
+import { toSceneDocumentV2 } from '../src/domain/scene'
 import { collectSceneAssets, json, sha256, validateManifest } from '../src/infrastructure/packages/packageFormat'
 import { validatePortableAsset } from '../src/infrastructure/packages/validatePortableAsset'
 import { clone, fixture, patch, REMOVE } from './helpers'
 
 const manifest = fixture('v1/zero-carbon-park-models.manifest.json') as Record<string, unknown>
-const scene = fixture('v1/zero-carbon-park-models.scene.json') as SceneDocumentV1
+const scene = toSceneDocumentV2(fixture('v1/zero-carbon-park-models.scene.json'))
 
 describe('validateManifest', () => {
   it.each(['zero-carbon-park-models', 'zero-carbon-park-primitives', 'sdk-assets'])('accepts fixture %s', name =>
@@ -60,11 +60,15 @@ describe('collectSceneAssets', () => {
     expect([...assets.values()].every(type => type === 'model')).toBe(true)
   })
 
-  it('includes the environment map and rejects double use', () => {
-    const withEnvironment = patch(scene, ['sceneSettings', 'environmentAssetId'], 'hdr-1')
-    expect(collectSceneAssets(withEnvironment).get('hdr-1')).toBe('environment')
-    const clash = patch(scene, ['sceneSettings', 'environmentAssetId'], scene.instances[0]!.assetId)
-    expect(() => collectSceneAssets(clash)).toThrow('同一资产不能同时作为模型和环境')
+  it('includes the environment map only while the sky uses it, and rejects double use', () => {
+    const hdr = (id: string) =>
+      patch(scene, ['settings', 'sky'], { ...scene.settings.sky, mode: 'hdr', hdrAssetId: id })
+    expect(collectSceneAssets(hdr('hdr-1')).get('hdr-1')).toBe('environment')
+    const unused = patch(scene, ['settings', 'sky'], { ...scene.settings.sky, mode: 'physical', hdrAssetId: 'hdr-1' })
+    expect(collectSceneAssets(unused).has('hdr-1')).toBe(false)
+    const model = scene.nodes.find(node => node.kind === 'model')!
+    if (model.kind !== 'model') throw new Error('expected a model')
+    expect(() => collectSceneAssets(hdr(model.model.assetId))).toThrow('同一资产不能同时作为模型和环境')
   })
 })
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { TwinBindingTarget } from '../src/domain/twin'
 import {
   createDefaultSceneSettings,
+  sceneSettingsFromV1,
   isSceneDocumentV2,
   loadSceneDocument,
   migrateSceneDocument,
@@ -55,13 +56,14 @@ describe.each(fixtures)('v1 → v2 migration of %s', name => {
     })
   })
 
-  it('carries bindings, effects, rules, interactions and settings over unchanged', () => {
+  it('carries bindings, effects, rules and interactions over unchanged and converts settings', () => {
     expect(v2.bindings).toEqual(v1.bindings ?? [])
     expect(v2.effects).toEqual(v1.effects ?? [])
     expect(v2.visualRules).toEqual(v1.visualRules ?? [])
     expect(v2.interactions).toEqual(v1.interactions ?? [])
     expect(v2.dataSources).toEqual(v1.dataSources)
-    expect(v2.sceneSettings).toEqual(v1.sceneSettings ?? createDefaultSceneSettings())
+    expect(v2.settings).toEqual(sceneSettingsFromV1(v1.sceneSettings ?? createDefaultSceneSettings()))
+    expect([v2.bookmarks, v2.tours]).toEqual([[], []])
     expect(v2.cameraView).toEqual(v1.cameraView)
     expect(v2.projectId).toBe(v1.projectId)
     expect(v2.metadata).toEqual(v1.metadata)
@@ -89,9 +91,14 @@ describe('migration chain', () => {
     expect(migrateSceneDocument(v1, 1, 2)).toMatchObject({ version: 2, nodes: expect.any(Array) })
   })
 
-  it('does not yet read v2 files while v1 is the written format', () => {
+  it('reads v2 files as they are', () => {
     const v2 = toSceneDocumentV2(fixture('v1/sdk-assets.scene.json'))
-    expect(() => loadSceneDocument(v2)).toThrow(SceneDocumentVersionError)
+    expect(loadSceneDocument(v2)).toEqual({ document: v2, migratedFrom: null })
+  })
+
+  it('rejects files from a newer editor', () => {
+    const v3 = { ...toSceneDocumentV2(fixture('v1/sdk-assets.scene.json')), version: 3 }
+    expect(() => loadSceneDocument(v3)).toThrow(SceneDocumentVersionError)
   })
 })
 

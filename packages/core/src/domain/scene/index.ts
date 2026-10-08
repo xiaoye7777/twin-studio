@@ -1,4 +1,4 @@
-export { applySceneTransform, serializeSceneDocument, serializeTransform } from './sceneSerializer'
+export { applySceneTransform, serializeTransform } from './sceneTransform'
 export {
   isSceneDocumentV1,
   SceneAssetInstanceSchemaV1,
@@ -23,14 +23,33 @@ export {
 } from './sceneVersioning'
 export { migrateSceneV1ToV2 } from './sceneMigrations'
 export {
+  AreaNodeSchemaV2,
+  CameraBookmarkSchema,
+  CameraViewSchemaV2,
+  createDefaultPresentation,
   GroupNodeSchemaV2,
   isSceneDocumentV2,
+  LabelNodeSchemaV2,
+  LightNodeSchemaV2,
   ModelNodeOverrideSchemaV2,
   ModelNodeSchemaV2,
+  PathNodeSchemaV2,
+  PresentationSchema,
   PrimitiveNodeSchemaV2,
+  PrimitiveShapeSchema,
   SceneDocumentSchemaV2,
+  SceneNodeKindSchema,
   SceneNodeSchemaV2,
+  TourSchema,
+  TourStepSchema,
 } from './sceneSchemaV2'
+export {
+  createDefaultSceneSettingsV2,
+  SceneSettingsSchemaV2,
+  sceneSettingsFromV1,
+  scenePresets,
+} from './sceneSettingsV2'
+export type { SceneSettingsV2, SkyMode, WeatherKind } from './sceneSettingsV2'
 export type { LoadedSceneDocument, SceneDocument, SceneMigration } from './sceneVersioning'
 export type {
   SceneCameraViewV1,
@@ -50,4 +69,15 @@ export type {
   PrimitiveNodeV2,
   SceneDocumentV2,
   SceneNodeV2,
+  PathNodeV2,
+  AreaNodeV2,
+  LabelNodeV2,
+  LightNodeV2,
+  SceneNodeKind,
+  PrimitiveShape,
+  CameraViewV2,
+  CameraBookmark,
+  Tour,
+  TourStep,
+  Presentation,
 } from './sceneTypes'

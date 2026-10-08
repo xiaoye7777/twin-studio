@@ -1,4 +1,7 @@
 import type { Object3D } from 'three'
+import type { PrimitiveShape } from '../../domain/scene'
+
+const primitiveShapes: readonly string[] = ['box', 'plane', 'cylinder', 'sphere', 'cone']
 
 export interface AssetInstanceEditorMetadata {
   kind: 'assetInstance'
@@ -10,7 +13,7 @@ export interface AssetInstanceEditorMetadata {
 export interface PrimitiveEditorMetadata {
   kind: 'primitive'
   nodeId: string
-  primitiveType: 'box' | 'plane' | 'cylinder'
+  primitiveType: PrimitiveShape
 }
 
 export type EditorObjectMetadata = AssetInstanceEditorMetadata | PrimitiveEditorMetadata
@@ -37,7 +40,8 @@ export function getEditorMetadata(object: Object3D): EditorObjectMetadata | null
     'nodeId' in value &&
     typeof value.nodeId === 'string' &&
     'primitiveType' in value &&
-    (value.primitiveType === 'box' || value.primitiveType === 'plane' || value.primitiveType === 'cylinder')
+    typeof value.primitiveType === 'string' &&
+    primitiveShapes.includes(value.primitiveType)
   ) {
     return value as PrimitiveEditorMetadata
   }

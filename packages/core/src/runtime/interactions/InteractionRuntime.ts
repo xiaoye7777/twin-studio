@@ -23,6 +23,9 @@ export interface InteractionRuntimeOptions {
   focusTarget(target: TwinBindingTarget): Promise<boolean>
   resolveDeviceId?(target: TwinBindingTarget): string | null
   emit(event: ViewerInteractionEvent): void
+  flyToBookmark?(bookmarkId: string): Promise<boolean>
+  playTour?(tourId: string): void
+  stopTour?(): void
   publish?(diagnostics: InteractionDiagnostics): void
 }
 
@@ -82,6 +85,20 @@ export class InteractionRuntime {
           if (object) this.visibility.set(object, false)
           break
         }
+        case 'toggle': {
+          const object = this.options.resolver.resolve(target)
+          if (object) this.visibility.set(object, !object.visible)
+          break
+        }
+        case 'fly-to-bookmark':
+          await this.options.flyToBookmark?.(interaction.action.bookmarkId)
+          break
+        case 'play-tour':
+          this.options.playTour?.(interaction.action.tourId)
+          break
+        case 'stop-tour':
+          this.options.stopTour?.()
+          break
         case 'highlight': {
           const effect = createEffect('outline', target)
           effect.id = `interaction:hover:${interaction.id}`

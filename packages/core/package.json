@@ -15,9 +15,11 @@
     "schema:update": "UPDATE_SCHEMAS=1 vitest run test/jsonSchema.test.ts"
   },
   "dependencies": {
-    "@meteor3d/core": "workspace:*",
+    "camera-controls": "2.10.1",
     "fflate": "0.8.3",
     "immer": "11.1.18",
+    "postprocessing": "6.39.5",
+    "three-mesh-bvh": "0.9.16",
     "zod": "4.6.5"
   },
   "peerDependencies": {

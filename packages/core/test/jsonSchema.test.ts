@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { SCENE_DOCUMENT_VERSION, SceneDocumentSchemaV1 } from '../src/domain/scene'
+import { SceneDocumentSchemaV1, SceneDocumentSchemaV2 } from '../src/domain/scene'
 import { PackageManifestSchema } from '../src/infrastructure/packages/packageFormat'
 
 const outputDirectory = new URL('../../../docs/schema/', import.meta.url)
@@ -18,11 +18,18 @@ function jsonSchema(schema: z.ZodType, title: string, description: string): stri
 }
 
 const files: Record<string, string> = {
-  [`scene-document.v${SCENE_DOCUMENT_VERSION}.schema.json`]: jsonSchema(
+  'scene-document.v2.schema.json': jsonSchema(
+    SceneDocumentSchemaV2,
+    'Twin Studio scene document v2',
+    'scene.json inside a .twin.zip project package (current format). Generated from the Zod schema in ' +
+      '@twin-studio/core; unique ids, node hierarchy, safe WebSocket URLs and metadata depth are additionally ' +
+      'enforced at load time.',
+  ),
+  'scene-document.v1.schema.json': jsonSchema(
     SceneDocumentSchemaV1,
-    `Twin Studio scene document v${SCENE_DOCUMENT_VERSION}`,
-    'scene.json inside a .twin.zip project package. Generated from the Zod schema in @twin-studio/core; ' +
-      'unique ids, safe WebSocket URLs and metadata depth are additionally enforced at load time.',
+    'Twin Studio scene document v1',
+    'scene.json of packages exported before scene format v2. Still readable: loaders upgrade it to v2. ' +
+      'Generated from the Zod schema in @twin-studio/core.',
   ),
   'package-manifest.v1.schema.json': jsonSchema(
     PackageManifestSchema,

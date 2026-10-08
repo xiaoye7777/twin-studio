@@ -67,7 +67,8 @@ export function instantiateTemplate(
     let target: TwinBindingTarget
     if (atom.target.mode === 'current-target') target = { ...current }
     else {
-      if (current.type === 'primitive') throw new Error('此模板需要模型实例，不能应用到 Primitive')
+      if (current.type === 'primitive' || current.type === 'node')
+        throw new Error('此模板需要模型实例，不能应用到其他类型的对象')
       target =
         atom.target.mode === 'root-instance'
           ? { type: 'asset-instance', instanceId: current.instanceId }

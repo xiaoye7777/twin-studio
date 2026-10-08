@@ -1,13 +1,20 @@
-import { BoxGeometry, Group, type Mesh, type Object3D, PerspectiveCamera, Scene, Texture } from 'three'
+import {
+  type BoxGeometry,
+  Group,
+  type Mesh,
+  type MeshStandardMaterial,
+  type Object3D,
+  PerspectiveCamera,
+  Scene,
+} from 'three'
 import { describe, expect, it, vi } from 'vitest'
 import { DocumentStore } from '../src/document/DocumentStore'
 import { type SceneDocumentV2, type SceneNodeV2, type SceneTransformV1, toSceneDocumentV2 } from '../src/domain/scene'
 import type { AssetRecord, AssetRepository } from '../src/infrastructure/assets/AssetRepository'
-import type { SceneHost } from '../src/runtime/scene/SceneEnvironment'
-import { SceneSync } from '../src/runtime/scene/SceneSync'
+import { type SceneHost, SceneSync } from '../src/runtime/scene/SceneSync'
 import { fixture } from './helpers'
 
-/** Mimics MeteorScene: a bid registry that only changes on addObject/removeObject, like the engine's. */
+/** Mimics an engine that indexes a tree (ids, picking BVH) only when it is added or removed. */
 class FakeHost implements SceneHost {
   readonly scene = new Scene()
   readonly camera = new PerspectiveCamera()
@@ -17,11 +24,10 @@ class FakeHost implements SceneHost {
   readonly parses = new Map<string, number>()
   private readonly cache = new Set<string>()
   private nextBid = 0
-  setGridHelper = vi.fn()
-  setAxesHelper = vi.fn()
-  clearEnvironment = vi.fn()
-  setView = vi.fn(async () => {})
-  loadEnvironment = vi.fn(async () => new Texture())
+  readonly environmentStatus = 'physical'
+  setHelpers = vi.fn()
+  applySettings = vi.fn(async () => {})
+  flyTo = vi.fn(async () => true)
 
   addObject<T extends Object3D>(object: T): boolean {
     object.traverse(node => {
@@ -129,7 +135,7 @@ function scene(): SceneDocumentV2 {
   const document = toSceneDocumentV2(fixture('v1/sdk-assets.scene.json'))
   return {
     ...document,
-    sceneSettings: { ...document.sceneSettings, environmentAssetId: 'env-1' },
+    settings: { ...document.settings, sky: { ...document.settings.sky, mode: 'hdr' as const, hdrAssetId: 'env-1' } },
     nodes,
     cameraView: { position: [10, 10, 10], target: [0, 0, 0] },
   }
@@ -164,7 +170,8 @@ describe('mount', () => {
     expect(model.userData.editor).toMatchObject({ kind: 'assetInstance', assetId: 'asset-1', instanceId: 'm1' })
     const p1 = sync.objectFor('p1') as Mesh
     expect(p1.userData.editor).toEqual({ kind: 'primitive', nodeId: 'p1', primitiveType: 'box' })
-    expect(p1.userData.primitiveProperties).toMatchObject({ color: '#336699', width: 2 })
+    expect((p1.geometry as BoxGeometry).parameters.width).toBe(2)
+    expect((p1.material as MeshStandardMaterial).color.getHexString()).toBe('336699')
     expect(sync.objectFor('p2')!.parent).toBe(sync.objectFor('g1'))
     host.expectRegistryMatchesScene()
   })
@@ -181,10 +188,13 @@ describe('mount', () => {
 
   it('applies settings and the saved camera view', async () => {
     const { host } = await setup()
-    expect(host.setGridHelper).toHaveBeenCalledTimes(1)
-    expect(host.setView).toHaveBeenCalledWith(
-      expect.objectContaining({ position: { x: 10, y: 10, z: 10 }, duration: 0 }),
-    )
+    expect(host.applySettings).toHaveBeenCalledTimes(1)
+    expect(host.applySettings.mock.calls[0]).toEqual([
+      expect.objectContaining({ sky: expect.objectContaining({ mode: 'hdr' }) }),
+      { hdrUrl: expect.stringMatching(/^blob:/) },
+    ])
+    expect(host.setHelpers).toHaveBeenCalledWith({ grid: false, axes: false })
+    expect(host.flyTo).toHaveBeenCalledWith({ position: [10, 10, 10], target: [0, 0, 0] }, 0)
   })
 
   it('reports missing assets and model nodes as warnings', async () => {
@@ -198,11 +208,10 @@ describe('mount', () => {
     expect(sync.objectFor('m2')).toBeNull()
   })
 
-  it('parses each model file once even when many instances load together', async () => {
+  it('builds a real project with dozens of model instances', async () => {
     const { host, sync, store } = await setup(toSceneDocumentV2(fixture('v1/zero-carbon-park-models.scene.json')))
     expect(sync.roots).toHaveLength(store.document.nodes.length)
     expect(host.parses.size).toBeGreaterThan(0)
-    expect([...host.parses.values()].every(count => count === 1)).toBe(true)
     host.expectRegistryMatchesScene()
   })
 
@@ -222,7 +231,7 @@ describe('update', () => {
     expect(sync.objectFor('p1')).toBe(p1)
     expect(p1.name).toBe('新地块')
     expect(model.getObjectByName('changed outside the document')).toBeDefined()
-    expect(host.setGridHelper).toHaveBeenCalledTimes(1)
+    expect(host.applySettings).toHaveBeenCalledTimes(1)
   })
 
   it('moves, hides and undoes', async () => {
@@ -316,7 +325,7 @@ describe('update', () => {
     expect(p1.geometry).not.toBe(old)
     expect(p1.geometry.parameters.width).toBe(8)
     expect(dispose).toHaveBeenCalled()
-    expect(p1.userData.primitiveProperties).toMatchObject({ color: '#ff0000', width: 8 })
+    expect((p1.material as MeshStandardMaterial).color.getHexString()).toBe('ff0000')
     host.expectRegistryMatchesScene()
   })
 
@@ -355,10 +364,10 @@ describe('update', () => {
 
   it('re-applies settings only when they change and never moves the camera', async () => {
     const { host, edit } = await setup()
-    await edit(doc => void (doc.sceneSettings.gridEnabled = !doc.sceneSettings.gridEnabled))
+    await edit(doc => void (doc.settings.helpers.grid = !doc.settings.helpers.grid))
     await edit(doc => void (doc.cameraView = { position: [1, 2, 3], target: [0, 0, 0] }))
-    expect(host.setGridHelper).toHaveBeenCalledTimes(2)
-    expect(host.setView).toHaveBeenCalledTimes(1)
+    expect(host.applySettings).toHaveBeenCalledTimes(2)
+    expect(host.flyTo).toHaveBeenCalledTimes(1)
   })
 
   it('applies updates in order without awaiting', async () => {

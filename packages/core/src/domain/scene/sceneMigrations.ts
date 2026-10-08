@@ -1,5 +1,6 @@
-import { SceneDocumentSchemaV2 } from './sceneSchemaV2'
+import { createDefaultPresentation, SceneDocumentSchemaV2 } from './sceneSchemaV2'
 import { createDefaultSceneSettings } from './sceneSettings'
+import { sceneSettingsFromV1 } from './sceneSettingsV2'
 import type { SceneDocumentV1, SceneDocumentV2, SceneNodeV2 } from './sceneTypes'
 
 /**
@@ -7,6 +8,7 @@ import type { SceneDocumentV1, SceneDocumentV2, SceneNodeV2 } from './sceneTypes
  * ids reuse instanceId / nodeId so every binding, effect, rule and interaction target stays valid, and
  * model node overrides become a map keyed by assetNodeId. Absent v1 collections become empty arrays and an
  * absent sceneSettings the defaults the v1 loader applied; dataSources stays absent (meaning unconfigured).
+ * The v1 light direction becomes a time of day (see sceneSettingsFromV1); v2-only collections start empty.
  */
 export function migrateSceneV1ToV2(v1: SceneDocumentV1): SceneDocumentV2 {
   const nodes: SceneNodeV2[] = [
@@ -44,13 +46,16 @@ export function migrateSceneV1ToV2(v1: SceneDocumentV1): SceneDocumentV2 {
     projectId: v1.projectId,
     metadata: v1.metadata,
     ...(v1.dataSources === undefined ? {} : { dataSources: v1.dataSources }),
-    sceneSettings: v1.sceneSettings ?? createDefaultSceneSettings(),
+    settings: sceneSettingsFromV1(v1.sceneSettings ?? createDefaultSceneSettings()),
     ...(v1.cameraView === undefined ? {} : { cameraView: v1.cameraView }),
     nodes,
     bindings: v1.bindings ?? [],
     effects: v1.effects ?? [],
     visualRules: v1.visualRules ?? [],
     interactions: v1.interactions ?? [],
+    bookmarks: [],
+    tours: [],
+    presentation: createDefaultPresentation(),
   }
   // A v1 document that passed validation always yields a valid v2 one; checked here so a migration bug
   // surfaces at load time instead of as a broken scene.

@@ -2,7 +2,6 @@ packages:
   - apps/*
   - packages/*
   - tools/*
-  - vendor/*
 
 onlyBuiltDependencies:
   - esbuild
@@ -19,5 +18,3 @@ overrides:
   eslint-scope: 8.4.0
   eslint-visitor-keys: 4.2.1
   espree: 10.4.0
-  # The vendored engine snapshot declares its own build tool; the workspace builds it with Vite 6.
-  '@meteor3d/core>vite': 6.4.3

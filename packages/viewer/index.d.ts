@@ -5,6 +5,8 @@ export type TwinBindingTarget =
   | { type: 'asset-instance'; instanceId: string }
   | { type: 'asset-node'; instanceId: string; assetNodeId: string }
   | { type: 'primitive'; nodeId: string }
+  /** Any scene node by id (groups, paths, areas, labels…). Since 0.4.0. */
+  | { type: 'node'; nodeId: string }
 export interface TwinDevice {
   id: string
   name: string
@@ -59,6 +61,55 @@ export interface ViewerTargetClick {
   device?: TwinDevice
   bindingId?: string
 }
+/** A guided tour's playback state. Since 0.4.0. */
+export interface ViewerTourState {
+  tourId: string | null
+  tourName: string
+  stepIndex: number
+  stepCount: number
+  playing: boolean
+  paused: boolean
+  /** Caption of the current step ('' when none). */
+  caption: string
+}
+/** A visual rule currently firing. Since 0.4.0. */
+export interface ViewerAlarm {
+  ruleId: string
+  bindingId: string
+  deviceId: string | null
+  deviceName: string | null
+  variableKey: string
+  value: number | boolean | string | null
+}
+export interface ViewerHoverEvent {
+  target: Readonly<TwinBindingTarget> | null
+  deviceId: string | null
+  deviceName: string | null
+}
+export interface ViewerBookmark {
+  id: string
+  name: string
+}
+export interface ViewerTour {
+  id: string
+  name: string
+  stepCount: number
+  loop: boolean
+}
+export interface ViewerNode {
+  id: string
+  name: string
+  kind: 'model' | 'primitive' | 'group' | 'path' | 'area' | 'label' | 'light'
+  parentId: string | null
+  visible: boolean
+}
+export type ViewerQuality = 'auto' | 'low' | 'medium' | 'high'
+export interface ViewerPerformance {
+  fps: number
+  quality: 'low' | 'medium' | 'high'
+  setting: ViewerQuality
+  pixelRatio: number
+}
 export type DataSourceType = 'mock' | 'websocket'
 /** 'unconfigured': the package has no enabled WebSocket source — no runtime values will ever appear. */
 export type DataSourceConnectionStatus = 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -91,11 +142,35 @@ export interface TwinSceneViewerPublicApi {
   getSelection(): ViewerSelection
   getRuntimeState(): ViewerRuntimeState | null
   getDiagnostics(): ViewerDiagnostics
+  /** Camera views saved in the editor. Since 0.4.0. */
+  getBookmarks(): ViewerBookmark[]
+  flyToBookmark(bookmarkId: string, durationSeconds?: number): Promise<boolean>
+  /** Back to the project's opening view. */
+  resetView(durationSeconds?: number): Promise<boolean>
+  getTours(): ViewerTour[]
+  /** Resolves when the tour ends (true) or is stopped / interrupted (false). */
+  playTour(tourId: string, fromStep?: number): Promise<boolean>
+  pauseTour(): void
+  resumeTour(): void
+  stopTour(): void
+  nextTourStep(): void
+  previousTourStep(): void
+  getTourState(): ViewerTourState
+  /** Scene nodes, for building layer switches. */
+  getNodes(): ViewerNode[]
+  /** Shows or hides a node (and its children) without changing the project. */
+  setNodeVisible(nodeId: string, visible: boolean): boolean
+  getAlarms(): ViewerAlarm[]
+  setQuality(quality: ViewerQuality): void
+  getPerformance(): ViewerPerformance
+  /** A PNG of the current view. */
+  screenshot(): Promise<Blob | null>
 }
 export interface LoadedTwinPackage {
   readonly projectId: string
   readonly projectName: string
-  readonly document: Readonly<SceneDocumentV1>
+  /** Always in the current format: packages from older editors are upgraded on load. */
+  readonly document: Readonly<SceneDocumentV2>
   dispose(): void
 }
 /** Newest scene format this SDK can open; packages from a newer editor are rejected with an upgrade hint. */
@@ -157,8 +232,22 @@ export interface EffectParameters {
   speed: number
   padding: number
   text: string
+  height?: number
+  scale?: number
+  variables?: string[]
 }
-export type EffectKind = 'box-glow' | 'ground-pulse' | 'outline' | 'child-highlight' | 'floating-label'
+export type EffectKind =
+  | 'box-glow'
+  | 'ground-pulse'
+  | 'outline'
+  | 'child-highlight'
+  | 'floating-label'
+  | 'fence'
+  | 'radar'
+  | 'ripple'
+  | 'beam'
+  | 'data-label'
+  | 'icon-marker'
 export interface EffectInstance {
   id: string
   kind: EffectKind
@@ -194,9 +283,11 @@ export interface VisualRule {
 }
 export type InteractionTrigger = 'click' | 'double-click' | 'hover-enter' | 'hover-leave'
 export type InteractionAction =
-  | { type: 'select' | 'focus' | 'show' | 'hide' | 'highlight'; target?: TwinBindingTarget }
-  | { type: 'clear-selection' }
-  | { type: 'emit-event'; eventName: string; metadata?: Record<string, unknown> }
+  | { type: 'select' | 'focus' | 'show' | 'hide' | 'toggle' | 'highlight'; target?: TwinBindingTarget }
+  | { type: 'clear-selection' | 'stop-tour'; target?: TwinBindingTarget }
+  | { type: 'emit-event'; eventName: string; metadata?: Record<string, unknown>; target?: TwinBindingTarget }
+  | { type: 'fly-to-bookmark'; bookmarkId: string; target?: TwinBindingTarget }
+  | { type: 'play-tour'; tourId: string; target?: TwinBindingTarget }
 export interface SceneInteraction {
   id: string
   enabled: boolean
@@ -204,6 +295,7 @@ export interface SceneInteraction {
   trigger: InteractionTrigger
   action: InteractionAction
 }
+/** Scene format v1 (packages exported before 0.4.0); loaders upgrade it to v2. */
 export interface SceneDocumentV1 {
   version: 1
   dataSources?: ProjectDataSource[]
@@ -218,7 +310,162 @@ export interface SceneDocumentV1 {
   visualRules?: VisualRule[]
   interactions?: SceneInteraction[]
 }
-export const TwinSceneViewer: DefineComponent<{ source: TwinPackageSource }>
+export interface SceneSettingsV2 {
+  helpers: { grid: boolean; axes: boolean }
+  ground: { enabled: boolean; size: number; color: string }
+  sky: {
+    mode: 'physical' | 'gradient' | 'color' | 'hdr'
+    color: string
+    hdrAssetId: string | null
+    environmentIntensity: number
+  }
+  time: { hour: number; azimuth: number }
+  lighting: { ambientIntensity: number; sunIntensity: number; shadows: boolean }
+  fog: { enabled: boolean; density: number }
+  post: {
+    exposure: number
+    bloom: { enabled: boolean; intensity: number; threshold: number }
+    vignette: boolean
+    contrast: number
+    saturation: number
+  }
+  weather: { kind: 'none' | 'rain' | 'snow'; intensity: number }
+}
+export interface CameraViewV2 {
+  position: Vector3Tuple
+  target: Vector3Tuple
+  fov?: number
+  /** Viewport width / height the view was composed in. */
+  aspect?: number
+}
+interface SceneNodeBaseV2 {
+  id: string
+  parentId: string | null
+  name: string
+  transform: SceneTransformV1
+  visible: boolean
+  locked: boolean
+  runtimeBid?: string
+}
+export type SceneNodeV2 = SceneNodeBaseV2 &
+  (
+    | {
+        kind: 'model'
+        model: {
+          assetId: string
+          overrides: Record<
+            string,
+            { name?: string; transform?: SceneTransformV1; visible?: boolean; runtimeBid?: string }
+          >
+          deleted: string[]
+        }
+      }
+    | {
+        kind: 'primitive'
+        primitive: {
+          shape: 'box' | 'plane' | 'cylinder' | 'sphere' | 'cone'
+          color: string
+          width?: number
+          height?: number
+          depth?: number
+          radiusTop?: number
+          radiusBottom?: number
+          radialSegments?: number
+          opacity?: number
+          emissive?: number
+          metalness?: number
+          roughness?: number
+        }
+      }
+    | { kind: 'group' }
+    | {
+        kind: 'path'
+        path: {
+          points: Vector3Tuple[]
+          closed: boolean
+          style: 'flow' | 'tube' | 'line'
+          color: string
+          width: number
+          speed: number
+          opacity: number
+        }
+      }
+    | {
+        kind: 'area'
+        area: { points: Vector3Tuple[]; color: string; opacity: number; wallHeight: number; label: string }
+      }
+    | {
+        kind: 'label'
+        label: {
+          text: string
+          style: 'tag' | 'title' | 'pin'
+          color: string
+          background: string
+          size: number
+          leader: boolean
+        }
+      }
+    | {
+        kind: 'light'
+        light: {
+          type: 'point' | 'spot'
+          color: string
+          intensity: number
+          distance: number
+          angle: number
+          castShadow: boolean
+        }
+      }
+  )
+export interface CameraBookmark {
+  id: string
+  name: string
+  view: CameraViewV2
+  thumbnail?: string
+}
+export interface TourStep {
+  id: string
+  bookmarkId: string | null
+  nodeId: string | null
+  duration: number
+  hold: number
+  caption: string
+  show: string[]
+  hide: string[]
+  highlightNodeId: string | null
+}
+export interface Tour {
+  id: string
+  name: string
+  loop: boolean
+  steps: TourStep[]
+}
+/** Scene format v2 (current). */
+export interface SceneDocumentV2 {
+  version: 2
+  projectId: string
+  metadata: { name?: string; updatedAt: string }
+  dataSources?: ProjectDataSource[]
+  settings: SceneSettingsV2
+  cameraView?: CameraViewV2
+  nodes: SceneNodeV2[]
+  bindings: TwinBinding[]
+  effects: EffectInstance[]
+  visualRules: VisualRule[]
+  interactions: SceneInteraction[]
+  bookmarks: CameraBookmark[]
+  tours: Tour[]
+  presentation: { autoplayTourId: string | null; idleSeconds: number; autoRotate: boolean }
+}
+export const TwinSceneViewer: DefineComponent<{
+  source: TwinPackageSource
+  /** Render quality; 'auto' (default) adapts to the device and screen. Since 0.4.0. */
+  quality?: ViewerQuality
+  /** Kiosk mode: seconds without input before the project's autoplay tour starts. Since 0.4.0. */
+  idleSeconds?: number
+  /** Show tour captions over the scene (default true). Since 0.4.0. */
+  captions?: boolean
+}>
 
 export type ProjectDataSource = { id: string; name: string; enabled: boolean } & (
   { type: 'mock' } | { type: 'websocket'; url: string }

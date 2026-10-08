@@ -3,7 +3,12 @@ import type { Object3D } from 'three'
 import { twinBindingTargetKey } from '../../domain/twin'
 import type { ViewerTargetClick } from '../../contract/viewerContract'
 export type { ViewerTargetClick } from '../../contract/viewerContract'
-import type { MeteorScene } from '../../infrastructure/meteor3d'
+import type { Intersection } from 'three'
+
+/** The picking the pointer dispatcher needs (TwinEngine provides it). */
+export interface PointerPickHost {
+  raycastObjects(ndc: Vector2): Intersection<Object3D>[]
+}
 import { bindingTargetFromObject } from './BindingTargetResolver'
 import type { TwinRuntimeState } from './TwinDataRuntime'
 
@@ -25,7 +30,7 @@ export class ViewerPointerEvents {
   private disposed = false
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly runtime: MeteorScene,
+    private readonly runtime: PointerPickHost,
     private readonly roots: readonly Object3D[] | (() => readonly Object3D[]),
     private readonly twin: TwinRuntimeState,
     private readonly onClick: (event: ViewerTargetClick) => void,
@@ -129,7 +134,6 @@ export class ViewerPointerEvents {
       return null
     const hits = this.runtime.raycastObjects(
       new Vector2(((clientX - rect.left) / rect.width) * 2 - 1, 1 - ((clientY - rect.top) / rect.height) * 2),
-      { recursive: true, includeTileMap: false },
     )
     for (const hit of hits) {
       const chain: Object3D[] = []

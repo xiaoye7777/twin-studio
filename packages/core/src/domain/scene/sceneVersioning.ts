@@ -6,11 +6,11 @@ import { SceneDocumentSchemaV2 } from './sceneSchemaV2'
 import type { SceneDocumentV1, SceneDocumentV2 } from './sceneTypes'
 
 /** The scene format this build reads and writes. Bump it together with a migration and a schema. */
-export const SCENE_DOCUMENT_VERSION = 1
+export const SCENE_DOCUMENT_VERSION = 2
 
 /** The current document shape; an alias that moves with SCENE_DOCUMENT_VERSION. */
-export type SceneDocument = SceneDocumentV1
-const CurrentSceneDocumentSchema = SceneDocumentSchemaV1
+export type SceneDocument = SceneDocumentV2
+const CurrentSceneDocumentSchema = SceneDocumentSchemaV2
 
 /** A migration upgrades a document of version N to N + 1. It receives a private copy it may mutate. */
 export type SceneMigration = (document: Record<string, unknown>) => Record<string, unknown>
@@ -18,10 +18,7 @@ export type SceneMigration = (document: Record<string, unknown>) => Record<strin
 /** The schema of every format this build can read, keyed by version. */
 const schemas: Readonly<Record<number, z.ZodType>> = { 1: SceneDocumentSchemaV1, 2: SceneDocumentSchemaV2 }
 
-/**
- * migrations[N] upgrades a validated version-N document to N + 1. v1 → v2 is registered ahead of the switch:
- * while SCENE_DOCUMENT_VERSION is 1 it is used through toSceneDocumentV2 only.
- */
+/** migrations[N] upgrades a validated version-N document to N + 1. */
 const migrations: Readonly<Record<number, SceneMigration>> = {
   1: document => migrateSceneV1ToV2(document as SceneDocumentV1),
 }
@@ -117,16 +114,7 @@ function validate(schema: z.ZodType | undefined, value: unknown): unknown {
   throw new SceneDocumentError(`场景文件校验失败：${shown}${more}`, issues)
 }
 
-/**
- * The v2 view of any readable document, for runtimes already built on v2 (SceneSync) while files are still
- * written as v1.
- */
+/** Any readable document (v1 or v2) as the current v2 shape. */
 export function toSceneDocumentV2(raw: unknown): SceneDocumentV2 {
-  const { document } = loadSceneDocument(raw)
-  // migrateSceneV1ToV2 validates its output against the v2 schema.
-  return migrateSceneDocument(
-    document as Record<string, unknown>,
-    SCENE_DOCUMENT_VERSION,
-    2,
-  ) as unknown as SceneDocumentV2
+  return loadSceneDocument(raw).document
 }

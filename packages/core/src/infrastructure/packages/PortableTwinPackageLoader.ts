@@ -1,4 +1,4 @@
-import { loadSceneDocument, type SceneDocumentV1 } from '../../domain/scene'
+import { loadSceneDocument, type SceneDocument } from '../../domain/scene'
 import type { AssetMetadata, AssetRecord, AssetRepository } from '../assets/AssetRepository'
 import type { SceneRepository } from '../scenes/SceneRepository'
 import {
@@ -15,16 +15,15 @@ import { validatePortableAsset } from './validatePortableAsset'
 export type TwinPackageSource = string | URL | Blob | ArrayBuffer | Uint8Array
 
 class PackageSceneRepository implements SceneRepository {
-  constructor(private readonly document: SceneDocumentV1) {}
-  async load(projectId: string): Promise<SceneDocumentV1 | null> {
+  constructor(private readonly document: SceneDocument) {}
+  async load(projectId: string): Promise<SceneDocument | null> {
     return projectId === this.document.projectId ? structuredClone(this.document) : null
   }
   async save(): Promise<void> {
     throw new Error('Portable package scene is read-only')
   }
   dispose(): void {
-    this.document.instances = []
-    this.document.primitives = []
+    this.document.nodes = []
     this.document.bindings = []
   }
 }
@@ -50,7 +49,8 @@ export interface LoadedTwinPackage {
   readonly manifest: PackageManifest
   readonly projectId: string
   readonly projectName: string
-  readonly document: Readonly<SceneDocumentV1>
+  /** The project's scene, always in the current format (older packages are upgraded on load). */
+  readonly document: Readonly<SceneDocument>
   readonly sceneRepository: SceneRepository
   readonly assetRepository: AssetRepository
   dispose(): void
