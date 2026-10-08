@@ -73,6 +73,7 @@ export class TwinEngine {
   readonly loader: ModelLoader
   private readonly pipeline: RenderPipeline
   private lastFrame = performance.now()
+  private lastInfo = { calls: 0, triangles: 0 }
   private elapsed = 0
   private readonly raycaster = new Raycaster()
   private readonly pickables = new Set<Object3D>()
@@ -107,6 +108,8 @@ export class TwinEngine {
       stencil: false,
     })
     this.renderer.outputColorSpace = SRGBColorSpace
+    // Post-processing renders several passes per frame; statistics are reset once per frame instead.
+    this.renderer.info.autoReset = false
     this.renderer.shadowMap.type = PCFShadowMap
     this.raycaster.firstHitOnly = true
     this.qualitySetting = options.quality ?? 'auto'
@@ -372,8 +375,8 @@ export class TwinEngine {
       quality: this.profile.level,
       setting: this.qualitySetting,
       pixelRatio: Math.round(this.renderer.getPixelRatio() * 100) / 100,
-      drawCalls: this.renderer.info.render.calls,
-      triangles: this.renderer.info.render.triangles,
+      drawCalls: this.lastInfo.calls,
+      triangles: this.lastInfo.triangles,
     }
   }
 
@@ -448,7 +451,9 @@ export class TwinEngine {
     const focus = this.rig.controls.getTarget(new Vector3())
     this.atmosphere.update(delta, this.camera.position, focus)
     for (const listener of this.frameListeners) listener(delta, elapsed)
+    this.renderer.info.reset()
     this.pipeline.render(delta)
+    this.lastInfo = { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles }
   }
 
   private readonly onVisibility = (): void => {

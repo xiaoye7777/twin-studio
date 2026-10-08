@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { trimmedString, uniqueBy } from '../schemaHelpers'
 
 /** ws:// or wss:// only; credentials and fragments must never travel inside a project package. */
-function isSafeRealtimeUrl(value: string): boolean {
+export function isSafeRealtimeUrl(value: string): boolean {
   try {
     const url = new URL(value)
     return ['ws:', 'wss:'].includes(url.protocol) && !url.username && !url.password && !url.hash

@@ -5,12 +5,6 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/dev/viewer',
-      name: 'twin-viewer',
-      component: () => import('@/views/dev/ViewerPreview.vue'),
-      meta: { title: 'Twin Scene Viewer' },
-    },
-    {
       path: '/',
       component: AppLayout,
       children: [
@@ -49,12 +43,6 @@ const router = createRouter({
       name: 'project-dashboard',
       component: () => import('@/views/dashboard/ProjectDashboard.vue'),
       meta: { title: '数据大屏' },
-    },
-    {
-      path: '/dev/meteor-sandbox',
-      name: 'meteor-sandbox',
-      component: () => import('@/views/dev/MeteorSandbox.vue'),
-      meta: { title: 'Meteor3D Runtime Sandbox' },
     },
     {
       path: '/:pathMatch(.*)*',

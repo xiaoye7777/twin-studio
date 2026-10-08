@@ -1,4 +1,4 @@
-import { loadSceneDocument, SceneDocumentError, type SceneDocumentV1, type SceneRepository } from '@twin-studio/core'
+import { loadSceneDocument, SceneDocumentError, type SceneDocument, type SceneRepository } from '@twin-studio/core'
 
 const STORAGE_PREFIX = 'digital-twin-studio:scene:v1:'
 
@@ -9,11 +9,11 @@ export class LocalSceneRepository implements SceneRepository {
     localStorage.removeItem(this.key(projectId))
   }
 
-  async save(document: SceneDocumentV1): Promise<void> {
+  async save(document: SceneDocument): Promise<void> {
     localStorage.setItem(this.key(document.projectId), JSON.stringify(document))
   }
 
-  async load(projectId: string): Promise<SceneDocumentV1 | null> {
+  async load(projectId: string): Promise<SceneDocument | null> {
     const serialized = localStorage.getItem(this.key(projectId))
     if (!serialized) return null
 

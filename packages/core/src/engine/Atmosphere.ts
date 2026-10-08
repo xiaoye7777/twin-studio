@@ -369,7 +369,14 @@ export class Atmosphere {
         this.envTimer = null
         if (this.disposed) return
         const previous = this.environment
+        // The sun disc is thousands of times brighter than the sky: captured into the environment map it
+        // floods every surface white (or not, depending on whether it lands on a texel). Sunlight comes from
+        // the directional light; the environment carries only the sky.
+        const uniforms = this.physicalSky.material.uniforms
+        const disc = uniforms.showSunDisc!.value
+        uniforms.showSunDisc!.value = 0
         this.environment = this.pmrem.fromScene(this.envScene, 0.02, 0.1, 1000)
+        uniforms.showSunDisc!.value = disc
         this.scene.environment = this.environment.texture
         previous?.dispose()
       },

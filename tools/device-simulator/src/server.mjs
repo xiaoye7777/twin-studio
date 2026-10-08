@@ -59,29 +59,45 @@ function readPackageDevices(file) {
   return [...devices.values()]
 }
 
+/** Plausible ranges for common variable names (zero-carbon park equipment). */
 function numberRange(key) {
   const k = key.toLowerCase()
-  if (k === 'soc' || k.includes('stateofcharge')) return [20, 95]
-  if (k.includes('temp')) return [30, 48]
-  if (k.includes('power')) return [80, 250]
+  if (k === 'soc' || k.includes('stateofcharge') || k === 'load' || k.includes('humidity')) return [20, 95]
+  if (k.includes('temp')) return [24, 46]
+  if (k.includes('windspeed')) return [3, 14]
+  if (k.includes('rotor')) return [8, 18]
+  if (k.includes('irradiance')) return [300, 950]
+  if (k.includes('voltage')) return [380, 410]
+  if (k.includes('current')) return [10, 120]
+  if (k.includes('pm25')) return [8, 60]
+  if (k.includes('co2')) return [420, 900]
+  if (k.includes('occupancy')) return [20, 300]
+  if (k.includes('power')) return [60, 260]
   return [0, 100]
 }
 
-// Generic profile: smooth random walks per variable; the third device periodically overheats.
-function packageProfile(file) {
-  const devices = readPackageDevices(file)
-  if (!devices.length) throw new Error(`${file} 中没有设备绑定，无法生成数据`)
+/** Accumulating meters (energy, carbon) only ever grow. */
+const isCounter = key => /energy|carbon/i.test(key)
+
+// Generic generator: smooth random walks per variable; the third device periodically overheats so alarm
+// rules have something to show.
+function deviceGenerator(devices, name) {
   const walk = new Map()
   const step = (deviceId, key) => {
-    const [min, max] = numberRange(key)
     const id = `${deviceId}:${key}`
+    if (isCounter(key)) {
+      const next = (walk.get(id) ?? 800 + Math.random() * 400) + Math.random() * 4
+      walk.set(id, next)
+      return Math.round(next * 10) / 10
+    }
+    const [min, max] = numberRange(key)
     const previous = walk.get(id) ?? min + Math.random() * (max - min)
     const next = Math.min(max, Math.max(min, previous + (Math.random() - 0.5) * (max - min) * 0.06))
     walk.set(id, next)
     return Math.round(next * 10) / 10
   }
   return {
-    name: `package:${file}`,
+    name,
     deviceCount: devices.length,
     next: () =>
       devices.map((device, index) => {
@@ -96,6 +112,33 @@ function packageProfile(file) {
         return message
       }),
   }
+}
+
+function packageProfile(file) {
+  const devices = readPackageDevices(file)
+  if (!devices.length) throw new Error(`${file} 中没有设备绑定，无法生成数据`)
+  return deviceGenerator(devices, `package:${file}`)
+}
+
+/**
+ * Clients (the editor and the Viewer SDK) announce the devices they display right after connecting:
+ * { "type": "subscribe", "devices": [{ "deviceId": "ESS-001", "variables": [{ "key": "soc", "dataType": "number" }] }] }
+ * The simulator then generates data for exactly those devices on that connection, so any project gets
+ * live data without exporting a package first. Real gateways may ignore the message.
+ */
+function subscriptionDevices(message) {
+  if (!message || message.type !== 'subscribe' || !Array.isArray(message.devices)) return null
+  const devices = new Map()
+  for (const entry of message.devices.slice(0, 2000)) {
+    if (!entry || typeof entry.deviceId !== 'string' || !entry.deviceId) continue
+    const device = devices.get(entry.deviceId) ?? { id: entry.deviceId, variables: new Map() }
+    for (const variable of Array.isArray(entry.variables) ? entry.variables : []) {
+      if (variable && typeof variable.key === 'string' && ['number', 'boolean', 'string'].includes(variable.dataType))
+        device.variables.set(variable.key, variable.dataType)
+    }
+    devices.set(device.id, device)
+  }
+  return [...devices.values()]
 }
 
 // Relative paths resolve from where the user ran the command (pnpm sets INIT_CWD for workspace scripts).
@@ -120,6 +163,16 @@ const webSocketServer = new WebSocketServer({ server, path: '/realtime' })
 webSocketServer.on('connection', socket => {
   clients.add(socket)
   console.log(`[device-simulator] connected (${clients.size})`)
+  socket.on('message', data => {
+    try {
+      const devices = subscriptionDevices(JSON.parse(String(data)))
+      if (!devices) return
+      socket.generator = devices.length ? deviceGenerator(devices, 'subscription') : null
+      console.log(`[device-simulator] subscription: ${devices.length} devices`)
+    } catch {
+      // Not JSON: ignore, like a real gateway would.
+    }
+  })
   socket.on('close', () => {
     clients.delete(socket)
     console.log(`[device-simulator] disconnected (${clients.size})`)
@@ -129,7 +182,11 @@ webSocketServer.on('connection', socket => {
 const timer = setInterval(() => {
   tick += 1
   const payload = JSON.stringify(profile.next())
-  for (const socket of clients) if (socket.readyState === socket.OPEN) socket.send(payload)
+  for (const socket of clients) {
+    if (socket.readyState !== socket.OPEN) continue
+    // Subscribed clients get data for their own devices; the built-in profile stays the default.
+    socket.send(socket.generator ? JSON.stringify(socket.generator.next()) : payload)
+  }
 }, intervalMs)
 
 server.listen(port, host, () => {

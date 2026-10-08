@@ -5,6 +5,9 @@ import {
   defaultDataSources,
   getBuiltinTemplates,
   isSceneDocumentV1,
+  migrateSceneV1ToV2,
+  type SceneDocumentV2,
+  type SceneNodeV2,
   type SceneAssetInstanceV1,
   type SceneDocumentV1,
   type SceneInteraction,
@@ -16,6 +19,8 @@ import { builtinModels, type BuiltinModelKey, importBuiltinModel } from '@/edito
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import type { Project } from '@/stores/project'
+import { deviceTemplates, deviceVariables } from '@/studio/deviceTemplates'
+import { groupNodes, newId } from '@/studio/documentOps'
 
 type DemoAssetKey = BuiltinModelKey
 
@@ -195,10 +200,251 @@ async function importDemoAssets(repository: AssetRepository): Promise<Record<Dem
   return Object.fromEntries(records) as Record<DemoAssetKey, string>
 }
 
+const flowNode = (name: string, color: string, points: Vector3Tuple[], speed = 1.6): SceneNodeV2 => {
+  const [ox, oy, oz] = points[0]!
+  return {
+    id: newId('node'),
+    kind: 'path',
+    parentId: null,
+    name,
+    transform: { position: [ox, oy, oz], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    visible: true,
+    locked: false,
+    path: {
+      points: points.map(([x, y, z]) => [x - ox, y - oy, z - oz]),
+      closed: false,
+      style: 'flow',
+      color,
+      width: 0.28,
+      speed,
+      opacity: 0.95,
+    },
+  }
+}
+
+/**
+ * The v2 showcase on top of the base park: zones as groups (usable as layers), energy-flow lines between
+ * generation, storage and consumption, a glowing park boundary, live data panels, saved views and an
+ * auto-playing guided tour for unattended screens.
+ */
+export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
+  const doc = structuredClone(base)
+  doc.settings = {
+    ...doc.settings,
+    helpers: { grid: false, axes: false },
+    ground: { enabled: false, size: 40, color: '#2b3a40' },
+    sky: { ...doc.settings.sky, mode: 'physical', hdrAssetId: null },
+    time: { hour: 15.5, azimuth: 35 },
+    lighting: { ambientIntensity: 0.9, sunIntensity: 2.8, shadows: true },
+    fog: { enabled: true, density: 0.3 },
+    post: {
+      exposure: 1,
+      bloom: { enabled: true, intensity: 0.8, threshold: 0.95 },
+      vignette: true,
+      contrast: 0.06,
+      saturation: 0.08,
+    },
+  }
+
+  // Energy flows: generation → energy centre → storage and consumers.
+  const flows = [
+    flowNode('光伏 → 能源站', '#38d6ff', [
+      [4.2, 0.35, 2.6],
+      [1.9, 0.35, 2.6],
+      [1.9, 0.35, -1.2],
+      [-1.9, 0.35, -1.2],
+      [-1.9, 0.35, -3.6],
+      [-5.6, 0.35, -3.6],
+    ]),
+    flowNode(
+      '风电 → 能源站',
+      '#52e3a4',
+      [
+        [12.4, 0.35, 2.4],
+        [12.4, 0.35, -0.6],
+        [2.3, 0.35, -0.6],
+        [2.3, 0.35, -1.7],
+        [-1.4, 0.35, -1.7],
+        [-1.4, 0.35, -4.2],
+        [-5.6, 0.35, -4.2],
+      ],
+      1.3,
+    ),
+    flowNode(
+      '能源站 → 储能',
+      '#ffb347',
+      [
+        [-7.2, 0.35, -2.6],
+        [-7.2, 0.35, 2.3],
+      ],
+      1.1,
+    ),
+    flowNode(
+      '能源站 → 办公楼',
+      '#7fb6ff',
+      [
+        [-4.6, 0.35, -7.4],
+        [3.4, 0.35, -7.4],
+      ],
+      1.4,
+    ),
+    flowNode(
+      '能源站 → 制造与仓储',
+      '#7fb6ff',
+      [
+        [3.4, 0.35, -7.9],
+        [8.6, 0.35, -7.9],
+        [8.6, 0.35, -4.4],
+        [9.4, 0.35, -4.4],
+      ],
+      1.4,
+    ),
+  ]
+  doc.nodes.push(...flows)
+
+  const boundary: SceneNodeV2 = {
+    id: newId('node'),
+    kind: 'area',
+    parentId: null,
+    name: '园区边界',
+    transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    visible: true,
+    locked: true,
+    area: {
+      points: [
+        [-15.4, 0, -12.4],
+        [15.4, 0, -12.4],
+        [15.4, 0, 12.4],
+        [-15.4, 0, 12.4],
+      ],
+      color: '#3ad1c6',
+      opacity: 0.18,
+      wallHeight: 1.4,
+      label: '',
+    },
+  }
+  doc.nodes.push(boundary)
+
+  // Devices beyond the storage cabinets: turbines, the PV field, the energy centre meter, the office.
+  const template = (id: string) => deviceTemplates.find(item => item.id === id)!
+  const bind = (
+    nodeId: string,
+    templateId: string,
+    deviceId: string,
+    name: string,
+    target: SceneNodeV2['kind'] = 'model',
+  ) => {
+    const binding = {
+      id: newId('binding'),
+      target:
+        target === 'model'
+          ? { type: 'asset-instance' as const, instanceId: nodeId }
+          : { type: 'primitive' as const, nodeId },
+      device: { id: deviceId, name, type: template(templateId).type },
+      variables: deviceVariables(template(templateId)),
+    }
+    doc.bindings.push(binding)
+    return binding.target
+  }
+  for (let i = 1; i <= 3; i++) bind(`instance_wind-${i}`, 'wind', `WT-00${i}`, `风机 0${i}`)
+  const pvTarget = bind('solar-pad', 'pv', 'PV-001', '光伏发电区', 'primitive')
+  const meterTarget = bind('instance_energy-center', 'meter', 'EM-001', '综合能源站')
+  const officeTarget = bind('instance_office', 'building', 'BLD-001', '绿色办公楼')
+  const dataLabel = (target: (typeof doc.bindings)[number]['target'], variables: string[], color: string) => {
+    const effect = createEffect('data-label', target)
+    effect.parameters = { ...effect.parameters, color, variables, padding: 0.4, scale: 0.9 }
+    doc.effects.push(effect)
+  }
+  dataLabel(pvTarget, ['power', 'energyToday'], '#7ee0ff')
+  dataLabel(meterTarget, ['power', 'carbon'], '#ffd08a')
+  dataLabel(officeTarget, ['power', 'occupancy'], '#a8c8ff')
+  const radar = createEffect('radar', meterTarget)
+  radar.parameters = { ...radar.parameters, color: '#42e6a4', opacity: 0.45, padding: 3, speed: 0.6 }
+  doc.effects.push(radar)
+  // The floating "光伏发电区" label is replaced by the live panel above, and the eight cabinet id tags give
+  // way to the zone label (alarm rules still tag a cabinet when it fires).
+  doc.effects = doc.effects.filter(
+    effect =>
+      !(
+        effect.kind === 'floating-label' &&
+        effect.target.type === 'primitive' &&
+        effect.target.nodeId === 'solar-pad'
+      ) &&
+      !(
+        effect.kind === 'floating-label' &&
+        effect.target.type === 'asset-instance' &&
+        effect.target.instanceId.startsWith('instance_ess-')
+      ),
+  )
+
+  // Zones as groups: they double as layers for tours and the dashboard (setNodeVisible).
+  const byPrefix = (prefix: string) => doc.nodes.filter(node => node.id.startsWith(prefix)).map(node => node.id)
+  const zones: Array<[string, string[]]> = [
+    ['储能区', ['storage-pad', ...byPrefix('instance_ess-')]],
+    ['光伏区', ['solar-pad', ...byPrefix('instance_pv-')]],
+    ['风电区', byPrefix('instance_wind-')],
+    [
+      '建筑',
+      ['instance_energy-center', 'instance_thermal-tank', 'instance_office', 'instance_factory', 'instance_warehouse'],
+    ],
+    ['能流', flows.map(flow => flow.id)],
+    ['道路与绿化', ['park-ground', 'road-main', 'road-cross', ...byPrefix('road-line-'), ...byPrefix('tree-')]],
+  ]
+  const groupIds: Record<string, string> = {}
+  for (const [name, ids] of zones) {
+    const existing = ids.filter(id => doc.nodes.some(node => node.id === id))
+    const id = existing.length ? groupNodes(doc, existing, name) : null
+    if (id) groupIds[name] = id
+  }
+  const roads = doc.nodes.find(node => node.id === groupIds['道路与绿化'])
+  if (roads) roads.locked = true
+
+  // Views and the guided tour.
+  const view = (position: Vector3Tuple, target: Vector3Tuple) => ({ position, target, fov: 42, aspect: 16 / 9 })
+  const bookmarks = [
+    { id: newId('view'), name: '园区全景', view: view([24, 26, 31], [0, 0, 0]) },
+    { id: newId('view'), name: '光伏与风电', view: view([22, 11, 17], [9, 0, 6]) },
+    { id: newId('view'), name: '储能区', view: view([-2.5, 9, 18], [-7.5, 0, 6.4]) },
+    { id: newId('view'), name: '综合能源站', view: view([-0.5, 9, 3.5], [-8, 1.5, -5.5]) },
+    { id: newId('view'), name: '办公与制造', view: view([2, 10, 6], [8.5, 1.5, -6]) },
+  ]
+  doc.bookmarks = bookmarks
+  doc.cameraView = bookmarks[0]!.view
+  const step = (index: number, caption: string, hold = 5, highlight: string | null = null) => ({
+    id: newId('step'),
+    bookmarkId: bookmarks[index]!.id,
+    nodeId: null,
+    duration: index === 0 ? 2 : 2.6,
+    hold,
+    caption,
+    show: [],
+    hide: [],
+    highlightNodeId: highlight,
+  })
+  const tour = {
+    id: newId('tour'),
+    name: '零碳园区导览',
+    loop: true,
+    steps: [
+      step(0, '零碳智慧园区：光伏、风电、储能与综合能源站协同运行，实现园区能源自给与碳排放实时监测', 6),
+      step(1, '光伏与风电：清洁能源实时发电，能流线展示电能流向', 5, groupIds['光伏区'] ?? null),
+      step(2, '储能区：8 台储能柜削峰填谷，温度与 SOC 实时监测，异常自动告警', 6, groupIds['储能区'] ?? null),
+      step(3, '综合能源站：统一调度源、网、荷、储，实时核算园区碳排放', 5, 'instance_energy-center'),
+      step(4, '绿色办公与低碳制造：按需供能，用能数据全程可追溯', 5),
+    ],
+  }
+  doc.tours = [tour]
+  doc.presentation = { autoplayTourId: tour.id, idleSeconds: 45, autoRotate: false }
+  doc.metadata = { ...doc.metadata, name: '零碳智慧园区 Demo' }
+  return doc
+}
+
 /** Always creates a fresh copy; never overwrites a colleague's edited demo. */
 export async function createZeroCarbonPark(publish: (project: Project) => void): Promise<Project> {
   const id = `zero-carbon-${crypto.randomUUID()}`
-  const scene = buildZeroCarbonPark(id, await importDemoAssets(new IndexedDbAssetRepository()))
+  const scene = enhanceZeroCarbonPark(
+    migrateSceneV1ToV2(buildZeroCarbonPark(id, await importDemoAssets(new IndexedDbAssetRepository()))),
+  )
   const project: Project = {
     id,
     name: scene.metadata.name!,

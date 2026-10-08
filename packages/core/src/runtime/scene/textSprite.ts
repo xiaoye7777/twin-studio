@@ -37,18 +37,14 @@ function roundRect(context: CanvasRenderingContext2D, x: number, y: number, w: n
  */
 export class TextSprite extends Sprite {
   private readonly canvas = document.createElement('canvas')
-  private readonly texture: CanvasTexture
+  private texture: CanvasTexture | null = null
   private signature = ''
   private aspect = 1
 
   constructor(content?: TextSpriteContent) {
-    const texture = new CanvasTexture(document.createElement('canvas'))
-    super(new SpriteMaterial({ map: texture, transparent: true, depthWrite: false, sizeAttenuation: false }))
-    this.texture = texture
-    this.texture.image = this.canvas
-    this.texture.colorSpace = SRGBColorSpace
-    this.texture.minFilter = LinearFilter
-    this.texture.generateMipmaps = false
+    super(new SpriteMaterial({ transparent: true, depthWrite: false, sizeAttenuation: false }))
+    // Invisible until it has content: a screen-sized sprite would otherwise flash over the scene.
+    this.scale.set(0, 0, 1)
     this.renderOrder = 10
     this.userData.editorInternal = true
     this.raycast = () => {}
@@ -80,6 +76,7 @@ export class TextSprite extends Sprite {
     const contentHeight = titleSize + rows.length * (rowSize + rowGap)
     const w = Math.ceil(width + pad * 2 + (style === 'tag' || style === 'panel' ? 8 * SCALE : 0))
     const h = Math.ceil(contentHeight + pad * 2 + pin)
+    const resized = this.canvas.width !== w || this.canvas.height !== h
     this.canvas.width = w
     this.canvas.height = h
     context.clearRect(0, 0, w, h)
@@ -129,7 +126,16 @@ export class TextSprite extends Sprite {
       }
       y += rowSize + rowGap
     }
-    this.texture.needsUpdate = true
+    // GPU texture storage has a fixed size: a canvas that changed size needs a new texture.
+    if (resized || !this.texture) {
+      this.texture?.dispose()
+      this.texture = new CanvasTexture(this.canvas)
+      this.texture.colorSpace = SRGBColorSpace
+      this.texture.minFilter = LinearFilter
+      this.texture.generateMipmaps = false
+      this.material.map = this.texture
+      this.material.needsUpdate = true
+    } else this.texture.needsUpdate = true
     this.aspect = w / h
     const lineHeight = 0.045 * content.size
     const height = (h / (titleSize + pad * 2)) * lineHeight
@@ -139,7 +145,7 @@ export class TextSprite extends Sprite {
   }
 
   dispose(): void {
-    this.texture.dispose()
+    this.texture?.dispose()
     this.material.dispose()
   }
 }

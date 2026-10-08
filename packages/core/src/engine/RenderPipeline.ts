@@ -91,8 +91,15 @@ export class RenderPipeline {
 
   /** Objects drawn with an outline on a channel; an empty list clears it. Never recompiles shaders. */
   setOutlined(channel: OutlineChannel, objects: readonly Object3D[]): void {
-    this.outlined.set(channel, [...objects])
-    this.outlines.get(channel)?.selection.set(objects)
+    // The outline mask renders by camera layer, which only drawable objects carry: expand groups and
+    // models to their meshes.
+    const drawables: Object3D[] = []
+    for (const object of objects)
+      object.traverse(node => {
+        if ((node as { isMesh?: boolean }).isMesh && !node.userData.editorInternal) drawables.push(node)
+      })
+    this.outlined.set(channel, drawables)
+    this.outlines.get(channel)?.selection.set(drawables)
   }
 
   setSize(width: number, height: number): void {
@@ -111,6 +118,7 @@ export class RenderPipeline {
     const signature = JSON.stringify([
       bloom,
       this.profile.antialias,
+      this.profile.extras,
       this.post.vignette,
       this.post.contrast !== 0,
       this.post.saturation !== 0,
@@ -164,9 +172,14 @@ export class RenderPipeline {
       this.saturation = new HueSaturationEffect({ saturation: this.post.saturation })
       effects.push(this.saturation)
     }
-    effects.push(new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC }))
+    // Khronos PBR Neutral keeps materials' base colours (brand colours, equipment paint) true on screen.
+    effects.push(new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }))
     if (this.post.vignette) effects.push(new VignetteEffect({ offset: 0.3, darkness: 0.45 }))
-    effects.push(this.profile.antialias === 'smaa' ? new SMAAEffect({ preset: SMAAPreset.MEDIUM }) : new FXAAEffect())
+    effects.push(
+      this.profile.antialias === 'smaa'
+        ? new SMAAEffect({ preset: this.profile.extras ? SMAAPreset.ULTRA : SMAAPreset.MEDIUM })
+        : new FXAAEffect(),
+    )
     this.effectPass = new EffectPass(this.camera, ...effects)
     this.composer.addPass(this.effectPass)
   }

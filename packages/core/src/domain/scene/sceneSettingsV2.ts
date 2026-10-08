@@ -55,9 +55,9 @@ export function createDefaultSceneSettingsV2(): SceneSettingsV2 {
   return {
     helpers: { grid: true, axes: false },
     ground: { enabled: true, size: 600, color: '#3a3f44' },
-    sky: { mode: 'physical', color: '#20242a', hdrAssetId: null, environmentIntensity: 1 },
+    sky: { mode: 'physical', color: '#20242a', hdrAssetId: null, environmentIntensity: 0.7 },
     time: { hour: 15, azimuth: 30 },
-    lighting: { ambientIntensity: 0.9, sunIntensity: 2.6, shadows: true },
+    lighting: { ambientIntensity: 0.6, sunIntensity: 2.4, shadows: true },
     fog: { enabled: true, density: 0.3 },
     post: {
       exposure: 1,

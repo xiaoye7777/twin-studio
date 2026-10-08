@@ -29,6 +29,26 @@ function isValueOfType(value: unknown, dataType: TwinVariableDataType): value is
   return typeof value === dataType
 }
 
+/** The optional first client message: the devices and variables this scene displays. */
+export function subscriptionMessage(bindings: readonly TwinBinding[]): {
+  type: 'subscribe'
+  devices: Array<{ deviceId: string; variables: Array<{ key: string; dataType: TwinVariableDataType }> }>
+} {
+  const devices = new Map<string, Map<string, TwinVariableDataType>>()
+  for (const binding of bindings) {
+    const variables = devices.get(binding.device.id) ?? new Map<string, TwinVariableDataType>()
+    for (const variable of binding.variables) variables.set(variable.key, variable.dataType)
+    devices.set(binding.device.id, variables)
+  }
+  return {
+    type: 'subscribe',
+    devices: [...devices].map(([deviceId, variables]) => ({
+      deviceId,
+      variables: [...variables].map(([key, dataType]) => ({ key, dataType })),
+    })),
+  }
+}
+
 /** Maps the transport envelope to existing binding/variable identities. */
 export function mapWebSocketDeviceMessage(
   message: unknown,
@@ -75,6 +95,13 @@ export class WebSocketDataSource implements DataSource {
         if (this.socket !== socket) return
         this.retries = 0
         this.options.onStatus('connected')
+        // Tell the gateway which devices this scene shows. Gateways that push everything may ignore it;
+        // the Twin Studio device simulator uses it to generate data for any project.
+        try {
+          socket.send(JSON.stringify(subscriptionMessage(this.options.getBindings())))
+        } catch {
+          // A failed hint never affects receiving data.
+        }
       })
       socket.addEventListener('message', event => {
         if (this.socket !== socket) return

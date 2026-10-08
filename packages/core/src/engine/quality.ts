@@ -46,7 +46,8 @@ export const qualityProfiles: Record<QualityLevel, QualityProfile> = {
     shadowMapSize: 2048,
     bloom: true,
     antialias: 'smaa',
-    multisampling: 4,
+    // Multisampled HDR buffers break the outline passes; high-quality SMAA does the job at lower cost.
+    multisampling: 0,
     extras: true,
   },
 }

@@ -88,5 +88,14 @@ export const useProjectStore = defineStore('project', () => {
     { deep: true },
   )
 
-  return { projects, projectCount, createProject, getProjectById, addImportedProject }
+  function updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void {
+    const project = getProjectById(id)
+    if (project) Object.assign(project, patch, { updatedAt: new Date().toISOString() })
+  }
+
+  function removeProject(id: string): void {
+    projects.value = projects.value.filter(project => project.id !== id)
+  }
+
+  return { projects, projectCount, createProject, getProjectById, addImportedProject, updateProject, removeProject }
 })
