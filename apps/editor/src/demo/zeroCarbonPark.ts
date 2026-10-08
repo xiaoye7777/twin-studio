@@ -373,7 +373,9 @@ export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
       !(
         effect.kind === 'floating-label' &&
         effect.target.type === 'asset-instance' &&
-        effect.target.instanceId.startsWith('instance_ess-')
+        (effect.target.instanceId.startsWith('instance_ess-') ||
+          effect.target.instanceId === 'instance_energy-center' ||
+          effect.target.instanceId === 'instance_office')
       ),
   )
 
@@ -402,11 +404,11 @@ export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
   // Views and the guided tour.
   const view = (position: Vector3Tuple, target: Vector3Tuple) => ({ position, target, fov: 42, aspect: 16 / 9 })
   const bookmarks = [
-    { id: newId('view'), name: '园区全景', view: view([24, 26, 31], [0, 0, 0]) },
-    { id: newId('view'), name: '光伏与风电', view: view([22, 11, 17], [9, 0, 6]) },
-    { id: newId('view'), name: '储能区', view: view([-2.5, 9, 18], [-7.5, 0, 6.4]) },
-    { id: newId('view'), name: '综合能源站', view: view([-0.5, 9, 3.5], [-8, 1.5, -5.5]) },
-    { id: newId('view'), name: '办公与制造', view: view([2, 10, 6], [8.5, 1.5, -6]) },
+    { id: newId('view'), name: '园区全景', view: view([17, 19, 23], [0, 0, 0.5]) },
+    { id: newId('view'), name: '光伏与风电', view: view([19, 9, 15], [9, 0.5, 6]) },
+    { id: newId('view'), name: '储能区', view: view([-3, 7.5, 16], [-7.5, 0.5, 6.4]) },
+    { id: newId('view'), name: '综合能源站', view: view([-1, 7.5, 2.5], [-8, 1.5, -5.5]) },
+    { id: newId('view'), name: '办公与制造', view: view([2, 8.5, 4.5], [8.5, 1.5, -6]) },
   ]
   doc.bookmarks = bookmarks
   doc.cameraView = bookmarks[0]!.view

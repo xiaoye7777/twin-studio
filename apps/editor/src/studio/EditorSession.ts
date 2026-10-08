@@ -3,6 +3,7 @@ import { Box3, Matrix4, type Object3D, Vector3 } from 'three'
 import {
   type AssetRepository,
   BindingTargetResolver,
+  type CameraView,
   type CameraBookmark,
   createEffect,
   createInteraction,
@@ -101,6 +102,8 @@ export class EditorSession {
   readonly selection = shallowRef<string[]>([])
   readonly hovered = shallowRef<string | null>(null)
   readonly twin = reactive(createTwinState())
+  /** Thumbnails rendered for bookmarks saved without one (kept out of the document and its history). */
+  readonly thumbnails = reactive<Record<string, string>>({})
   readonly ui = reactive({
     ready: false,
     error: '',
@@ -231,6 +234,8 @@ export class EditorSession {
       if (!document.cameraView) await this.engine.fitAll(0)
       this.ui.saveState = saved ? 'saved' : 'unsaved'
       this.ui.ready = true
+      // Models finish streaming in the first second; thumbnails taken after that show the full scene.
+      setTimeout(() => void this.fillBookmarkThumbnails(), 1500)
     } catch (error) {
       this.ui.error = error instanceof Error ? error.message : String(error)
     }
@@ -335,7 +340,10 @@ export class EditorSession {
       this.ui.saveState = this.store.isDirty ? 'unsaved' : 'saved'
       this.ui.saveError = ''
       this.ui.lastSaved = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      void this.captureClean(480).then(cover => cover && this.deps.onCover?.(cover))
+      const opening = this.store.document.cameraView
+      void (opening ? this.captureFrom(opening, 480) : this.captureClean(480)).then(
+        cover => cover && this.deps.onCover?.(cover),
+      )
       return true
     } catch (error) {
       this.ui.saveState = 'error'
@@ -355,15 +363,36 @@ export class EditorSession {
     this.autosaveTimer = setTimeout(() => void this.save(), 1500)
   }
 
+  /** A clean JPEG from a given view, without moving the user's camera. */
+  captureFrom(view: CameraView, width: number): Promise<string | null> {
+    return this.withCleanFrame(() => this.engine.renderView(view, width))
+  }
+
+  /** Renders thumbnails for bookmarks that have none (e.g. from templates), one per idle moment. */
+  async fillBookmarkThumbnails(): Promise<void> {
+    for (const bookmark of this.doc.value.bookmarks) {
+      if (this.disposed) return
+      if (bookmark.thumbnail || this.thumbnails[bookmark.id]) continue
+      await new Promise(resolve => setTimeout(resolve, 120))
+      const image = await this.captureFrom(bookmark.view, 240)
+      if (image) this.thumbnails[bookmark.id] = image
+    }
+  }
+
   /** A JPEG of the scene without editor helpers (grid, gizmo, selection). */
-  async captureClean(width: number): Promise<string | null> {
+  captureClean(width: number): Promise<string | null> {
+    return this.withCleanFrame(() => this.engine.screenshot(width))
+  }
+
+  private async withCleanFrame(render: () => Promise<Blob | null>): Promise<string | null> {
     const helpers = this.doc.value.settings.helpers
     this.engine.setHelpers({ grid: false, axes: false })
     this.gizmo.setVisible(false)
     this.engine.setOutlined('selection', [])
     this.engine.setOutlined('hover', [])
+    this.drawTool.setPreviewHidden(true)
     try {
-      const blob = await this.engine.screenshot(width)
+      const blob = await render()
       if (!blob) return null
       return await new Promise<string>(resolve => {
         const reader = new FileReader()
@@ -372,7 +401,7 @@ export class EditorSession {
       })
     } finally {
       if (this.ui.mode === 'edit') this.engine.setHelpers(helpers)
-      this.gizmo.setVisible(this.ui.mode === 'edit')
+      this.drawTool.setPreviewHidden(false)
       this.refreshSelectionVisuals()
     }
   }

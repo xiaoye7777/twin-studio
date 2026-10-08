@@ -3,6 +3,7 @@
  * stays the brightest thing on screen. Every studio surface uses these tokens.
  */
 .studio,
+.studio-home,
 .studio-dialog,
 .studio-popup {
   --s-bg: #121315;

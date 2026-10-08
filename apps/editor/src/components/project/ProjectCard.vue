@@ -1,97 +1,175 @@
 <script setup lang="ts">
-import { Calendar, DataAnalysis, EditPen, MoreFilled } from '@element-plus/icons-vue'
+import { Download, MonitorPlay, MoreHorizontal, PenLine, Trash2, Type } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
 import type { Project } from '@/stores/project'
 
-defineProps<{
-  project: Project
-  exporting?: boolean
-}>()
-
-defineEmits<{
+const props = defineProps<{ project: Project; exporting?: boolean }>()
+const emit = defineEmits<{
   edit: [project: Project]
   dashboard: [project: Project]
   export: [project: Project]
+  rename: [project: Project]
+  remove: [project: Project]
 }>()
-
-const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-function formatDate(value: string) {
-  return dateFormatter.format(new Date(value))
+const menu = ref(false)
+const image = computed(() => (props.project.cover?.startsWith('data:') ? props.project.cover : null))
+const updated = computed(() =>
+  new Date(props.project.updatedAt).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+)
+function act(event: 'dashboard' | 'export' | 'rename' | 'remove'): void {
+  menu.value = false
+  if (event === 'dashboard') emit('dashboard', props.project)
+  else if (event === 'export') emit('export', props.project)
+  else if (event === 'rename') emit('rename', props.project)
+  else emit('remove', props.project)
 }
 </script>
 
 <template>
-  <article
-    :data-testid="`project-card-${project.id}`"
-    class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-200/70"
-  >
-    <div class="relative aspect-[16/10] overflow-hidden" :style="{ background: project.cover ?? '#dbeafe' }">
-      <div class="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(15,23,42,0.16))]" />
-      <div
-        class="absolute left-[18%] top-[22%] h-[43%] w-[64%] rounded-xl border border-white/35 bg-white/20 shadow-2xl backdrop-blur-[2px] transition duration-300 group-hover:scale-[1.03]"
-      >
-        <div class="m-3 grid h-[calc(100%-24px)] grid-cols-4 gap-1.5 opacity-70">
-          <span v-for="item in 8" :key="item" class="rounded-sm bg-white/45" />
+  <article class="card" :data-testid="`project-card-${project.name}`" @mouseleave="menu = false">
+    <button class="card__cover" :title="`编辑 ${project.name}`" @click="emit('edit', project)">
+      <img v-if="image" :src="image" alt="" />
+      <span v-else class="card__placeholder" :style="project.cover ? { background: project.cover } : undefined" />
+      <span class="card__open"><PenLine :size="14" />进入编辑器</span>
+    </button>
+    <div class="card__body">
+      <div class="card__text">
+        <h3 :title="project.name">{{ project.name }}</h3>
+        <p>更新于 {{ updated }}</p>
+      </div>
+      <button class="s-icon-btn" title="大屏预览" @click="emit('dashboard', project)">
+        <MonitorPlay :size="15" />
+      </button>
+      <div class="card__more">
+        <button class="s-icon-btn" title="更多" @click="menu = !menu"><MoreHorizontal :size="15" /></button>
+        <div v-if="menu" class="card__menu s-float">
+          <button @click="act('export')"><Download :size="13" />{{ exporting ? '导出中…' : '导出项目包' }}</button>
+          <button @click="act('rename')"><Type :size="13" />重命名</button>
+          <button class="is-danger" @click="act('remove')"><Trash2 :size="13" />删除项目</button>
         </div>
       </div>
-      <span
-        class="absolute left-4 top-4 rounded-md bg-white/85 px-2 py-1 text-[11px] font-medium text-slate-600 backdrop-blur"
-      >
-        数字孪生项目
-      </span>
-      <div
-        data-testid="project-actions-overlay"
-        class="absolute inset-0 z-10 flex items-center justify-center gap-3 bg-slate-950/65 opacity-0 backdrop-blur-[1px] transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
-      >
-        <button
-          data-testid="edit-project"
-          class="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-lg transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          type="button"
-          @click="$emit('edit', project)"
-        >
-          <el-icon><EditPen /></el-icon>编辑项目
-        </button>
-        <button
-          data-testid="open-dashboard"
-          class="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-lg transition hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          type="button"
-          @click="$emit('dashboard', project)"
-        >
-          <el-icon><DataAnalysis /></el-icon>数据大屏
-        </button>
-      </div>
-    </div>
-
-    <div class="flex items-start justify-between gap-3 p-4">
-      <div class="min-w-0">
-        <h3 class="truncate text-[15px] font-semibold text-slate-800">{{ project.name }}</h3>
-        <p class="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
-          <el-icon><Calendar /></el-icon>
-          更新于 {{ formatDate(project.updatedAt) }}
-        </p>
-      </div>
-      <el-dropdown trigger="click" @command="$emit('export', project)">
-        <button
-          :disabled="exporting"
-          data-testid="project-menu"
-          class="mt-1 shrink-0 text-slate-400"
-          aria-label="项目操作"
-        >
-          <el-icon><MoreFilled /></el-icon>
-        </button>
-        <template #dropdown
-          ><el-dropdown-menu
-            ><el-dropdown-item command="export" :disabled="exporting" data-testid="export-project">{{
-              exporting ? '正在导出…' : '导出项目'
-            }}</el-dropdown-item></el-dropdown-menu
-          ></template
-        >
-      </el-dropdown>
     </div>
   </article>
 </template>
+
+<style scoped>
+.card {
+  overflow: visible;
+  border: 1px solid var(--s-line);
+  border-radius: 10px;
+  background: var(--s-panel);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+.card:hover {
+  border-color: var(--s-line-2);
+  transform: translateY(-2px);
+}
+.card__cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  background: #16181b;
+  cursor: pointer;
+}
+.card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card__placeholder {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 30%, #2d3136, #17191c 70%);
+  opacity: 0.9;
+}
+.card__open {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgb(14 15 17 / 0.8);
+  color: var(--s-fg);
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+.card:hover .card__open {
+  opacity: 1;
+  transform: none;
+}
+.card__body {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px 10px 14px;
+}
+.card__text {
+  min-width: 0;
+  flex: 1;
+}
+.card__text h3 {
+  overflow: hidden;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card__text p {
+  margin: 2px 0 0;
+  color: var(--s-fg-3);
+  font-size: 11.5px;
+}
+.card__more {
+  position: relative;
+}
+.card__menu {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  bottom: calc(100% + 4px);
+  min-width: 150px;
+  padding: 4px;
+}
+.card__menu button {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--s-fg);
+  font-size: 12px;
+  cursor: pointer;
+}
+.card__menu button:hover {
+  background: var(--s-accent-soft);
+  color: var(--s-accent-2);
+}
+.card__menu button.is-danger:hover {
+  background: rgb(229 103 92 / 0.15);
+  color: var(--s-danger);
+}
+</style>

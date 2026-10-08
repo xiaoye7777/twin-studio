@@ -88,7 +88,11 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
             :data-testid="`bookmark-${bookmark.name}`"
             @click="session.flyToBookmark(bookmark.id)"
           >
-            <img v-if="bookmark.thumbnail" :src="bookmark.thumbnail" alt="" />
+            <img
+              v-if="bookmark.thumbnail || session.thumbnails[bookmark.id]"
+              :src="bookmark.thumbnail || session.thumbnails[bookmark.id]"
+              alt=""
+            />
             <div v-else class="view__blank" />
             <div class="view__name" @dblclick.stop="renaming = bookmark.id">
               <input
@@ -192,9 +196,9 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
               <button class="view__action" title="删除步骤" @click="removeStep(step)"><X :size="11" /></button>
             </div>
             <img
-              v-if="bookmarkOf(step.bookmarkId)?.thumbnail"
+              v-if="step.bookmarkId && (bookmarkOf(step.bookmarkId)?.thumbnail || session.thumbnails[step.bookmarkId])"
               class="step__thumb"
-              :src="bookmarkOf(step.bookmarkId)!.thumbnail"
+              :src="bookmarkOf(step.bookmarkId)?.thumbnail || session.thumbnails[step.bookmarkId]"
               alt=""
               @click="session.playTour(tour!.id, index)"
             />

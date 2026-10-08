@@ -384,7 +384,39 @@ export class TwinEngine {
   async screenshot(width?: number): Promise<Blob | null> {
     this.renderFrame(0)
     const blob = await new Promise<Blob | null>(resolve => this.canvas.toBlob(resolve, 'image/png'))
-    if (!blob || !width) return blob
+    return blob && width ? this.downscale(blob, width) : blob
+  }
+
+  /**
+   * A picture of the scene from another viewpoint, without moving the user's camera: the pose is set,
+   * one frame rendered and copied, and the pose restored before the browser paints.
+   */
+  async renderView(view: CameraView, width: number): Promise<Blob | null> {
+    const camera = this.camera
+    const position = camera.position.clone()
+    const quaternion = camera.quaternion.clone()
+    const fov = camera.fov
+    const resolved = this.rig.resolveView(view)
+    camera.position.copy(resolved.position)
+    camera.up.set(0, 1, 0)
+    camera.lookAt(resolved.target)
+    if (view.fov) camera.fov = view.fov
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld()
+    this.renderer.info.reset()
+    this.pipeline.render(0)
+    // toBlob copies the canvas bitmap synchronously, so the camera can be restored right away.
+    const pending = new Promise<Blob | null>(resolve => this.canvas.toBlob(resolve, 'image/png'))
+    camera.position.copy(position)
+    camera.quaternion.copy(quaternion)
+    camera.fov = fov
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld()
+    const blob = await pending
+    return blob ? this.downscale(blob, width) : null
+  }
+
+  private async downscale(blob: Blob, width: number): Promise<Blob | null> {
     const bitmap = await createImageBitmap(blob)
     const canvas = document.createElement('canvas')
     canvas.width = width

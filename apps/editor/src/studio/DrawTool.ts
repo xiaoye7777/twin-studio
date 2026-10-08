@@ -51,6 +51,11 @@ export class DrawTool {
     engine.overlay.add(this.preview)
   }
 
+  /** Hides the preview for clean captures. */
+  setPreviewHidden(hidden: boolean): void {
+    this.preview.visible = !hidden && this.kind !== null
+  }
+
   get active(): DrawKind | null {
     return this.kind
   }
