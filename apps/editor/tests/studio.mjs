@@ -416,6 +416,21 @@ try {
   assert.equal(await studio(page, () => window.__studio.ui.undoLabel), '恢复历史版本')
   report.versionHistory = 'PASS'
 
+  // ---------------------------------------------------------------- arrow-key nudging
+  await studio(page, id => window.__studio.select([id]), turbine.id)
+  const startAt = (await doc()).nodes.find(node => node.id === turbine.id).transform.position
+  await page.keyboard.press('Shift+ArrowRight')
+  await page.keyboard.press('Shift+ArrowRight')
+  await page.keyboard.press('PageUp')
+  const movedTo = (await doc()).nodes.find(node => node.id === turbine.id).transform.position
+  const moved = movedTo.map((value, axis) => Math.round((value - startAt[axis]) * 100) / 100)
+  assert.equal(Math.abs(moved[0]) + Math.abs(moved[2]), 2, `nudged by ${moved}`)
+  assert.equal(moved[1], 0.1)
+  // Each press is one undo step (holding a key repeats into a single step).
+  for (let i = 0; i < 3; i++) await page.keyboard.press(`${mod}+z`)
+  assert.deepEqual((await doc()).nodes.find(node => node.id === turbine.id).transform.position, startAt)
+  report.nudge = 'PASS'
+
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))
 } finally {

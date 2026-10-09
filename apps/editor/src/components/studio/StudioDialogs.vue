@@ -78,6 +78,7 @@ const shortcuts: Array<[string, string]> = [
   ['Esc', '从部件回到模型 / 取消选择'],
   ['H', '显示 / 隐藏'],
   ['End', '放到地面'],
+  ['方向键 / PageUp、PageDown', '按视角方向微调位置 / 升降（Shift ×10；开启吸附时按吸附步长）'],
   ['0 / 7 / 1 / 3', '透视 / 顶 / 前 / 右视图'],
   ['P / Esc', '进入 / 退出预览'],
   ['Enter / Backspace / Esc', '绘制时：完成 / 撤销点 / 取消'],

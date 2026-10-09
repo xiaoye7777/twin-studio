@@ -51,6 +51,15 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
     if (mod && key === 'g' && event.shiftKey) return run(() => s.ungroupSelection())
     if (mod && key === 'g') return run(() => void s.groupSelection())
     if (mod) return
+    const arrows: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+      arrowup: 'up',
+      arrowdown: 'down',
+      arrowleft: 'left',
+      arrowright: 'right',
+    }
+    if (arrows[key]) return run(() => s.nudge(arrows[key]!, event.shiftKey))
+    if (key === 'pageup' || key === 'pagedown')
+      return run(() => s.nudge(key === 'pageup' ? 'raise' : 'lower', event.shiftKey))
     switch (key) {
       case 'q':
         return run(() => s.setTool('select'))
@@ -87,6 +96,16 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
         return run(() => (shell.dialog = 'shortcuts'))
     }
   }
-  onMounted(() => window.addEventListener('keydown', onKeyDown))
-  onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown))
+  // A run of arrow-key nudges is one undo step.
+  const onKeyUp = (event: KeyboardEvent) => {
+    if (/^(Arrow|Page)/.test(event.key)) session.value?.commit()
+  }
+  onMounted(() => {
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+  })
+  onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onKeyDown)
+    window.removeEventListener('keyup', onKeyUp)
+  })
 }

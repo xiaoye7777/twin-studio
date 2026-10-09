@@ -1414,20 +1414,71 @@ export class EditorSession {
     this.select([...ids, ...created])
   }
 
-  private shiftWorld(label: string, ids: readonly string[], offsets: readonly number[], axis: 0 | 1 | 2): void {
-    this.edit(label, draft => {
-      ids.forEach((id, index) => {
-        const offset = offsets[index] ?? 0
-        if (Math.abs(offset) < 1e-6) return
-        const node = nodeById(draft, id)
-        if (!node) return
-        const world = worldMatrixOf(draft, id)
-        const shift = new Vector3()
-        shift.setComponent(axis, offset)
-        world.premultiply(new Matrix4().makeTranslation(shift.x, shift.y, shift.z))
-        node.transform = transformOf(worldMatrixOf(draft, node.parentId).invert().multiply(world))
-      })
-    })
+  /**
+   * Arrow keys: moves the selection one step relative to the view (up = away from the camera along the
+   * nearest world axis). The step is the snap distance when snapping, else 0.1 m; `coarse` (Shift) is ×10.
+   * Holding a key repeats into one undo step; the key's release commits it.
+   */
+  nudge(direction: 'up' | 'down' | 'left' | 'right' | 'raise' | 'lower', coarse = false): void {
+    const ids = topmost(this.doc.value, this.selection.value).filter(id => !isLockedOrHidden(this.doc.value, id).locked)
+    if (!ids.length || this.part.value) return
+    const step = (this.ui.snap.enabled ? this.ui.snap.translate : 0.1) * (coarse ? 10 : 1)
+    if (direction === 'raise' || direction === 'lower') {
+      return this.shiftWorld(
+        '微调位置',
+        ids,
+        ids.map(() => (direction === 'raise' ? step : -step)),
+        1,
+        'nudge',
+      )
+    }
+    // The camera's forward on the ground, snapped to the nearest world axis.
+    const forward = this.engine.camera.getWorldDirection(new Vector3()).setY(0)
+    const alongX = Math.abs(forward.x) > Math.abs(forward.z)
+    const sign = Math.sign(alongX ? forward.x : forward.z) || 1
+    let axis: 0 | 2
+    let amount: number
+    if (direction === 'up' || direction === 'down') {
+      axis = alongX ? 0 : 2
+      amount = (direction === 'up' ? step : -step) * sign
+    } else {
+      // Right of forward: (x, z) → (-z, x).
+      axis = alongX ? 2 : 0
+      amount = (direction === 'right' ? step : -step) * (alongX ? sign : -sign)
+    }
+    this.shiftWorld(
+      '微调位置',
+      ids,
+      ids.map(() => amount),
+      axis,
+      'nudge',
+    )
+  }
+
+  private shiftWorld(
+    label: string,
+    ids: readonly string[],
+    offsets: readonly number[],
+    axis: 0 | 1 | 2,
+    coalesce?: string,
+  ): void {
+    this.edit(
+      label,
+      draft => {
+        ids.forEach((id, index) => {
+          const offset = offsets[index] ?? 0
+          if (Math.abs(offset) < 1e-6) return
+          const node = nodeById(draft, id)
+          if (!node) return
+          const world = worldMatrixOf(draft, id)
+          const shift = new Vector3()
+          shift.setComponent(axis, offset)
+          world.premultiply(new Matrix4().makeTranslation(shift.x, shift.y, shift.z))
+          node.transform = transformOf(worldMatrixOf(draft, node.parentId).invert().multiply(world))
+        })
+      },
+      coalesce ? { coalesceKey: `${coalesce}:${ids.join(',')}` } : {},
+    )
   }
 
   // ================================================================ scene settings
