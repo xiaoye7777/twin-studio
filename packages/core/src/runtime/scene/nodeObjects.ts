@@ -360,7 +360,7 @@ export function createAreaObject(node: AreaNodeV2): Object3D {
   }
   if (label.trim()) {
     const center = points.reduce((sum, p) => sum.add(p), new Vector3()).divideScalar(points.length)
-    const sprite = new TextSprite({ lines: [label], style: 'title', color: '#ffffff', background: color, size: 1.1 })
+    const sprite = new TextSprite({ lines: [label], style: 'title', color: '#ffffff', background: color, size: 1.1 }, 1)
     sprite.position.set(center.x, Math.max(1, wallHeight * 0.6), center.z)
     group.add(sprite)
   }
@@ -371,7 +371,8 @@ export function createAreaObject(node: AreaNodeV2): Object3D {
 
 export function createLabelObject(node: LabelNodeV2): Object3D {
   const group = new Group()
-  const sprite = new TextSprite()
+  // Labels the user placed outrank automatic ones.
+  const sprite = new TextSprite(undefined, 3)
   group.add(sprite)
   updateLabelObject(group, node)
   return group

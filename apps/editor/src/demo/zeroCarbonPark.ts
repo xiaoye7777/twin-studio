@@ -347,7 +347,23 @@ export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
     doc.bindings.push(binding)
     return binding.target
   }
-  for (let i = 1; i <= 3; i++) bind(`instance_wind-${i}`, 'wind', `WT-00${i}`, `风机 0${i}`)
+  for (let i = 1; i <= 3; i++) {
+    bind(`instance_wind-${i}`, 'wind', `WT-00${i}`, `风机 0${i}`)
+    // Blades spin at the live rotor speed (rpm × 6 = degrees per second), 60°/s without data.
+    const turbine = doc.nodes.find(node => node.id === `instance_wind-${i}`)
+    if (turbine?.kind === 'model') {
+      turbine.model.motions = [
+        {
+          id: `blades-${i}`,
+          assetNodeId: 'legacy:root/0/0',
+          axis: 'x',
+          speed: 60,
+          speedVariable: 'rotorSpeed',
+          factor: 6,
+        },
+      ]
+    }
+  }
   const pvTarget = bind('solar-pad', 'pv', 'PV-001', '光伏发电区', 'primitive')
   const meterTarget = bind('instance_energy-center', 'meter', 'EM-001', '综合能源站')
   const officeTarget = bind('instance_office', 'building', 'BLD-001', '绿色办公楼')

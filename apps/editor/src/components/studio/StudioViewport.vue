@@ -118,6 +118,17 @@ async function onDrop(event: DragEvent): Promise<void> {
     @drop="onDrop"
   >
     <canvas ref="canvas" class="viewport__canvas" data-testid="viewport-canvas" tabindex="-1" />
+    <div
+      v-if="ui?.marquee"
+      class="viewport__marquee"
+      data-testid="marquee"
+      :style="{
+        left: `${ui.marquee.left}px`,
+        top: `${ui.marquee.top}px`,
+        width: `${ui.marquee.width}px`,
+        height: `${ui.marquee.height}px`,
+      }"
+    />
 
     <template v-if="session && ui?.ready">
       <!-- Tools -->
@@ -258,6 +269,14 @@ async function onDrop(event: DragEvent): Promise<void> {
   width: 100%;
   height: 100%;
   outline: none;
+}
+.viewport__marquee {
+  position: absolute;
+  z-index: 5;
+  border: 1px solid var(--s-accent);
+  border-radius: 2px;
+  background: rgb(232 137 74 / 0.1);
+  pointer-events: none;
 }
 .viewport__tools {
   position: absolute;

@@ -17,7 +17,9 @@ import type {
   GroupNodeSchemaV2,
   LabelNodeSchemaV2,
   LightNodeSchemaV2,
+  ModelAnimationSchema,
   ModelNodeOverrideSchemaV2,
+  PartMotionSchema,
   ModelNodeSchemaV2,
   PathNodeSchemaV2,
   PresentationSchema,
@@ -60,3 +62,5 @@ export type CameraBookmark = z.infer<typeof CameraBookmarkSchema>
 export type Tour = z.infer<typeof TourSchema>
 export type TourStep = z.infer<typeof TourStepSchema>
 export type Presentation = z.infer<typeof PresentationSchema>
+export type ModelAnimation = z.infer<typeof ModelAnimationSchema>
+export type PartMotion = z.infer<typeof PartMotionSchema>

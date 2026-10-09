@@ -65,6 +65,7 @@ const shortcuts: Array<[string, string]> = [
   ['双击对象', '选中最内层并聚焦'],
   ['Alt + 单击', '直接选中组内对象'],
   ['Shift / ' + mod + ' + 单击', '多选'],
+  ['Shift + 拖动', '框选（加 ' + mod + ' 追加到已选）'],
   [`${mod} + Z / ${mod} + Shift + Z`, '撤销 / 重做'],
   [`${mod} + D`, '创建副本'],
   [`${mod} + C / V`, '复制 / 粘贴'],

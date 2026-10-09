@@ -139,6 +139,19 @@ try {
   await page.waitForFunction(() => !window.__studio.doc.value.nodes.some(node => node.kind === 'group'))
   report.groupUngroup = 'PASS'
 
+  // Shift-drag draws a selection box: it picks the scene's leaves (model, box, path).
+  await page.keyboard.press('Escape')
+  await page.keyboard.down('Shift')
+  await page.mouse.move(canvas.x + 80, canvas.y + 50)
+  await page.mouse.down()
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2, { steps: 5 })
+  assert(await page.getByTestId('marquee').isVisible())
+  await page.mouse.move(canvas.x + canvas.width - 20, canvas.y + canvas.height - 40, { steps: 5 })
+  await page.mouse.up()
+  await page.keyboard.up('Shift')
+  assert.deepEqual((await selection()).sort(), [model.id, box.id, path.id].sort())
+  report.boxSelection = 'PASS'
+
   // ---------------------------------------------------------------- data, effects, rules, interactions
   await page.getByTestId(`tree-row-${box.name}`).click()
   await page.getByTestId('inspector-tab-data').click()
@@ -179,6 +192,16 @@ try {
   await page.waitForSelector('[data-testid="tour-bar"]', { state: 'detached' })
   report.lookViewsTours = 'PASS'
 
+  // ---------------------------------------------------------------- panel layout
+  const leftWidth = async () => Math.round((await page.locator('.studio__left').boundingBox()).width)
+  const panelBefore = await leftWidth()
+  const resizer = await page.locator('.studio__left .resize-handle').boundingBox()
+  await page.mouse.move(resizer.x + resizer.width / 2, resizer.y + 200)
+  await page.mouse.down()
+  await page.mouse.move(resizer.x + resizer.width / 2 + 80, resizer.y + 200, { steps: 5 })
+  await page.mouse.up()
+  assert.equal(await leftWidth(), panelBefore + 80)
+
   // ---------------------------------------------------------------- save, reload, preview
   await save(page)
   const saved = await doc()
@@ -192,7 +215,9 @@ try {
     [1, 1, 2, 1],
   )
   assert.equal(reloaded.settings.time.hour, 22)
+  assert.equal(await leftWidth(), panelBefore + 80, 'panel width is remembered')
   report.saveReload = 'PASS'
+  report.panelResize = 'PASS'
 
   await page.getByTestId('mode-preview').click()
   await page.waitForSelector('.studio.is-preview')

@@ -24,6 +24,7 @@ import UiSlider from '@/components/ui/UiSlider.vue'
 import UiSwitch from '@/components/ui/UiSwitch.vue'
 import UiText from '@/components/ui/UiText.vue'
 import { nodeKindLabels, useSession } from '@/studio/context'
+import ModelMotion from './ModelMotion.vue'
 import { useShell } from '@/studio/shell'
 
 const props = defineProps<{ nodes: SceneNodeV2[] }>()
@@ -242,6 +243,7 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
           </button>
         </div>
       </UiSection>
+      <ModelMotion :node="node" />
     </template>
 
     <template v-else-if="node?.kind === 'primitive'">

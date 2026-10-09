@@ -5,7 +5,8 @@ import type { TourStep } from '@twin-studio/core'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiText from '@/components/ui/UiText.vue'
 import { useSession } from '@/studio/context'
-import { useShell } from '@/studio/shell'
+import { panelLimits, useShell } from '@/studio/shell'
+import ResizeHandle from './ResizeHandle.vue'
 
 const session = useSession()
 const shell = useShell()
@@ -73,7 +74,8 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
       <span class="s-hint">{{ doc.bookmarks.length }} 个视角 · {{ doc.tours.length }} 个导览</span>
     </header>
 
-    <div v-if="shell.dockOpen" class="dock__body">
+    <ResizeHandle v-if="shell.dockOpen" v-model="shell.dockHeight" edge="top" v-bind="panelLimits.dock" />
+    <div v-if="shell.dockOpen" class="dock__body" :style="{ height: `${shell.dockHeight}px` }">
       <!-- Bookmarks -->
       <div class="dock__views">
         <div class="dock__label">视角</div>
@@ -245,6 +247,7 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
 
 <style scoped>
 .dock {
+  position: relative;
   flex-shrink: 0;
   border-top: 1px solid var(--s-line);
   background: var(--s-panel);

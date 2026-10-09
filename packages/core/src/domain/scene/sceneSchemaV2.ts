@@ -24,6 +24,26 @@ export const ModelNodeOverrideSchemaV2 = z.object({
   runtimeBid: z.string().optional(),
 })
 
+export const ModelAnimationSchema = z.object({
+  /** Clip name in the model file; null plays nothing. */
+  clip: z.string().nullable(),
+  speed: z.number().min(0).max(10),
+  loop: z.boolean(),
+})
+
+export const PartMotionSchema = z.object({
+  id: nonEmptyString,
+  /** The part that moves (an assetNodeId of the model). */
+  assetNodeId: z.string(),
+  /** Spin around the part's own axis. */
+  axis: z.enum(['x', 'y', 'z']),
+  /** Degrees per second when no live value drives it. */
+  speed: z.number().min(-3600).max(3600),
+  /** A variable of the node's device binding that sets the speed (speed = value × factor). */
+  speedVariable: z.string().nullable(),
+  factor: z.number().min(-1000).max(1000),
+})
+
 const nodeBase = {
   id: nonEmptyString,
   /** null for a top-level node; otherwise the id of a group node. */
@@ -44,6 +64,10 @@ export const ModelNodeSchemaV2 = z.object({
     overrides: z.record(z.string(), ModelNodeOverrideSchemaV2),
     /** assetNodeIds removed from this instance. */
     deleted: z.array(z.string()),
+    /** The model's own animation clip. Absent: the first clip plays in a loop (if the file has any). */
+    animation: ModelAnimationSchema.optional(),
+    /** Procedural part motion, e.g. turbine blades spinning, optionally driven by live data. */
+    motions: z.array(PartMotionSchema).max(20).optional(),
   }),
 })
 

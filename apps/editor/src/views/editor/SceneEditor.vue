@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BottomDock from '@/components/studio/BottomDock.vue'
+import ResizeHandle from '@/components/studio/ResizeHandle.vue'
 import InspectorPanel from '@/components/studio/InspectorPanel.vue'
 import LeftPanel from '@/components/studio/LeftPanel.vue'
 import StatusBar from '@/components/studio/StatusBar.vue'
@@ -13,7 +14,7 @@ import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { useProjectStore } from '@/stores/project'
 import { SessionKey } from '@/studio/context'
 import { EditorSession } from '@/studio/EditorSession'
-import { createShellState, ShellKey } from '@/studio/shell'
+import { createShellState, panelLimits, ShellKey } from '@/studio/shell'
 import { useStudioShortcuts } from '@/studio/useShortcuts'
 import '@/studio/studio.css'
 
@@ -61,13 +62,22 @@ onBeforeUnmount(() => {
   <div class="studio" :class="{ 'is-preview': preview, 'is-dock-closed': !shell.dockOpen }" data-testid="studio">
     <TopBar v-if="session" />
     <div v-else class="studio__topbar-placeholder" />
-    <div class="studio__body">
-      <LeftPanel v-if="session?.ui.ready && !preview" class="studio__left" />
+    <div
+      class="studio__body"
+      :style="{ '--left-width': `${shell.leftWidth}px`, '--right-width': `${shell.rightWidth}px` }"
+    >
+      <div v-if="session?.ui.ready && !preview" class="studio__left">
+        <LeftPanel class="studio__panel" />
+        <ResizeHandle v-model="shell.leftWidth" edge="right" v-bind="panelLimits.left" />
+      </div>
       <div class="studio__center">
         <StudioViewport ref="viewport" />
         <BottomDock v-if="session?.ui.ready && !preview" />
       </div>
-      <InspectorPanel v-if="session?.ui.ready && !preview" class="studio__right" />
+      <div v-if="session?.ui.ready && !preview" class="studio__right">
+        <InspectorPanel class="studio__panel" />
+        <ResizeHandle v-model="shell.rightWidth" edge="left" v-bind="panelLimits.right" />
+      </div>
     </div>
     <StatusBar v-if="session" />
     <StudioDialogs v-if="session?.ui.ready" />
@@ -82,7 +92,7 @@ onBeforeUnmount(() => {
 .studio__body {
   display: grid;
   min-height: 0;
-  grid-template-columns: 264px minmax(0, 1fr) 316px;
+  grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
 }
 .studio.is-preview .studio__body {
   grid-template-columns: minmax(0, 1fr);
@@ -91,10 +101,20 @@ onBeforeUnmount(() => {
   grid-column: 1;
 }
 .studio__left {
+  position: relative;
+  display: flex;
+  min-height: 0;
   grid-column: 1;
   border-right: 1px solid var(--s-line);
 }
+.studio__panel {
+  min-width: 0;
+  flex: 1;
+}
 .studio__right {
+  position: relative;
+  display: flex;
+  min-height: 0;
   grid-column: 3;
   border-left: 1px solid var(--s-line);
 }

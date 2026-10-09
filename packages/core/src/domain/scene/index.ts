@@ -31,7 +31,9 @@ export {
   isSceneDocumentV2,
   LabelNodeSchemaV2,
   LightNodeSchemaV2,
+  ModelAnimationSchema,
   ModelNodeOverrideSchemaV2,
+  PartMotionSchema,
   ModelNodeSchemaV2,
   PathNodeSchemaV2,
   PresentationSchema,
@@ -80,4 +82,6 @@ export type {
   Tour,
   TourStep,
   Presentation,
+  ModelAnimation,
+  PartMotion,
 } from './sceneTypes'

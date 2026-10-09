@@ -31,6 +31,7 @@ import {
   type QualitySetting,
 } from './quality'
 import { type OutlineChannel, RenderPipeline } from './RenderPipeline'
+import { layoutLabels } from '../runtime/scene/textSprite'
 
 export interface TwinEngineOptions {
   quality?: QualitySetting
@@ -483,6 +484,7 @@ export class TwinEngine {
     const focus = this.rig.controls.getTarget(new Vector3())
     this.atmosphere.update(delta, this.camera.position, focus)
     for (const listener of this.frameListeners) listener(delta, elapsed)
+    layoutLabels(this.scene, this.camera, this.width, this.height, delta)
     this.renderer.info.reset()
     this.pipeline.render(delta)
     this.lastInfo = { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles }

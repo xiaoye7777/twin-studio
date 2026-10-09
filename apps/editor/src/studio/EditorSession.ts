@@ -122,6 +122,8 @@ export class EditorSession {
     stats: { fps: 0, quality: 'medium', setting: 'auto', pixelRatio: 1, drawCalls: 0, triangles: 0 } as EngineStats,
     tour: idleTourState() as TourState,
     cursor: null as [number, number, number] | null,
+    /** Box selection in progress, in canvas pixels. */
+    marquee: null as { left: number; top: number; width: number; height: number } | null,
     syncRevision: 0,
     dataRevision: 0,
   })
@@ -154,6 +156,11 @@ export class EditorSession {
     this.scenes = deps.scenes
     this.engine = new TwinEngine(canvas, { quality: deps.quality ?? 'auto', preserveDrawingBuffer: true })
     this.sync = new SceneSync(this.engine, this.assets, undefined, { editor: true })
+    this.sync.motionValue = (nodeId, key) => {
+      const node = this.node(nodeId)
+      const binding = node ? this.twin.getBindingByTarget(targetForNode(node)) : null
+      return binding ? this.twin.getRuntimeValue(binding.id, key)?.value : undefined
+    }
     this.store = new DocumentStore(createEmptyDocument(deps.projectId, deps.projectName), 300)
     this.resolver = new BindingTargetResolver(id => this.sync.objectFor(id))
     this.data = new TwinDataRuntime(this.twin, this.resolver)
@@ -196,6 +203,9 @@ export class EditorSession {
       state => (this.ui.tour = state),
     )
     this.store.subscribe(change => this.onDocumentChange(change))
+    // Capture phase on the canvas runs before the camera controls and the gizmo, so a Shift-drag can
+    // become a box selection instead of an orbit.
+    canvas.addEventListener('pointerdown', this.onMarqueeStart, { capture: true })
     canvas.addEventListener('pointerdown', this.onPointerDown)
     canvas.addEventListener('pointermove', this.onPointerMove)
     canvas.addEventListener('pointerleave', this.onPointerLeave)
@@ -248,6 +258,7 @@ export class EditorSession {
     }
     clearInterval(this.statsTimer)
     if (this.hoverFrame !== null) cancelAnimationFrame(this.hoverFrame)
+    this.canvas.removeEventListener('pointerdown', this.onMarqueeStart, { capture: true })
     this.canvas.removeEventListener('pointerdown', this.onPointerDown)
     this.canvas.removeEventListener('pointermove', this.onPointerMove)
     this.canvas.removeEventListener('pointerleave', this.onPointerLeave)
@@ -497,6 +508,71 @@ export class EditorSession {
   }
 
   // ================================================================ pointer (edit mode)
+
+  private readonly onMarqueeStart = (event: PointerEvent): void => {
+    if (event.button !== 0 || !event.shiftKey || this.ui.mode !== 'edit' || !this.ui.ready || this.drawTool.active)
+      return
+    event.stopImmediatePropagation()
+    event.preventDefault()
+    const rect = this.canvas.getBoundingClientRect()
+    const start = { x: event.clientX - rect.left, y: event.clientY - rect.top }
+    const additive = event.ctrlKey || event.metaKey
+    let moved = false
+    const move = (moveEvent: PointerEvent) => {
+      const x = moveEvent.clientX - rect.left
+      const y = moveEvent.clientY - rect.top
+      if (!moved && Math.hypot(x - start.x, y - start.y) < 4) return
+      moved = true
+      this.ui.marquee = {
+        left: Math.min(start.x, x),
+        top: Math.min(start.y, y),
+        width: Math.abs(x - start.x),
+        height: Math.abs(y - start.y),
+      }
+    }
+    const up = (upEvent: PointerEvent) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const box = this.ui.marquee
+      this.ui.marquee = null
+      if (!moved || !box) {
+        // A Shift-click without dragging toggles the object under the cursor, as before.
+        const id = this.pickNode(upEvent.clientX, upEvent.clientY, upEvent.altKey)
+        if (id) this.select([id], 'toggle')
+        return
+      }
+      this.select(this.nodesInBox(box, rect), additive ? 'add' : 'replace')
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  /**
+   * Nodes whose centre falls inside a screen box: equipment and other leaves (not groups), skipping locked
+   * and hidden ones, so a sweep over a park picks devices rather than the ground they stand on.
+   */
+  private nodesInBox(box: { left: number; top: number; width: number; height: number }, rect: DOMRect): string[] {
+    const doc = this.doc.value
+    const camera = this.engine.camera
+    const bounds = new Box3()
+    const center = new Vector3()
+    const result: string[] = []
+    for (const node of doc.nodes) {
+      if (node.kind === 'group') continue
+      const state = isLockedOrHidden(doc, node.id)
+      if (state.locked || state.hidden) continue
+      const object = this.sync.objectFor(node.id)
+      if (!object) continue
+      bounds.setFromObject(object, true)
+      if (bounds.isEmpty()) continue
+      bounds.getCenter(center).project(camera)
+      if (center.z > 1) continue
+      const x = ((center.x + 1) / 2) * rect.width
+      const y = ((1 - center.y) / 2) * rect.height
+      if (x >= box.left && x <= box.left + box.width && y >= box.top && y <= box.top + box.height) result.push(node.id)
+    }
+    return result
+  }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
     this.pointer = { x: event.clientX, y: event.clientY, button: event.button }

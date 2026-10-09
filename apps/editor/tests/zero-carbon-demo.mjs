@@ -45,6 +45,51 @@ try {
   await page.waitForFunction(() => window.__studio.rules.getDiagnostics().activeRules >= 1, null, { timeout: 30000 })
   report.liveDataAndAlarms = 'PASS'
 
+  // Turbine blades spin, and faster when the live rotor speed says so.
+  const bladeAngle = () =>
+    studio(page, () => {
+      let blades
+      window.__studio.sync.objectFor('instance_wind-1').traverse(node => {
+        if (node.name === 'blades') blades = node
+      })
+      return blades.quaternion.toArray()
+    })
+  const first = await bladeAngle()
+  await page.waitForTimeout(300)
+  assert.notDeepEqual(await bladeAngle(), first, 'blades are spinning')
+  report.partMotion = 'PASS'
+
+  // Labels never overlap on screen: crowded ones stack upwards or fade out.
+  const overlaps = await studio(page, () => {
+    const s = window.__studio
+    const camera = s.engine.camera
+    const rect = s.canvas.getBoundingClientRect()
+    const boxes = []
+    s.engine.scene.traverse(node => {
+      if (!node.isSprite || node.layoutAlpha === undefined || node.layoutAlpha < 0.95 || node.scale.y === 0) return
+      for (let p = node; p; p = p.parent) if (!p.visible) return
+      const anchor = node.getWorldPosition(node.position.clone()).project(camera)
+      if (anchor.z > 1) return
+      const x = ((anchor.x + 1) / 2) * rect.width
+      const y = ((1 - anchor.y) / 2) * rect.height
+      const w = (node.scale.x * camera.projectionMatrix.elements[0] * rect.width) / 2
+      const h = (node.scale.y * camera.projectionMatrix.elements[5] * rect.height) / 2
+      const top = y - h + node.center.y * h
+      boxes.push({ left: x - w / 2, right: x + w / 2, top, bottom: top + h })
+    })
+    let count = 0
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]
+        const b = boxes[j]
+        if (a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1) count++
+      }
+    return { count, labels: boxes.length }
+  })
+  assert(overlaps.labels >= 3, `labels on screen: ${overlaps.labels}`)
+  assert.equal(overlaps.count, 0)
+  report.labelLayout = overlaps
+
   // Views saved without thumbnails get rendered ones, without moving the camera.
   const camera = await studio(page, () => window.__studio.engine.camera.position.toArray())
   await page.waitForFunction(() => Object.keys(window.__studio.thumbnails).length === 5, null, { timeout: 20000 })

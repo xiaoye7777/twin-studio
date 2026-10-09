@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 import type { Object3D } from 'three'
 import { EffectRuntime } from '../effects/EffectRuntime'
 import { type RuleDiagnostic, VisualRuleRuntime } from '../effects/VisualRuleRuntime'
-import { twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'
+import { targetForNode, twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'
 import type { SceneDocumentV2 } from '../../domain/scene'
 import type {
   TwinSceneViewerEvents,
@@ -78,6 +78,7 @@ export class TwinSceneRuntime {
   ) {
     this.engine = new TwinEngine(canvas, { quality: options.quality ?? 'auto' })
     this.sync = new SceneSync(this.engine, assets)
+    this.sync.motionValue = (nodeId, key) => this.liveValue(nodeId, key)
     this.resolver = new BindingTargetResolver(id => this.sync.objectFor(id))
     this.data = new TwinDataRuntime(this.twin, this.resolver)
     this.tours = new TourPlayer(
@@ -325,6 +326,13 @@ export class TwinSceneRuntime {
   }
 
   // ---------------------------------------------------------------- data
+
+  /** A live value of the device bound to a node (drives part motions). */
+  private liveValue(nodeId: string, variableKey: string): unknown {
+    const node = this.document?.nodes.find(item => item.id === nodeId)
+    const binding = node ? this.twin.getBindingByTarget(targetForNode(node)) : null
+    return binding ? this.twin.getRuntimeValue(binding.id, variableKey)?.value : undefined
+  }
 
   private deviceLines(target: TwinBindingTarget, variables?: readonly string[]) {
     const binding = this.twin.getBindingByTarget(target)

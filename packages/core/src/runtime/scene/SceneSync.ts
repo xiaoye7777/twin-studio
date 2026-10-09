@@ -23,12 +23,13 @@ import {
   updateLabelObject,
   updateLightObject,
 } from './nodeObjects'
+import { ModelAnimator } from './ModelAnimator'
 import { setEditorMetadata } from './objectMetadata'
 
 /** The parts of the engine a scene document is rendered through. TwinEngine satisfies it; tests fake it. */
 export type SceneHost = Pick<
   TwinEngine,
-  'addObject' | 'removeObject' | 'loadGLTFModel' | 'getScene' | 'applySettings' | 'setHelpers' | 'flyTo'
+  'addObject' | 'removeObject' | 'loadGLTFModel' | 'getScene' | 'applySettings' | 'setHelpers' | 'flyTo' | 'onFrame'
 > & { readonly environmentStatus: string }
 
 export interface SceneSyncOptions {
@@ -55,6 +56,8 @@ interface MountedNode {
   object: Object3D
   /** Model nodes only, keyed by assetNodeId. */
   assetNodes?: Map<string, AssetNodeState>
+  /** Model nodes only: clips and part motions. */
+  animator?: ModelAnimator
 }
 
 function needsRebuild(before: SceneNodeV2, after: SceneNodeV2): boolean {
@@ -86,13 +89,35 @@ export class SceneSync {
   private queue: Promise<unknown> = Promise.resolve()
   private started = false
   private disposed = false
+  private readonly stopFrame: () => void
+  /** Reads a live variable of a node's device; drives data-bound part motions. */
+  motionValue: ((nodeId: string, variableKey: string) => unknown) | null = null
 
   constructor(
     private readonly host: SceneHost,
     private readonly assets: AssetRepository,
     readonly resources = new ImportedAssetResourceRegistry(),
     private readonly options: SceneSyncOptions = {},
-  ) {}
+  ) {
+    this.stopFrame = host.onFrame(delta => this.animate(delta))
+  }
+
+  /** Animation clip names of a model node. */
+  clipsOf(nodeId: string): string[] {
+    return this.mounted.get(nodeId)?.animator?.clipNames ?? []
+  }
+
+  /** The parts of a model node (for part motions), in file order. */
+  partsOf(nodeId: string): Array<{ id: string; name: string }> {
+    return [...(this.mounted.get(nodeId)?.assetNodes ?? [])].map(([id, state]) => ({ id, name: state.name || id }))
+  }
+
+  private animate(delta: number): void {
+    for (const [id, entry] of this.mounted) {
+      if (!entry.animator?.active || !entry.object.visible) continue
+      entry.animator.update(delta, key => this.motionValue?.(id, key))
+    }
+  }
 
   get environmentStatus(): string {
     return this.host.environmentStatus
@@ -146,7 +171,11 @@ export class SceneSync {
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
-    for (const entry of this.mounted.values()) if (entry.node?.kind !== 'model') disposeOwned(entry.object)
+    this.stopFrame()
+    for (const entry of this.mounted.values()) {
+      entry.animator?.dispose()
+      if (entry.node?.kind !== 'model') disposeOwned(entry.object)
+    }
     this.resources.dispose()
     this.mounted.clear()
     this.attachedTo.clear()
@@ -284,7 +313,12 @@ export class SceneSync {
         }
       })
       this.failed.delete(node.id)
-      return { node: null, object: this.tag(model, node), assetNodes }
+      return {
+        node: null,
+        object: this.tag(model, node),
+        assetNodes,
+        animator: new ModelAnimator(model, model.animations),
+      }
     } catch (error) {
       this.assertActive()
       this.failed.set(node.id, node.model.assetId)
@@ -359,6 +393,7 @@ export class SceneSync {
       deletedAssetNodeIds: [...node.model.deleted],
     })
     if (before?.model === node.model) return
+    entry.animator?.reset()
     const states = entry.assetNodes!
     const deleted = new Set(node.model.deleted)
     // Transforms do not invalidate the host's index; adding or removing parts does.
@@ -386,6 +421,8 @@ export class SceneSync {
       if (override.runtimeBid) state.object.userData.bid = override.runtimeBid
     }
     for (const id of deleted) states.get(id)?.object.removeFromParent()
+    const parts = new Map([...states].map(([id, state]) => [id, state.object]))
+    entry.animator?.configure(node.model.animation, node.model.motions, parts)
   }
 
   private applyPrimitive(mesh: Mesh, node: PrimitiveNodeV2, before: PrimitiveNodeV2 | null): void {
@@ -406,6 +443,7 @@ export class SceneSync {
   private remove(id: string): void {
     const entry = this.mounted.get(id)!
     if (this.attachedTo.has(id)) this.detach(entry.object)
+    entry.animator?.dispose()
     this.mounted.delete(id)
     this.attachedTo.delete(id)
     // Models share geometry with the engine's model cache; every other kind owns its resources. Children

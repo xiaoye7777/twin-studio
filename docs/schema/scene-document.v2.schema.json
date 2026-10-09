@@ -567,6 +567,80 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "animation": {
+                    "type": "object",
+                    "properties": {
+                      "clip": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10
+                      },
+                      "loop": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "clip",
+                      "speed",
+                      "loop"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "motions": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "assetNodeId": {
+                          "type": "string"
+                        },
+                        "axis": {
+                          "type": "string",
+                          "enum": [
+                            "x",
+                            "y",
+                            "z"
+                          ]
+                        },
+                        "speed": {
+                          "type": "number",
+                          "minimum": -3600,
+                          "maximum": 3600
+                        },
+                        "speedVariable": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "factor": {
+                          "type": "number",
+                          "minimum": -1000,
+                          "maximum": 1000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "assetNodeId",
+                        "axis",
+                        "speed",
+                        "speedVariable",
+                        "factor"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [

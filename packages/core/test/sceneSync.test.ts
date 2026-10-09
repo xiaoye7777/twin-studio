@@ -28,6 +28,7 @@ class FakeHost implements SceneHost {
   setHelpers = vi.fn()
   applySettings = vi.fn(async () => {})
   flyTo = vi.fn(async () => true)
+  onFrame = vi.fn(() => () => {})
 
   addObject<T extends Object3D>(object: T): boolean {
     object.traverse(node => {

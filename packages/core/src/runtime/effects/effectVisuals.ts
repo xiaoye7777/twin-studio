@@ -263,14 +263,11 @@ function beam(effect: EffectInstance): EffectVisual {
 
 function floatingLabel(effect: EffectInstance): EffectVisual {
   const { color, opacity, text, padding, scale } = effect.parameters
-  const sprite = new TextSprite({
-    lines: [text || ' '],
-    style: 'tag',
-    color,
-    background: '#0d1219',
-    size: scale ?? 1,
-    opacity,
-  })
+  // Labels produced by alarm rules outrank everything else when labels collide.
+  const sprite = new TextSprite(
+    { lines: [text || ' '], style: 'tag', color, background: '#0d1219', size: scale ?? 1, opacity },
+    effect.id.startsWith('rule:') ? 4 : 2,
+  )
   return visual(sprite, ({ bounds, center }) => {
     sprite.position.set(center.x, bounds.max.y + padding + 0.2, center.z)
   })
@@ -278,7 +275,7 @@ function floatingLabel(effect: EffectInstance): EffectVisual {
 
 function dataLabel(effect: EffectInstance): EffectVisual {
   const { color, opacity, text, padding, scale } = effect.parameters
-  const sprite = new TextSprite()
+  const sprite = new TextSprite(undefined, 2)
   return visual(sprite, ({ bounds, center, data }) => {
     sprite.position.set(center.x, bounds.max.y + padding + 0.2, center.z)
     const rows = data?.rows.length ? data.rows : ['暂无实时数据\t—']
@@ -295,7 +292,10 @@ function dataLabel(effect: EffectInstance): EffectVisual {
 
 function iconMarker(effect: EffectInstance): EffectVisual {
   const { color, text, speed, scale, height } = effect.parameters
-  const sprite = new TextSprite({ lines: [text || '●'], style: 'pin', color, background: '#0d1219', size: scale ?? 1 })
+  const sprite = new TextSprite(
+    { lines: [text || '●'], style: 'pin', color, background: '#0d1219', size: scale ?? 1 },
+    effect.id.startsWith('rule:') ? 4 : 2,
+  )
   return visual(sprite, ({ bounds, center, time }) => {
     const bob = speed === 0 ? 0 : Math.sin(time * speed * 2.5) * 0.25
     sprite.position.set(center.x, bounds.max.y + (height ?? 2) + bob, center.z)
