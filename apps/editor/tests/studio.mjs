@@ -464,6 +464,24 @@ try {
   assert.deepEqual(placed, { kind: 'model', device: { id: 'WT-002', name: '风机 02' } })
   report.components = 'PASS'
 
+  // ---------------------------------------------------------------- big-screen preview
+  // The SDK preview letterboxes the scene to a venue's screen shape and can simulate a weaker machine.
+  const previewProject = await studio(page, () => window.__studio.projectId)
+  await save(page)
+  await page.goto(`${base}/projects/${previewProject}/dashboard`)
+  await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]', { timeout: 60000 })
+  await page.getByTestId('dashboard-ratio').selectOption('21:9')
+  const frameBox = await page.getByTestId('dashboard-frame').boundingBox()
+  assert(Math.abs(frameBox.width / frameBox.height - 21 / 9) < 0.02, `frame ${frameBox.width}×${frameBox.height}`)
+  assert.equal(await page.getByTestId('dashboard-left-panel').count(), 0)
+  await page.getByTestId('dashboard-quality').selectOption('low')
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="twin-scene-viewer"]').__vueParentComponent.exposed.getPerformance()
+        .setting === 'low',
+  )
+  report.screenPreview = 'PASS'
+
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))
 } finally {
