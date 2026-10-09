@@ -29,6 +29,12 @@ try {
     [5, 1, 14, 16, 5, 5, true],
   )
   report.structure = summary
+  // The park floor carries a glowing grid pattern, drawn locally (no texture files in the package).
+  const floor = await studio(page, () => {
+    const material = window.__studio.sync.objectFor('park-ground').material
+    return { map: !!material.map, glow: !!material.emissiveMap }
+  })
+  assert.deepEqual(floor, { map: true, glow: true })
 
   // Live data: the simulator generates values for exactly the devices this project subscribes to.
   await setDataSource(page, dataPort)

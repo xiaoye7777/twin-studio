@@ -29,6 +29,7 @@ import UiText from '@/components/ui/UiText.vue'
 import { nodeKindLabels, useSession } from '@/studio/context'
 import ModelMotion from './ModelMotion.vue'
 import PartMaterial from './PartMaterial.vue'
+import SurfacePattern from './SurfacePattern.vue'
 import { useShell } from '@/studio/shell'
 
 const props = defineProps<{ nodes: SceneNodeV2[] }>()
@@ -381,6 +382,11 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
             @commit="commit"
           />
         </UiRow>
+        <SurfacePattern
+          :pattern="node.primitive.pattern"
+          @update="(pattern, key) => patch('primitive', n => void (n.primitive.pattern = pattern), key)"
+          @commit="commit"
+        />
       </UiSection>
     </template>
 
@@ -482,6 +488,11 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
             @commit="commit"
           />
         </UiRow>
+        <SurfacePattern
+          :pattern="node.area.pattern"
+          @update="(pattern, key) => patch('area', n => void (n.area.pattern = pattern), key)"
+          @commit="commit"
+        />
         <UiRow label="顶点"
           ><span class="props__value">{{ node.area.points.length }} 个顶点</span></UiRow
         >

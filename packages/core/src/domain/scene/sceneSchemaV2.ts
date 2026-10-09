@@ -93,6 +93,15 @@ export const ModelNodeSchemaV2 = z.object({
 
 export const PrimitiveShapeSchema = z.enum(['box', 'plane', 'cylinder', 'sphere', 'cone'])
 
+/** A pattern drawn on a surface (tech grid, floor tiles, lawn…), repeating every `scale` metres. */
+export const SurfacePatternSchema = z.object({
+  /** grid | tiles | stripes | lawn | asphalt | water. Kinds a viewer does not know render plain. */
+  kind: z.string().min(1).max(40),
+  scale: z.number().min(0.1).max(200),
+  /** Lines, grout or highlights. */
+  color: hexColor,
+})
+
 export const PrimitiveNodeSchemaV2 = z.object({
   ...nodeBase,
   kind: z.literal('primitive'),
@@ -111,6 +120,7 @@ export const PrimitiveNodeSchemaV2 = z.object({
     emissive: z.number().min(0).max(1).optional(),
     metalness: z.number().min(0).max(1).optional(),
     roughness: z.number().min(0).max(1).optional(),
+    pattern: SurfacePatternSchema.optional(),
   }),
 })
 
@@ -145,6 +155,8 @@ export const AreaNodeSchemaV2 = z.object({
     wallHeight: z.number().min(0).max(200),
     /** Optional caption shown at the centre. */
     label: z.string().max(80),
+    /** Turns the translucent zone into a surface: lawn, paving, water… */
+    pattern: SurfacePatternSchema.optional(),
   }),
 })
 

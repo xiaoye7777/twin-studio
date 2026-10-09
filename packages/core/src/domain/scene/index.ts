@@ -29,6 +29,7 @@ export {
   createDefaultPresentation,
   createDefaultCameraLimits,
   CameraLimitsSchema,
+  SurfacePatternSchema,
   GroupNodeSchemaV2,
   isSceneDocumentV2,
   LabelNodeSchemaV2,
@@ -90,4 +91,5 @@ export type {
   PartMotion,
   PartMaterial,
   CameraLimits,
+  SurfacePatternV2,
 } from './sceneTypes'

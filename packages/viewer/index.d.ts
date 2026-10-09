@@ -338,6 +338,12 @@ export interface CameraViewV2 {
   /** Viewport width / height the view was composed in. */
   aspect?: number
 }
+/** A pattern repeating every `scale` metres; unknown kinds render plain. Since 0.5.0. */
+export interface SurfacePattern {
+  kind: string
+  scale: number
+  color: string
+}
 interface SceneNodeBaseV2 {
   id: string
   parentId: string | null
@@ -402,6 +408,8 @@ export type SceneNodeV2 = SceneNodeBaseV2 &
           emissive?: number
           metalness?: number
           roughness?: number
+          /** Surface pattern (grid, tiles, stripes, lawn, asphalt, water). Since 0.5.0. */
+          pattern?: SurfacePattern
         }
       }
     | { kind: 'group' }
@@ -419,7 +427,15 @@ export type SceneNodeV2 = SceneNodeBaseV2 &
       }
     | {
         kind: 'area'
-        area: { points: Vector3Tuple[]; color: string; opacity: number; wallHeight: number; label: string }
+        area: {
+          points: Vector3Tuple[]
+          color: string
+          opacity: number
+          wallHeight: number
+          label: string
+          /** Since 0.5.0. */
+          pattern?: SurfacePattern
+        }
       }
     | {
         kind: 'label'

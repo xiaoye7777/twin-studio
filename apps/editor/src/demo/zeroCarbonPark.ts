@@ -10,6 +10,7 @@ import {
   migrateSceneV1ToV2,
   type SceneDocumentV2,
   type SceneNodeV2,
+  type SurfacePatternV2,
   type SceneAssetInstanceV1,
   type SceneDocumentV1,
   type SceneInteraction,
@@ -453,6 +454,17 @@ export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
     ],
   }
   doc.tours = [tour]
+  // Surfaces: a glowing tech grid for the park floor, asphalt roads, tiled storage pad.
+  const asphalt = { kind: 'asphalt', scale: 2, color: '#3a3d42' }
+  const surfaces: Record<string, SurfacePatternV2> = {
+    'park-ground': { kind: 'grid', scale: 2, color: '#3fb6d8' },
+    'road-main': asphalt,
+    'road-cross': asphalt,
+    'storage-pad': { kind: 'tiles', scale: 1, color: '#3f5559' },
+  }
+  for (const node of doc.nodes)
+    if (node.kind === 'primitive' && surfaces[node.id]) node.primitive.pattern = surfaces[node.id]
+
   doc.presentation = {
     autoplayTourId: tour.id,
     idleSeconds: 45,

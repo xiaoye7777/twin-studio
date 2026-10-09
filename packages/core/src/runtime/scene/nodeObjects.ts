@@ -35,6 +35,7 @@ import type {
   PrimitiveNodeV2,
   PrimitiveShape,
 } from '../../domain/scene'
+import { flowSpeed, patternTextures } from './surfacePatterns'
 import { TextSprite } from './textSprite'
 
 /** Seconds on a clock shared by every animated node and effect, so flows stay in phase. */
@@ -46,7 +47,10 @@ export function disposeOwned(object: Object3D): void {
     if (node instanceof TextSprite) node.dispose()
     else if (node instanceof Mesh || node instanceof Line) {
       node.geometry.dispose()
-      for (const material of Array.isArray(node.material) ? node.material : [node.material]) material.dispose()
+      for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+        disposePatternTextures(material as MeshStandardMaterial)
+        material.dispose()
+      }
     }
   })
 }
@@ -100,16 +104,72 @@ export function primitiveGeometry(primitive: PrimitiveNodeV2['primitive']): Buff
   return geometry
 }
 
+function disposePatternTextures(material: MeshStandardMaterial): void {
+  for (const texture of [material.map, material.emissiveMap]) if (texture?.userData.ownedPattern) texture.dispose()
+}
+
+/** How many pattern repeats fit across a primitive's main faces. */
+function patternRepeat(primitive: PrimitiveNodeV2['primitive'], scale: number): [number, number] {
+  const d = primitiveDefaults[primitive.shape]
+  const width = primitive.width ?? d.width ?? 1
+  const height = primitive.height ?? d.height ?? 1
+  const radius = primitive.radiusBottom ?? primitive.radiusTop ?? d.radiusBottom ?? d.radiusTop ?? 1
+  const across: Record<PrimitiveShape, [number, number]> = {
+    plane: [width, height],
+    box: [width, primitive.depth ?? d.depth ?? 1],
+    cylinder: [Math.PI * 2 * radius, height],
+    cone: [Math.PI * 2 * radius, height],
+    sphere: [Math.PI * 2 * radius, Math.PI * radius],
+  }
+  const [u, v] = across[primitive.shape]
+  return [Math.max(0.01, u / scale), Math.max(0.01, v / scale)]
+}
+
+/** Sets a material's pattern textures; returns whether a pattern is drawn. */
+function applyPattern(
+  material: MeshStandardMaterial,
+  pattern: PrimitiveNodeV2['primitive']['pattern'],
+  base: string,
+  repeat: [number, number],
+): boolean {
+  const signature = pattern ? JSON.stringify([pattern, base, repeat]) : ''
+  if (material.userData.patternSignature !== signature) {
+    disposePatternTextures(material)
+    const textures = pattern ? patternTextures(pattern, base, repeat) : null
+    material.map = textures?.map ?? null
+    material.emissiveMap = textures?.glow ?? null
+    material.userData.patternSignature = signature
+    material.userData.flow = textures ? flowSpeed(pattern?.kind) : 0
+    material.needsUpdate = true
+  }
+  return material.map !== null
+}
+
+/** Scrolls flowing patterns (water) each frame. */
+function flowPattern(material: MeshStandardMaterial): void {
+  const speed = material.userData.flow as number | undefined
+  if (speed && material.map) material.map.offset.set(sceneTime() * speed, sceneTime() * speed * 0.35)
+}
+
 export function applyPrimitiveMaterial(material: MeshStandardMaterial, primitive: PrimitiveNodeV2['primitive']): void {
-  material.color.set(primitive.color)
+  const pattern = primitive.pattern
+  const patterned = applyPattern(
+    material,
+    pattern,
+    primitive.color,
+    pattern ? patternRepeat(primitive, pattern.scale) : [1, 1],
+  )
+  // A pattern's colours are drawn into its map.
+  material.color.set(patterned ? '#ffffff' : primitive.color)
   const opacity = primitive.opacity ?? 1
   material.transparent = opacity < 1
   material.opacity = opacity
   material.depthWrite = opacity >= 0.98
-  material.emissive.set(primitive.color)
-  material.emissiveIntensity = (primitive.emissive ?? 0) * 2.5
+  const glowing = patterned && material.emissiveMap !== null
+  material.emissive.set(glowing ? pattern!.color : primitive.color)
+  material.emissiveIntensity = glowing ? 0.6 + (primitive.emissive ?? 0) * 2.5 : (primitive.emissive ?? 0) * 2.5
   material.metalness = primitive.metalness ?? 0.1
-  material.roughness = primitive.roughness ?? 0.6
+  material.roughness = primitive.roughness ?? (pattern?.kind === 'water' ? 0.15 : 0.6)
   material.side = primitive.shape === 'plane' ? DoubleSide : material.side
   material.needsUpdate = true
 }
@@ -118,6 +178,7 @@ export function createPrimitiveObject(node: PrimitiveNodeV2): Mesh {
   const material = new MeshStandardMaterial()
   applyPrimitiveMaterial(material, node.primitive)
   const mesh = new Mesh(primitiveGeometry(node.primitive), material)
+  mesh.onBeforeRender = () => flowPattern(material)
   mesh.castShadow = node.primitive.shape !== 'plane'
   mesh.receiveShadow = true
   return mesh
@@ -290,23 +351,46 @@ const wallShader = {
 }
 
 export function createAreaObject(node: AreaNodeV2): Object3D {
-  const { points: raw, color, opacity, wallHeight, label } = node.area
+  const { points: raw, color, opacity, wallHeight, label, pattern } = node.area
   const points = raw.map(([x, , z]) => new Vector3(x, 0, z))
   const group = new Group()
   const shape = new Shape(points.map(p => new Vector2(p.x, -p.z)))
-  const fill = new Mesh(
-    new ShapeGeometry(shape).rotateX(-Math.PI / 2),
-    new MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: opacity * 0.38,
-      depthWrite: false,
-      side: DoubleSide,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
-    }),
-  )
+  const geometry = new ShapeGeometry(shape).rotateX(-Math.PI / 2)
+  let fill: Mesh
+  // A patterned area is a lit surface (lawn, paving, water); a plain one a translucent zone overlay.
+  const surface = new MeshStandardMaterial({
+    side: DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  })
+  if (pattern && applyPattern(surface, pattern, color, [1 / pattern.scale, 1 / pattern.scale])) {
+    surface.transparent = opacity < 0.98
+    surface.opacity = opacity
+    surface.depthWrite = opacity >= 0.98
+    surface.roughness = pattern.kind === 'water' ? 0.15 : 0.85
+    if (surface.emissiveMap) {
+      surface.emissive.set(pattern.color)
+      surface.emissiveIntensity = 1.2
+    }
+    fill = new Mesh(geometry, surface)
+    fill.onBeforeRender = () => flowPattern(surface)
+  } else {
+    surface.dispose()
+    fill = new Mesh(
+      geometry,
+      new MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: opacity * 0.38,
+        depthWrite: false,
+        side: DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      }),
+    )
+  }
   fill.position.y = 0.04
   fill.receiveShadow = true
   group.add(fill)
