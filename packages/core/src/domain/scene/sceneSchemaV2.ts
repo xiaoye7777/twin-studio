@@ -267,6 +267,17 @@ export const TourSchema = z.object({
     .superRefine(uniqueBy(step => step.id, '导览步骤 ID')),
 })
 
+/** Keeps viewers from losing the scene on a big screen: the camera stays around and above it. */
+export const CameraLimitsSchema = z.object({
+  enabled: z.boolean(),
+  /** Farthest zoom, as a multiple of the scene's size (saved views farther out still work). */
+  maxDistance: z.number().min(0.3).max(10),
+  /** Nearest zoom in metres. */
+  minDistance: z.number().min(0.1).max(500),
+  /** Lowest camera angle above the ground in degrees, so the view never skims along the floor. */
+  minElevation: z.number().min(0).max(80),
+})
+
 export const PresentationSchema = z.object({
   /** Tour played automatically when the Viewer has been idle (kiosk / cinema mode). */
   autoplayTourId: z.string().nullable(),
@@ -274,6 +285,8 @@ export const PresentationSchema = z.object({
   idleSeconds: z.number().min(0).max(3600),
   /** Slow orbit when idle and no tour is configured. */
   autoRotate: z.boolean(),
+  /** Absent: free camera, as before. */
+  cameraLimits: CameraLimitsSchema.optional(),
 })
 
 export const SceneDocumentSchemaV2 = z.object({
@@ -307,4 +320,8 @@ export function isSceneDocumentV2(value: unknown): value is z.infer<typeof Scene
 
 export function createDefaultPresentation(): z.infer<typeof PresentationSchema> {
   return { autoplayTourId: null, idleSeconds: 0, autoRotate: false }
+}
+
+export function createDefaultCameraLimits(): z.infer<typeof CameraLimitsSchema> {
+  return { enabled: true, maxDistance: 1.5, minDistance: 2, minElevation: 8 }
 }

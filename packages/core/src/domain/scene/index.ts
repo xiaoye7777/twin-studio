@@ -27,6 +27,8 @@ export {
   CameraBookmarkSchema,
   CameraViewSchemaV2,
   createDefaultPresentation,
+  createDefaultCameraLimits,
+  CameraLimitsSchema,
   GroupNodeSchemaV2,
   isSceneDocumentV2,
   LabelNodeSchemaV2,
@@ -87,4 +89,5 @@ export type {
   ModelAnimation,
   PartMotion,
   PartMaterial,
+  CameraLimits,
 } from './sceneTypes'

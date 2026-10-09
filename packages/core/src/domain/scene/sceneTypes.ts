@@ -21,6 +21,7 @@ import type {
   ModelNodeOverrideSchemaV2,
   PartMotionSchema,
   PartMaterialSchema,
+  CameraLimitsSchema,
   ModelNodeSchemaV2,
   PathNodeSchemaV2,
   PresentationSchema,
@@ -66,3 +67,4 @@ export type Presentation = z.infer<typeof PresentationSchema>
 export type ModelAnimation = z.infer<typeof ModelAnimationSchema>
 export type PartMotion = z.infer<typeof PartMotionSchema>
 export type PartMaterial = z.infer<typeof PartMaterialSchema>
+export type CameraLimits = z.infer<typeof CameraLimitsSchema>

@@ -24,6 +24,7 @@ import type { AssetRepository } from '../../infrastructure/assets/AssetRepositor
 import { TwinEngine } from '../../engine/TwinEngine'
 import { SceneSync } from '../scene/SceneSync'
 import { BindingTargetResolver, bindingTargetFromObject } from './BindingTargetResolver'
+import { applyCameraLimits } from './cameraLimits'
 import { createTwinState } from './createTwinState'
 import { TwinDataRuntime } from './TwinDataRuntime'
 import { ViewerPointerEvents, type ViewerTargetClick } from './ViewerPointerEvents'
@@ -176,6 +177,10 @@ export class TwinSceneRuntime {
         },
       )
       this.engine.rig.autoRotateSpeed = 0
+      applyCameraLimits(this.engine.rig, document.presentation.cameraLimits, this.roots, [
+        ...(document.cameraView ? [document.cameraView] : []),
+        ...document.bookmarks.map(bookmark => bookmark.view),
+      ])
       for (const type of IDLE_EVENTS) this.canvas.addEventListener(type, this.onUserInput, { passive: true })
       this.scheduleIdle()
       const unresolved = this.twin.bindings.filter(

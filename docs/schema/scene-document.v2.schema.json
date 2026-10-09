@@ -3701,6 +3701,36 @@
         },
         "autoRotate": {
           "type": "boolean"
+        },
+        "cameraLimits": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "maxDistance": {
+              "type": "number",
+              "minimum": 0.3,
+              "maximum": 10
+            },
+            "minDistance": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 500
+            },
+            "minElevation": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 80
+            }
+          },
+          "required": [
+            "enabled",
+            "maxDistance",
+            "minDistance",
+            "minElevation"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

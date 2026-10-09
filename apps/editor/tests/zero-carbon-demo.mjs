@@ -98,6 +98,9 @@ try {
 
   // The guided tour in preview mode: captions, stepping, and Esc hands control back.
   await page.getByTestId('mode-preview').click()
+  // The sample limits the camera on the big screen; the editor itself stays free.
+  const previewRange = await studio(page, () => window.__studio.engine.rig.controls.maxDistance)
+  assert(previewRange > 20 && previewRange < 1000, `preview max distance ${previewRange}`)
   await studio(page, () => window.__studio.playTour(window.__studio.doc.value.tours[0].id))
   await page.waitForSelector('[data-testid="tour-bar"]')
   assert((await page.getByTestId('tour-bar').textContent()).includes('零碳智慧园区'))
@@ -105,6 +108,7 @@ try {
   await page.waitForFunction(() => window.__studio.ui.tour.stepIndex === 1)
   await page.keyboard.press('Escape')
   await page.waitForFunction(() => window.__studio.ui.mode === 'edit' && !window.__studio.ui.tour.playing)
+  assert.equal(await studio(page, () => window.__studio.engine.rig.controls.maxDistance), 8000)
   report.tourPreview = 'PASS'
 
   // Saving puts a picture of the opening view on the project card.

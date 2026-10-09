@@ -2,6 +2,7 @@ import { reactive, shallowRef } from 'vue'
 import { Box3, Matrix4, type Object3D, Vector3 } from 'three'
 import {
   ancestorIds,
+  applyCameraLimits,
   type AssetRepository,
   BindingTargetResolver,
   type CameraBookmark,
@@ -1746,8 +1747,8 @@ export class EditorSession {
     this.updateTour(tourId, tour => void tour.steps.push(createStep(patch)))
   }
 
-  updatePresentation(recipe: (presentation: SceneDocumentV2['presentation']) => void): void {
-    this.edit('放映设置', draft => recipe(draft.presentation))
+  updatePresentation(recipe: (presentation: SceneDocumentV2['presentation']) => void, coalesceKey?: string): void {
+    this.edit('放映设置', draft => recipe(draft.presentation), { coalesceKey })
   }
 
   playTour(id: string, from = 0): void {
@@ -1768,6 +1769,11 @@ export class EditorSession {
     this.clearSelection()
     this.ui.mode = 'preview'
     this.engine.setHelpers({ grid: false, axes: false })
+    const doc = this.doc.value
+    applyCameraLimits(this.engine.rig, doc.presentation.cameraLimits, this.sync.roots, [
+      ...(doc.cameraView ? [doc.cameraView] : []),
+      ...doc.bookmarks.map(bookmark => bookmark.view),
+    ])
     this.gizmo.setVisible(false)
     const effects = this.effects
     const interactions = new InteractionRuntime({
@@ -1817,6 +1823,7 @@ export class EditorSession {
     this.preview.interactions.dispose()
     this.preview = null
     this.visibility.dispose()
+    this.engine.rig.setLimits(null)
     this.ui.mode = 'edit'
     this.engine.setOutlined('selection', [])
     this.engine.setHelpers(this.doc.value.settings.helpers)

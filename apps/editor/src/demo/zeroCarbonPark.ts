@@ -453,7 +453,12 @@ export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
     ],
   }
   doc.tours = [tour]
-  doc.presentation = { autoplayTourId: tour.id, idleSeconds: 45, autoRotate: false }
+  doc.presentation = {
+    autoplayTourId: tour.id,
+    idleSeconds: 45,
+    autoRotate: false,
+    cameraLimits: { enabled: true, maxDistance: 1.5, minDistance: 3, minElevation: 8 },
+  }
   doc.metadata = { ...doc.metadata, name: '零碳智慧园区 Demo' }
   return doc
 }

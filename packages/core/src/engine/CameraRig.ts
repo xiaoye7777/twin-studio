@@ -71,6 +71,22 @@ export class CameraRig {
     this.controls.addEventListener('controlstart', () => this.cancelFlight())
   }
 
+  /**
+   * Restricts navigation: the orbit centre stays inside `boundary`, the distance within range and the camera
+   * at least `minElevation` degrees above the horizon. null restores free navigation.
+   */
+  setLimits(
+    limits: { boundary: Box3 | null; minDistance: number; maxDistance: number; minElevation: number } | null,
+  ): void {
+    const controls = this.controls
+    controls.setBoundary(limits?.boundary ?? undefined)
+    controls.minDistance = limits?.minDistance ?? 0.5
+    controls.maxDistance = limits?.maxDistance ?? 8000
+    controls.maxPolarAngle = limits
+      ? Math.min(Math.PI * 0.495, Math.PI / 2 - MathUtils.degToRad(limits.minElevation))
+      : Math.PI * 0.495
+  }
+
   get enabled(): boolean {
     return this.controls.enabled
   }

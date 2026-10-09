@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Camera, Check } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
+import { createDefaultCameraLimits, type CameraLimits } from '@twin-studio/core'
+import UiSlider from '@/components/ui/UiSlider.vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
 import UiSection from '@/components/ui/UiSection.vue'
@@ -11,6 +13,14 @@ const session = useSession()
 const doc = computed(() => session.doc.value)
 const presentation = computed(() => doc.value.presentation)
 const justSet = ref(false)
+
+const limits = computed(() => presentation.value.cameraLimits)
+function setLimits(patch: Partial<CameraLimits>, key?: string): void {
+  session.updatePresentation(
+    p => void (p.cameraLimits = { ...(p.cameraLimits ?? createDefaultCameraLimits()), ...patch }),
+    key && `camera-limits:${key}`,
+  )
+}
 
 function setOpeningView(): void {
   session.setOpeningView()
@@ -74,6 +84,54 @@ function setOpeningView(): void {
       <p class="pres__note s-hint">
         适用于展厅、影院等宣讲场所：任何点击或滚轮操作都会立即把控制权交还给讲解人，停止后重新计时。
       </p>
+    </UiSection>
+
+    <UiSection title="镜头范围">
+      <UiRow label="限制镜头" hint="观众拖动、缩放时不会把场景拖丢、拉得太远或钻到地面以下">
+        <UiSwitch
+          :model-value="limits?.enabled ?? false"
+          data-testid="camera-limits"
+          @update:model-value="setLimits({ enabled: $event })"
+        />
+      </UiRow>
+      <template v-if="limits?.enabled">
+        <UiRow label="最远距离" hint="场景尺寸的倍数；保存的视角始终可达">
+          <UiSlider
+            :model-value="limits.maxDistance"
+            :min="0.3"
+            :max="4"
+            :step="0.1"
+            :precision="1"
+            unit="×"
+            @update="setLimits({ maxDistance: $event }, 'max')"
+            @commit="session.commit()"
+          />
+        </UiRow>
+        <UiRow label="最近距离">
+          <UiNumber
+            :model-value="limits.minDistance"
+            :min="0.1"
+            :max="500"
+            :step="0.5"
+            unit="m"
+            @update="setLimits({ minDistance: $event }, 'min')"
+            @commit="session.commit()"
+          />
+        </UiRow>
+        <UiRow label="最低俯角" hint="镜头离地面的最小角度">
+          <UiSlider
+            :model-value="limits.minElevation"
+            :min="0"
+            :max="60"
+            :step="1"
+            :precision="0"
+            unit="°"
+            @update="setLimits({ minElevation: $event }, 'elevation')"
+            @commit="session.commit()"
+          />
+        </UiRow>
+      </template>
+      <p class="pres__note s-hint">在预览和大屏中生效，编辑时镜头不受限制。</p>
     </UiSection>
 
     <UiSection title="大屏联动（SDK）" :open="false">

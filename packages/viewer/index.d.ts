@@ -482,7 +482,13 @@ export interface SceneDocumentV2 {
   interactions: SceneInteraction[]
   bookmarks: CameraBookmark[]
   tours: Tour[]
-  presentation: { autoplayTourId: string | null; idleSeconds: number; autoRotate: boolean }
+  presentation: {
+    autoplayTourId: string | null
+    idleSeconds: number
+    autoRotate: boolean
+    /** Since 0.5.0. */
+    cameraLimits?: { enabled: boolean; maxDistance: number; minDistance: number; minElevation: number }
+  }
 }
 export const TwinSceneViewer: DefineComponent<{
   source: TwinPackageSource
