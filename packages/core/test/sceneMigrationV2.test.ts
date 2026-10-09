@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { TwinBindingTarget } from '../src/domain/twin'
+import { targetNodeId, type TwinBindingTarget } from '../src/domain/twin'
 import {
   createDefaultSceneSettings,
   sceneSettingsFromV1,
@@ -78,9 +78,7 @@ describe.each(fixtures)('v1 → v2 migration of %s', name => {
       ...v2.interactions.map(i => i.source),
     ]
     for (const target of targets) {
-      expect(ids.has(target.type === 'primitive' ? target.nodeId : target.instanceId), JSON.stringify(target)).toBe(
-        true,
-      )
+      expect(ids.has(targetNodeId(target)), JSON.stringify(target)).toBe(true)
     }
   })
 })

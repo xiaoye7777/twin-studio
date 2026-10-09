@@ -1,4 +1,4 @@
-# @twin-studio/viewer 0.3.1
+# @twin-studio/viewer 0.4.0
 
 Vue 3 项目运行组件。支持 Node 20.16+ 和 pnpm 10.20.0；加载 Editor 导出的 .twin.zip，恢复模型、绑定、实时数据、规则、特效和交互。
 
@@ -12,6 +12,35 @@ const viewer = ref<TwinSceneViewerPublicApi | null>(null)
 <template>
   <TwinSceneViewer ref="viewer" source="/project.twin.zip" />
 </template>
+```
+
+可选属性（0.4.0 起）：`quality`（`'auto' | 'low' | 'medium' | 'high'`，默认 `auto`，按设备性能和屏幕分辨率自适应）、`idle-seconds`（覆盖项目里的无人值守空闲时间）、`captions`（是否显示导览字幕，默认 `true`）。
+
+## 大屏联动（0.4.0 起）
+
+场景 → 大屏（事件）：
+
+| 事件 | 时机 |
+| --- | --- |
+| `selection-change` / `device-click` / `interaction-event` | 与此前相同 |
+| `tour-change` | 导览开始、换步、暂停、结束；带当前步骤和字幕 |
+| `alarm-change` | 告警规则触发或解除；带设备、变量和当前值 |
+| `hover-change` | 鼠标移入 / 移出对象 |
+
+大屏 → 场景（`ref` 上的方法）：
+
+```ts
+viewer.value?.getBookmarks()               // 编辑器中保存的视角
+viewer.value?.flyToBookmark(id)            // 飞到视角
+viewer.value?.resetView()                  // 回到初始视角
+viewer.value?.getTours()                   // 导览列表
+viewer.value?.playTour(id)                 // 播放；pauseTour / resumeTour / stopTour / nextTourStep / previousTourStep
+viewer.value?.getNodes()                   // 场景对象（分组可当作图层）
+viewer.value?.setNodeVisible(id, false)    // 显示 / 隐藏图层，不修改项目
+viewer.value?.getAlarms()                  // 当前告警
+viewer.value?.setQuality('medium')         // 画质
+viewer.value?.getPerformance()             // 帧率、当前档位
+viewer.value?.screenshot()                 // 当前画面 PNG
 ```
 
 ## 项目数据源
@@ -48,6 +77,17 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 切换 source 或卸载组件会关闭旧连接并清理场景资源。演示和开发时可使用 monorepo 中的设备模拟器 `tools/device-simulator` 作为 WebSocket 服务。
 
 ## 更新记录
+
+### 0.4.0
+
+- **需要升级**：编辑器从此导出场景格式 v2 的项目包，0.3.x 打不开（会提示升级 SDK）。0.4.0 同时兼容旧的 v1 项目包。
+- **全新渲染引擎**：阴影、泛光、抗锯齿、真实天空与昼夜、雨雪；画质自动适配设备，帧率不足时自动降低渲染分辨率；WebGL 上下文丢失后自动恢复。SDK 体积从约 397 KB 降到约 220 KB（gzip）。
+- **任意屏幕比例**：编辑器保存的视角记录了构图比例，窄屏自动拉远保证画面完整，超宽屏展示更多两侧内容；导览字幕随屏幕大小缩放。
+- **新内容**：能流线、区域、文字标签、灯光；扩散波纹、雷达、电子围栏、光柱、数据标牌、定位图标特效；选中对象有描边。
+- **导览与无人值守**：项目可配置自动导览，大屏空闲指定秒数后自动循环播放，有人操作立即停止。
+- **新增事件与 API**（见上方「大屏联动」），全部为新增，原有接口和事件不变。
+- `LoadedTwinPackage.document` 现在是 v2 场景（`SceneDocumentV2`）；旧版包会自动升级。
+- 连接建立后会向数据网关发送一条可选的订阅消息（`{"type":"subscribe","devices":[…]}`），不需要的网关忽略即可。
 
 ### 0.3.1
 

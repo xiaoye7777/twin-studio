@@ -219,7 +219,7 @@
             "density": {
               "type": "number",
               "minimum": 0,
-              "maximum": 0.05
+              "maximum": 1
             }
           },
           "required": [
@@ -250,7 +250,7 @@
                 "threshold": {
                   "type": "number",
                   "minimum": 0,
-                  "maximum": 1
+                  "maximum": 2
                 }
               },
               "required": [
