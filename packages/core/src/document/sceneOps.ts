@@ -1,18 +1,22 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
+import { defaultDataSources } from '../domain/dataSources'
 import {
   createDefaultPresentation,
   createDefaultSceneSettingsV2,
-  defaultDataSources,
   type SceneDocumentV2,
   type SceneNodeV2,
   type SceneTransformV1,
-  targetNodeId,
-  type TwinBindingTarget,
-} from '@twin-studio/core'
+} from '../domain/scene'
+import { targetNodeId, type TwinBindingTarget } from '../domain/twin'
 
-export type Doc = SceneDocumentV2
-export type Node = SceneNodeV2
-export type Transform = SceneTransformV1
+/**
+ * Edits on scene documents, written for Immer drafts (they mutate) but equally usable on plain copies.
+ * They keep the document consistent: removing a node removes what pointed at it, reparenting keeps world
+ * positions, and so on.
+ */
+type Doc = SceneDocumentV2
+type Node = SceneNodeV2
+type Transform = SceneTransformV1
 
 export const identityTransform = (): Transform => ({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] })
 

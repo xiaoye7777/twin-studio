@@ -1,126 +1,77 @@
+// Demo suite: the zero-carbon sample end to end in the editor — structure, live data from the simulator,
+// alarm rules, generated view thumbnails, the guided tour in preview, and the project card cover.
 import assert from 'node:assert/strict'
+import { createDemo, launch, save, setDataSource, studio } from './helpers.mjs'
 
-import { chromium } from 'playwright-core'
-const browser = await chromium.launch({
-  // CHROME_PATH selects a local Chrome; otherwise Playwright's own Chromium is used.
-  executablePath: process.env.CHROME_PATH || undefined,
-  headless: true,
-})
-const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
-// Dev-server QA only: deterministic in-browser values instead of the WebSocket source (see TwinDataRuntime).
-await context.addInitScript(() => {
-  window.__TWIN_QA_MOCK__ = true
-})
-const page = await context.newPage()
-const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5178'
-const errors = []
-page.on('pageerror', error => errors.push(error.message))
+const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5173'
+const dataPort = process.env.TWIN_DATA_PORT || '8787'
+const { page, errors, close } = await launch()
+const report = {}
+
 try {
-  await page.goto(`${base}/projects`)
-  await page.getByTestId('create-park-demo').click()
-  await page.waitForFunction(() => {
-    const projects = JSON.parse(localStorage.getItem('digital-twin-studio-projects') || '[]')
-    return projects.at(-1)?.name === '零碳智慧园区 Demo'
-  })
-  const seeded = await page.evaluate(() => {
-    const projects = JSON.parse(localStorage.getItem('digital-twin-studio-projects') || '[]')
-    const project = projects.at(-1)
-    const scene = JSON.parse(localStorage.getItem(`digital-twin-studio:scene:v1:${project.id}`))
+  await createDemo(page, base)
+  const summary = await studio(page, () => {
+    const doc = window.__studio.doc.value
     return {
-      project,
-      counts: {
-        instances: scene.instances.length,
-        primitives: scene.primitives.length,
-        bindings: scene.bindings.length,
-        rules: scene.visualRules.length,
-        interactions: scene.interactions.length,
-        effects: scene.effects.length,
-      },
+      groups: doc.nodes.filter(node => node.kind === 'group').map(node => node.name),
+      paths: doc.nodes.filter(node => node.kind === 'path').length,
+      areas: doc.nodes.filter(node => node.kind === 'area').length,
+      bindings: doc.bindings.length,
+      rules: doc.visualRules.length,
+      bookmarks: doc.bookmarks.length,
+      steps: doc.tours[0]?.steps.length,
+      autoplay: doc.presentation.autoplayTourId === doc.tours[0]?.id,
     }
   })
-  assert.equal(seeded.counts.bindings, 8)
-  assert.equal(seeded.counts.rules, 16)
-  assert.equal(seeded.counts.interactions, 32)
-  // Recognisable park objects are CC0 models (public/demo-assets); ground, roads and pads stay primitives.
-  assert.equal(seeded.counts.instances, 28) // 8 storage + 12 solar + 3 turbines + 5 buildings
-  assert(seeded.counts.primitives >= 15)
-  const card = page.getByTestId(`project-card-${seeded.project.id}`)
-  await card.hover()
-  await card.getByTestId('edit-project').click()
-  await page.waitForURL(`**/editor/${seeded.project.id}`)
-  await page.waitForSelector('[data-testid="editor-viewport"] canvas')
-  await page.waitForFunction(
-    () =>
-      JSON.parse(document.querySelector('[data-testid="scene-document-debug"]')?.textContent || '{}').bindings
-        ?.length === 8,
+  assert.deepEqual(summary.groups.sort(), ['储能区', '光伏区', '能流', '建筑', '道路与绿化', '风电区'].sort())
+  assert.deepEqual(
+    [summary.paths, summary.areas, summary.bindings, summary.rules, summary.bookmarks, summary.steps, summary.autoplay],
+    [5, 1, 14, 16, 5, 5, true],
   )
+  report.structure = summary
 
-  await page.evaluate(
-    async id =>
-      document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(`/projects/${id}/dashboard`),
-    seeded.project.id,
-  )
-  await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]')
+  // Live data: the simulator generates values for exactly the devices this project subscribes to.
+  await setDataSource(page, dataPort)
   await page.waitForFunction(
-    () => Number(document.querySelector('[data-testid="project-dashboard"]')?.dataset.runtimeRevision || 0) > 0,
+    () => {
+      const twin = window.__studio.twin
+      const meter = twin.bindings.find(binding => binding.device.id === 'EM-001')
+      return meter && typeof twin.getRuntimeValue(meter.id, 'power')?.value === 'number'
+    },
+    null,
+    { timeout: 20000 },
   )
-  assert.equal(await page.getByTestId('project-dashboard').getAttribute('data-device-count'), '8')
-  for (const testId of ['dashboard-average-soc', 'dashboard-average-temperature', 'dashboard-total-power']) {
-    assert.notEqual((await page.getByTestId(testId).textContent()).trim(), '—')
-  }
-  await page.waitForTimeout(3500)
-  await page.screenshot({ path: '/tmp/zero-carbon-park-dashboard.png', fullPage: true })
-  await page.evaluate(() => {
-    window.demoViewer = document.querySelector('[data-testid="twin-scene-viewer"]').__vueParentComponent.exposed
-  })
-  assert(await page.evaluate(() => window.demoViewer.focusDevice('ESS-001')))
-  const canvas = await page.locator('[data-testid="twin-scene-viewer"] canvas').boundingBox()
-  const hit = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 }
-  await page.mouse.move(hit.x, hit.y)
-  await page.waitForFunction(
-    () => window.demoViewer.getInteractionDiagnostics()?.hoverTarget?.instanceId === 'instance_ess-1',
-  )
-  await page.mouse.click(hit.x, hit.y)
-  await page.waitForFunction(() => window.demoViewer.getSelection()?.deviceId === 'ESS-001')
-  await page.waitForSelector('[data-testid="dashboard-interaction-event"]')
-  assert((await page.getByTestId('dashboard-interaction-event').textContent()).includes('open-device-detail'))
-  assert.equal(await page.getByTestId('project-dashboard').getAttribute('data-selected-device-id'), 'ESS-001')
-  await page.mouse.dblclick(hit.x, hit.y)
-  await page.waitForTimeout(1700)
-  await page.getByTestId('dashboard-device-ESS-002').click()
-  await page.waitForFunction(() => window.demoViewer.getSelection()?.deviceId === 'ESS-002')
-  const ticks = await page.locator('[data-testid="twin-scene-viewer"]').getAttribute('data-mock-ticks')
-  await page.waitForFunction(
-    before =>
-      Number(document.querySelector('[data-testid="twin-scene-viewer"]')?.dataset.mockTicks || 0) > Number(before),
-    ticks,
-  )
-  const runtime = await page.evaluate(() => ({
-    rule: window.demoViewer.getRuleDiagnostics(),
-    interaction: window.demoViewer.getInteractionDiagnostics(),
-    effect: window.demoViewer.getEffectDiagnostics(),
-  }))
-  assert.equal(Object.keys(runtime.rule.rules).length, 16)
-  assert.equal(runtime.interaction.total, 32)
-  assert(!Object.values(runtime.rule.rules).some(rule => rule.status === 'unresolved'))
-  assert.equal(runtime.interaction.unresolved.length, 0)
-  await page.screenshot({ path: '/tmp/zero-carbon-park-focused.png', fullPage: true })
+  // ESS-003 overheats for 6 of every 12 simulator ticks; its alarm rules then fire.
+  await page.waitForFunction(() => window.__studio.rules.getDiagnostics().activeRules >= 1, null, { timeout: 30000 })
+  report.liveDataAndAlarms = 'PASS'
+
+  // Views saved without thumbnails get rendered ones, without moving the camera.
+  const camera = await studio(page, () => window.__studio.engine.camera.position.toArray())
+  await page.waitForFunction(() => Object.keys(window.__studio.thumbnails).length === 5, null, { timeout: 20000 })
+  assert.deepEqual(await studio(page, () => window.__studio.engine.camera.position.toArray()), camera)
+  report.viewThumbnails = 'PASS'
+
+  // The guided tour in preview mode: captions, stepping, and Esc hands control back.
+  await page.getByTestId('mode-preview').click()
+  await studio(page, () => window.__studio.playTour(window.__studio.doc.value.tours[0].id))
+  await page.waitForSelector('[data-testid="tour-bar"]')
+  assert((await page.getByTestId('tour-bar').textContent()).includes('零碳智慧园区'))
+  await studio(page, () => window.__studio.tours.next())
+  await page.waitForFunction(() => window.__studio.ui.tour.stepIndex === 1)
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(() => window.__studio.ui.mode === 'edit' && !window.__studio.ui.tour.playing)
+  report.tourPreview = 'PASS'
+
+  // Saving puts a picture of the opening view on the project card.
+  await save(page)
+  await page.waitForTimeout(500)
+  await page.goto(`${base}/projects`)
+  const cover = await page.locator('[data-testid="project-card-零碳智慧园区 Demo"] img').getAttribute('src')
+  assert(cover?.startsWith('data:image/jpeg'), 'project cover is a scene screenshot')
+  report.projectCover = 'PASS'
+
   assert.deepEqual(errors, [])
-  console.log(
-    JSON.stringify(
-      {
-        projectId: seeded.project.id,
-        ...seeded.counts,
-        mock: 'PASS',
-        rules: runtime.rule,
-        interactions: runtime.interaction,
-        screenshot: '/tmp/zero-carbon-park-dashboard.png',
-      },
-      null,
-      2,
-    ),
-  )
+  console.log(JSON.stringify(report, null, 2))
 } finally {
-  await context.close()
-  await browser.close()
+  await close()
 }

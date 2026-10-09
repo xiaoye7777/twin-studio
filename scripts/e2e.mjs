@@ -8,7 +8,11 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const { values: args } = parseArgs({ options: { only: { type: 'string' } } })
+// pnpm forwards a literal "--" from `pnpm test:e2e -- --only editor`.
+const { values: args } = parseArgs({
+  args: process.argv.slice(2).filter(arg => arg !== '--'),
+  options: { only: { type: 'string' } },
+})
 const children = new Set()
 
 function freePort() {
@@ -106,8 +110,8 @@ try {
   console.log(`[e2e] editor ${editor} · dashboard ${dashboard} · simulator :${dataPort}`)
 
   const suites = [
-    ['editor', 'apps/editor/tests/stage-i-viewer.mjs', { TEST_BASE_URL: editor }],
-    ['demo', 'apps/editor/tests/zero-carbon-demo.mjs', { TEST_BASE_URL: editor }],
+    ['editor', 'apps/editor/tests/studio.mjs', { TEST_BASE_URL: editor }],
+    ['demo', 'apps/editor/tests/zero-carbon-demo.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
     [
       'dashboard',
       'apps/dashboard-demo/tests/project-data-source.mjs',

@@ -396,3 +396,77 @@ body {
   color: #64ded5;
   font-style: normal;
 }
+
+/* SDK 0.4.0 scene controls: tour, views and layers defined in the editor. */
+.scene-bar {
+  position: absolute;
+  z-index: 4;
+  bottom: 172px;
+  left: 314px;
+  right: 354px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+.scene-bar button {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(116, 197, 212, 0.22);
+  border-radius: 6px;
+  background: rgba(10, 34, 48, 0.7);
+  color: #cfe7ee;
+  font-size: 12px;
+  cursor: pointer;
+}
+.scene-bar button:hover {
+  border-color: #4dd4dc;
+}
+.scene-bar button.off {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.scene-bar__tour {
+  border-color: #4dd4dc !important;
+  color: #4dd4dc !important;
+  font-weight: 600;
+}
+.scene-bar__tour.playing {
+  border-color: #ff9a62 !important;
+  color: #ff9a62 !important;
+}
+.scene-bar__label {
+  margin-left: 6px;
+  color: #456978;
+  font-size: 11px;
+}
+.alarms {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.alarms small {
+  color: #6f8f9c;
+  font-size: 11px;
+}
+.alarms button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 90, 90, 0.3);
+  border-radius: 6px;
+  background: rgba(60, 16, 20, 0.45);
+  color: #ffc9c4;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.alarms .muted {
+  margin: 0;
+  color: #557482;
+  font-size: 12px;
+}

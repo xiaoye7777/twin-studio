@@ -40,3 +40,4 @@ export * from './runtime/twin/formatValue'
 export * from './engine'
 
 export * from './document/DocumentStore'
+export * from './document/sceneOps'

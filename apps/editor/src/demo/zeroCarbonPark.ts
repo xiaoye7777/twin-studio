@@ -4,6 +4,8 @@ import {
   createEffect,
   defaultDataSources,
   getBuiltinTemplates,
+  groupNodes,
+  newId,
   isSceneDocumentV1,
   migrateSceneV1ToV2,
   type SceneDocumentV2,
@@ -20,7 +22,6 @@ import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import type { Project } from '@/stores/project'
 import { deviceTemplates, deviceVariables } from '@/studio/deviceTemplates'
-import { groupNodes, newId } from '@/studio/documentOps'
 
 type DemoAssetKey = BuiltinModelKey
 
@@ -404,7 +405,7 @@ export function enhanceZeroCarbonPark(base: SceneDocumentV2): SceneDocumentV2 {
   // Views and the guided tour.
   const view = (position: Vector3Tuple, target: Vector3Tuple) => ({ position, target, fov: 42, aspect: 16 / 9 })
   const bookmarks = [
-    { id: newId('view'), name: '园区全景', view: view([17, 19, 23], [0, 0, 0.5]) },
+    { id: newId('view'), name: '园区全景', view: view([19, 21, 26], [0.5, 0, 0.5]) },
     { id: newId('view'), name: '光伏与风电', view: view([19, 9, 15], [9, 0.5, 6]) },
     { id: newId('view'), name: '储能区', view: view([-3, 7.5, 16], [-7.5, 0.5, 6.4]) },
     { id: newId('view'), name: '综合能源站', view: view([-1, 7.5, 2.5], [-8, 1.5, -5.5]) },

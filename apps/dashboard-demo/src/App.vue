@@ -28,8 +28,48 @@ function handleError(message: string) {
       @loaded="twin.handleLoaded"
       @selection-change="twin.handleSelection"
       @interaction-event="twin.handleInteraction"
+      @tour-change="twin.handleTourChange"
+      @alarm-change="twin.handleAlarmChange"
       @error="handleError"
     />
+    <nav
+      v-if="twin.bookmarks.value.length || twin.tours.value.length || twin.layers.value.length"
+      class="scene-bar panel"
+      data-testid="scene-bar"
+    >
+      <button
+        v-if="twin.tours.value.length"
+        class="scene-bar__tour"
+        :class="{ playing: twin.tour.value?.playing }"
+        data-testid="tour-toggle"
+        @click="twin.toggleTour"
+      >
+        {{
+          twin.tour.value?.playing
+            ? `■ 停止导览 ${twin.tour.value.stepIndex + 1}/${twin.tour.value.stepCount}`
+            : `▶ ${twin.tours.value[0]!.name}`
+        }}
+      </button>
+      <span v-if="twin.bookmarks.value.length" class="scene-bar__label">视角</span>
+      <button
+        v-for="bookmark in twin.bookmarks.value"
+        :key="bookmark.id"
+        :data-testid="`view-${bookmark.name}`"
+        @click="twin.flyTo(bookmark.id)"
+      >
+        {{ bookmark.name }}
+      </button>
+      <span v-if="twin.layers.value.length" class="scene-bar__label">图层</span>
+      <button
+        v-for="layer in twin.layers.value"
+        :key="layer.id"
+        :class="{ off: !layer.visible }"
+        :data-testid="`layer-${layer.name}`"
+        @click="twin.toggleLayer(layer.id)"
+      >
+        {{ layer.name }}
+      </button>
+    </nav>
     <header class="topbar panel">
       <div>
         <p class="eyebrow">ZERO CARBON DIGITAL TWIN</p>
@@ -83,6 +123,17 @@ function handleError(message: string) {
       <div class="metric temperature">
         <span>平均温度</span><b>{{ fixed(twin.summary.value.temperature) }}℃</b>
         <div><i :style="{ width: `${Math.min(100, twin.summary.value.temperature ?? 0)}%` }" /></div>
+      </div>
+      <div class="alarms" data-testid="alarm-list" :data-count="twin.alarms.value.length">
+        <small>当前告警</small>
+        <p v-if="!twin.alarms.value.length" class="muted">无</p>
+        <button
+          v-for="alarm in twin.alarms.value"
+          :key="alarm.ruleId"
+          @click="alarm.deviceId && twin.chooseDevice(alarm.deviceId)"
+        >
+          <i class="alarm-dot" />{{ alarm.deviceName ?? alarm.deviceId }} · {{ alarm.variableKey }} {{ alarm.value }}
+        </button>
       </div>
       <div v-if="twin.lastEvent.value" class="event" data-testid="last-interaction-event">
         <small>最近业务事件</small><b>{{ twin.lastEvent.value.eventName }}</b
