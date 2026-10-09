@@ -63,7 +63,7 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
       case 'backspace':
         return run(() => s.deleteSelection())
       case 'escape':
-        return run(() => s.clearSelection())
+        return run(() => s.selectParent())
       case 'end':
         return run(() => s.dropToGround())
       case 'p':

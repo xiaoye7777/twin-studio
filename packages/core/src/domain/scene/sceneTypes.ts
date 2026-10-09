@@ -20,6 +20,7 @@ import type {
   ModelAnimationSchema,
   ModelNodeOverrideSchemaV2,
   PartMotionSchema,
+  PartMaterialSchema,
   ModelNodeSchemaV2,
   PathNodeSchemaV2,
   PresentationSchema,
@@ -64,3 +65,4 @@ export type TourStep = z.infer<typeof TourStepSchema>
 export type Presentation = z.infer<typeof PresentationSchema>
 export type ModelAnimation = z.infer<typeof ModelAnimationSchema>
 export type PartMotion = z.infer<typeof PartMotionSchema>
+export type PartMaterial = z.infer<typeof PartMaterialSchema>

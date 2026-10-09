@@ -6,6 +6,7 @@ import {
   createEmptyDocument,
   duplicateNodes,
   groupNodes,
+  removeModelParts,
   removeNodes,
   reparentNodes,
   subtreeIds,
@@ -181,6 +182,39 @@ describe('removing', () => {
     const step = doc.tours[0]!.steps[0]!
     expect([step.nodeId, step.highlightNodeId, step.show, step.hide]).toEqual([null, null, ['b'], []])
     expect(isSceneDocumentV2(doc)).toBe(true)
+  })
+})
+
+describe('removing model parts', () => {
+  it('deletes parts with the bindings, effects, rules and motions aimed at them', () => {
+    const doc = fixture()
+    doc.nodes.push({
+      ...base,
+      id: 'm',
+      kind: 'model',
+      parentId: null,
+      name: '风机',
+      transform: t(0),
+      model: {
+        assetId: 'turbine',
+        overrides: {},
+        deleted: [],
+        motions: [{ id: 'spin', assetNodeId: 'blade', axis: 'x', speed: 60, speedVariable: null, factor: 1 }],
+      },
+    })
+    const blade = { type: 'asset-node' as const, instanceId: 'm', assetNodeId: 'blade' }
+    const hub = { type: 'asset-node' as const, instanceId: 'm', assetNodeId: 'hub' }
+    doc.bindings.push(
+      { id: 'bind-blade', target: blade, device: { id: 'B', name: '叶片' }, variables: [] },
+      { id: 'bind-hub', target: hub, device: { id: 'H', name: '轮毂' }, variables: [] },
+    )
+    doc.effects.push({ ...createEffect('box-glow', blade), id: 'fx-blade' })
+    const after = produce(doc, draft => removeModelParts(draft, 'm', ['hub'], ['hub', 'blade']))
+    const model = after.nodes.find(node => node.id === 'm')!
+    expect(model.kind === 'model' && [model.model.deleted, model.model.motions]).toEqual([['hub'], undefined])
+    expect(after.bindings.map(binding => binding.id)).toEqual(['bind-a1'])
+    expect(after.effects.map(effect => effect.id)).toEqual(['fx-a1'])
+    expect(isSceneDocumentV2(after)).toBe(true)
   })
 })
 

@@ -25,6 +25,9 @@ import {
   InteractionRuntime,
   isLockedOrHidden,
   loadSceneDocument,
+  MODEL_ROOT_PART,
+  type ModelNodeV2,
+  type ModelPart,
   newId,
   nodeById,
   plain,
@@ -32,6 +35,7 @@ import {
   type PrimitiveShape,
   type ProjectDataSource,
   type QualitySetting,
+  removeModelParts,
   removeNodes,
   reparentNodes,
   RuntimeVisibilityLayer,
@@ -42,6 +46,7 @@ import {
   type SceneRepository,
   type SceneSettingsV2,
   SceneSync,
+  type SceneTransformV1,
   subtreeIds,
   targetForNode,
   targetNodeId,
@@ -68,6 +73,13 @@ import { deviceIdFor, deviceVariables, type DeviceTemplate } from './deviceTempl
 import { type GizmoMode, TransformGizmo } from './TransformGizmo'
 
 export type EditorTool = 'select' | GizmoMode
+type PartOverride = ModelNodeV2['model']['overrides'][string]
+
+/** A part inside a model node, selected by entering the model (click it again, or double-click). */
+export interface PartRef {
+  nodeId: string
+  assetNodeId: string
+}
 export type SaveState = 'saved' | 'unsaved' | 'saving' | 'error'
 
 export interface EditorSessionDeps {
@@ -99,6 +111,8 @@ export class EditorSession {
   readonly doc = shallowRef<SceneDocumentV2>(createEmptyDocument('', ''))
   readonly selection = shallowRef<string[]>([])
   readonly hovered = shallowRef<string | null>(null)
+  /** The model part being edited; `selection` is then exactly its model. */
+  readonly part = shallowRef<PartRef | null>(null)
   readonly twin = reactive(createTwinState())
   /** Thumbnails rendered for bookmarks saved without one (kept out of the document and its history). */
   readonly thumbnails = reactive<Record<string, string>>({})
@@ -145,6 +159,8 @@ export class EditorSession {
   private statsTimer: ReturnType<typeof setInterval>
   private pointer: { x: number; y: number; button: number } | null = null
   private hoverFrame: number | null = null
+  /** The hover outline shows a part (of the selected model) rather than a node. */
+  private partHovered = false
   private disposed = false
 
   constructor(
@@ -321,6 +337,9 @@ export class EditorSession {
     }
     const ids = new Set(next.nodes.map(node => node.id))
     if (this.selection.value.some(id => !ids.has(id))) this.select(this.selection.value.filter(id => ids.has(id)))
+    const part = this.part.value
+    const owner = part ? nodeById(next, part.nodeId) : null
+    if (part && owner?.kind === 'model' && owner.model.deleted.includes(part.assetNodeId)) this.select([part.nodeId])
   }
 
   node(id: string): SceneNodeV2 | undefined {
@@ -418,6 +437,7 @@ export class EditorSession {
   // ================================================================ selection
 
   select(ids: readonly string[], mode: 'replace' | 'toggle' | 'add' = 'replace'): void {
+    this.part.value = null
     let next: string[]
     if (mode === 'replace') next = [...new Set(ids)]
     else {
@@ -433,6 +453,21 @@ export class EditorSession {
     this.refreshSelectionVisuals()
   }
 
+  /** Selects a part of a model node (its model becomes the selection). */
+  selectPart(nodeId: string, assetNodeId: string): void {
+    if (assetNodeId === MODEL_ROOT_PART) return this.select([nodeId])
+    this.selection.value = [nodeId]
+    this.part.value = { nodeId, assetNodeId }
+    this.refreshSelectionVisuals()
+  }
+
+  /** Esc: from a part back to its model, otherwise clear the selection. */
+  selectParent(): void {
+    const part = this.part.value
+    if (part) this.select([part.nodeId])
+    else this.clearSelection()
+  }
+
   selectAll(): void {
     this.select(this.doc.value.nodes.filter(node => node.parentId === null && !node.locked).map(node => node.id))
   }
@@ -444,6 +479,16 @@ export class EditorSession {
   private refreshSelectionVisuals(): void {
     if (this.disposed) return
     const editing = this.ui.mode === 'edit'
+    const part = this.part.value
+    const partObject = part ? this.sync.partObject(part.nodeId, part.assetNodeId) : null
+    if (part && partObject) {
+      this.engine.setOutlined('selection', [partObject])
+      const movable = !isLockedOrHidden(this.doc.value, part.nodeId).locked
+      this.gizmoIds = this.ui.tool !== 'select' && editing && movable ? [part.nodeId] : []
+      this.gizmo.attach(this.gizmoIds.length ? [partObject] : [])
+      this.gizmo.setVisible(this.gizmoIds.length > 0)
+      return
+    }
     const objects = this.selection.value.flatMap(id => this.sync.objectFor(id) ?? [])
     this.engine.setOutlined('selection', objects)
     const ids = topmost(this.doc.value, this.selection.value)
@@ -471,7 +516,9 @@ export class EditorSession {
   }
 
   async focusSelection(): Promise<void> {
-    const objects = this.selection.value.flatMap(id => this.sync.objectFor(id) ?? [])
+    const part = this.part.value
+    const partObject = part ? this.sync.partObject(part.nodeId, part.assetNodeId) : null
+    const objects = partObject ? [partObject] : this.selection.value.flatMap(id => this.sync.objectFor(id) ?? [])
     if (objects.length) await this.engine.focus(objects)
     else await this.engine.fitAll()
   }
@@ -492,6 +539,22 @@ export class EditorSession {
 
   private applyGizmo(worlds: Matrix4[]): void {
     const ids = this.gizmoIds
+    const part = this.part.value
+    if (part) {
+      // Part overrides are local to the part's parent inside the model.
+      const parent = this.sync.partObject(part.nodeId, part.assetNodeId)?.parent
+      if (!parent || !worlds[0]) return
+      parent.updateWorldMatrix(true, false)
+      const local = parent.matrixWorld.clone().invert().multiply(worlds[0])
+      this.updatePart(
+        part.nodeId,
+        part.assetNodeId,
+        override => void (override.transform = transformOf(local)),
+        this.ui.tool === 'rotate' ? '旋转部件' : this.ui.tool === 'scale' ? '缩放部件' : '移动部件',
+        `gizmo:${part.nodeId}:${part.assetNodeId}`,
+      )
+      return
+    }
     this.edit(
       this.ui.tool === 'rotate' ? '旋转' : this.ui.tool === 'scale' ? '缩放' : '移动',
       draft => {
@@ -588,8 +651,10 @@ export class EditorSession {
       this.drawTool.click(event.clientX, event.clientY)
       return
     }
-    const id = this.pickNode(event.clientX, event.clientY, event.altKey)
     const additive = event.shiftKey || event.ctrlKey || event.metaKey
+    const part = additive ? null : this.pickPart(event.clientX, event.clientY, false)
+    if (part) return this.selectPart(part.nodeId, part.assetNodeId)
+    const id = this.pickNode(event.clientX, event.clientY, event.altKey)
     if (!id) {
       if (!additive) this.clearSelection()
       return
@@ -599,6 +664,9 @@ export class EditorSession {
 
   private readonly onDoubleClick = (event: MouseEvent): void => {
     if (this.ui.mode !== 'edit' || this.drawTool.active) return
+    // Inside a model the innermost thing is a part; the camera stays, parts can be small.
+    const part = this.pickPart(event.clientX, event.clientY, true)
+    if (part) return this.selectPart(part.nodeId, part.assetNodeId)
     const id = this.pickNode(event.clientX, event.clientY, true)
     if (id) {
       this.select([id])
@@ -617,8 +685,18 @@ export class EditorSession {
       const ground = ndc ? this.engine.raycastGround(ndc) : null
       this.ui.cursor = ground ? [ground.x, ground.y, ground.z] : null
       if (this.ui.mode !== 'edit' || this.pointer || this.gizmo.dragging || this.drawTool.active) return
-      const id = this.pickNode(clientX, clientY, false)
-      this.setHovered(id)
+      const part = this.pickPart(clientX, clientY, false)
+      if (part) {
+        this.setHovered(null)
+        const object = this.sync.partObject(part.nodeId, part.assetNodeId)
+        const current = this.part.value
+        const same = current?.nodeId === part.nodeId && current.assetNodeId === part.assetNodeId
+        this.engine.setOutlined('hover', object && !same ? [object] : [])
+        this.partHovered = true
+        return
+      }
+      this.setHovered(this.pickNode(clientX, clientY, false), this.partHovered)
+      this.partHovered = false
     })
   }
 
@@ -627,8 +705,8 @@ export class EditorSession {
     this.ui.cursor = null
   }
 
-  setHovered(id: string | null): void {
-    if (this.hovered.value === id) return
+  setHovered(id: string | null, force = false): void {
+    if (this.hovered.value === id && !force) return
     this.hovered.value = id
     const object = id && !this.selection.value.includes(id) ? this.sync.objectFor(id) : null
     this.engine.setOutlined('hover', object ? [object] : [])
@@ -652,6 +730,156 @@ export class EditorSession {
     if (index < 0) return chain[0]!
     if (nodeById(doc, current!)?.kind === 'group' && index < chain.length - 1) return chain[index + 1]!
     return current
+  }
+
+  /**
+   * Which part of a model a click means, when the click enters a model: the model (or one of its parts) is
+   * selected and the click lands on it. Like groups, each click goes one level deeper; `deep` (double-click)
+   * goes straight to the innermost part, for any model. Wrapper nodes that only hold the rest are skipped.
+   */
+  private pickPart(clientX: number, clientY: number, deep: boolean): PartRef | null {
+    const hit = this.engine.pick(clientX, clientY)
+    const nodeId = hit ? this.sync.nodeIdOf(hit.object) : null
+    const node = nodeId ? this.node(nodeId) : null
+    if (!hit || !nodeId || node?.kind !== 'model' || isLockedOrHidden(this.doc.value, nodeId).locked) return null
+    const current = this.part.value?.nodeId === nodeId ? this.part.value.assetNodeId : null
+    if (!deep && !current && !(this.selection.value.length === 1 && this.selection.value[0] === nodeId)) return null
+    const root = this.sync.objectFor(nodeId)
+    const chain: Object3D[] = []
+    for (let object: Object3D | null = hit.object; object && object !== root; object = object.parent)
+      chain.unshift(object)
+    while (chain.length > 1 && chain[0]!.parent?.children.length === 1) chain.shift()
+    const ids = chain
+      .map(object => object.userData.assetNodeId as unknown)
+      .filter((id): id is string => typeof id === 'string')
+    if (!ids.length) return null
+    if (deep) return { nodeId, assetNodeId: ids.at(-1)! }
+    const at = current ? ids.indexOf(current) : -1
+    if (at >= 0) return { nodeId, assetNodeId: ids[Math.min(at + 1, ids.length - 1)]! }
+    // Another branch of the same model: stay at the current depth.
+    const depth = current ? this.partDepth(nodeId, current) : 0
+    return { nodeId, assetNodeId: ids[Math.min(depth, ids.length - 1)]! }
+  }
+
+  private partDepth(nodeId: string, assetNodeId: string): number {
+    const root = this.sync.objectFor(nodeId)
+    let depth = 0
+    for (
+      let object = this.sync.partObject(nodeId, assetNodeId)?.parent;
+      object && object !== root;
+      object = object.parent
+    )
+      depth++
+    return depth
+  }
+
+  // ================================================================ model parts
+
+  /** Outlines a part while the pointer is over its row in the hierarchy. */
+  hoverPart(part: PartRef | null): void {
+    const object = part ? this.sync.partObject(part.nodeId, part.assetNodeId) : null
+    this.hovered.value = null
+    this.engine.setOutlined('hover', object ? [object] : [])
+  }
+
+  /** A part's name as shown: its rename, else the name in the file. */
+  partName(nodeId: string, assetNodeId: string): string {
+    const node = this.node(nodeId)
+    const override = node?.kind === 'model' ? node.model.overrides[assetNodeId] : undefined
+    return override?.name ?? this.sync.partsOf(nodeId).find(part => part.id === assetNodeId)?.name ?? assetNodeId
+  }
+
+  partOverride(nodeId: string, assetNodeId: string): PartOverride | undefined {
+    const node = this.node(nodeId)
+    return node?.kind === 'model' ? node.model.overrides[assetNodeId] : undefined
+  }
+
+  /** A part's pose relative to its parent in the model: the override, else as imported. */
+  partTransform(nodeId: string, assetNodeId: string): SceneTransformV1 | null {
+    const override = this.partOverride(nodeId, assetNodeId)?.transform
+    if (override) return override
+    void this.ui.syncRevision
+    const initial: unknown = this.sync.partObject(nodeId, assetNodeId)?.userData.editorInitialTransform
+    return (initial as SceneTransformV1 | undefined) ?? null
+  }
+
+  /** Edits one part's override; an override left empty is removed. */
+  updatePart(
+    nodeId: string,
+    assetNodeId: string,
+    recipe: (override: PartOverride) => void,
+    label = '修改部件',
+    coalesceKey?: string,
+  ): void {
+    this.edit(
+      label,
+      draft => {
+        const node = nodeById(draft, nodeId)
+        if (node?.kind !== 'model') return
+        const override = (node.model.overrides[assetNodeId] ??= {})
+        recipe(override)
+        for (const key of Object.keys(override) as Array<keyof PartOverride>)
+          if (override[key] === undefined) delete override[key]
+        if (override.material && !Object.keys(override.material).length) delete override.material
+        if (!Object.keys(override).length) delete node.model.overrides[assetNodeId]
+      },
+      { coalesceKey },
+    )
+  }
+
+  setPartVisible(nodeId: string, assetNodeId: string, visible: boolean): void {
+    this.updatePart(
+      nodeId,
+      assetNodeId,
+      override => void (override.visible = visible ? undefined : false),
+      visible ? '显示部件' : '隐藏部件',
+    )
+  }
+
+  /** Back to the part as imported (name, pose, visibility and material). */
+  resetPart(nodeId: string, assetNodeId: string): void {
+    this.edit('恢复部件', draft => {
+      const node = nodeById(draft, nodeId)
+      if (node?.kind === 'model') delete node.model.overrides[assetNodeId]
+    })
+  }
+
+  /** Removes parts from their model instance, with whatever was bound to them. */
+  deleteParts(nodeId: string, assetNodeIds: readonly string[]): void {
+    const tree = this.sync.partTree(nodeId)
+    const within: string[] = []
+    const collect = (parts: ModelPart[], inside: boolean) => {
+      for (const part of parts) {
+        const hit = inside || assetNodeIds.includes(part.id)
+        if (hit) within.push(part.id)
+        collect(part.children, hit)
+      }
+    }
+    collect(tree, false)
+    this.edit(`删除部件`, draft => removeModelParts(draft, nodeId, assetNodeIds, within))
+    this.select([nodeId])
+  }
+
+  restoreDeletedParts(nodeId: string): void {
+    this.updateNode(nodeId, node => void (node.kind === 'model' && (node.model.deleted = [])), '恢复删除的部件')
+  }
+
+  /** Model nodes that use an asset. */
+  nodesUsingAsset(assetId: string): SceneNodeV2[] {
+    return this.doc.value.nodes.filter(node => node.kind === 'model' && node.model.assetId === assetId)
+  }
+
+  /**
+   * Swaps the model file of nodes, keeping position, part edits, bindings and effects. Parts are matched by
+   * their assetNodeId, so an updated delivery of the same model keeps everything that still exists in it.
+   */
+  replaceModel(nodeIds: readonly string[], assetId: string): void {
+    this.edit(nodeIds.length > 1 ? `替换 ${nodeIds.length} 个模型` : '替换模型', draft => {
+      for (const id of nodeIds) {
+        const node = nodeById(draft, id)
+        if (node?.kind === 'model') node.model.assetId = assetId
+      }
+    })
   }
 
   // ================================================================ creating nodes
@@ -883,6 +1111,11 @@ export class EditorSession {
   }
 
   toggleVisibilityOfSelection(): void {
+    const part = this.part.value
+    if (part) {
+      const hidden = this.partOverride(part.nodeId, part.assetNodeId)?.visible === false
+      return this.setPartVisible(part.nodeId, part.assetNodeId, hidden)
+    }
     const nodes = this.selectedNodes
     if (nodes.length)
       this.setVisible(
@@ -892,6 +1125,8 @@ export class EditorSession {
   }
 
   deleteSelection(): void {
+    const part = this.part.value
+    if (part) return this.deleteParts(part.nodeId, [part.assetNodeId])
     const ids = this.selection.value
     if (!ids.length) return
     this.edit(`删除 ${ids.length} 个对象`, draft => void removeNodes(draft, ids))
@@ -1081,17 +1316,24 @@ export class EditorSession {
 
   // ================================================================ data
 
-  bindingFor(nodeId: string): TwinBinding | undefined {
+  /** What data, effects and interactions attach to for a node: the selected part of it, or the node. */
+  targetOf(nodeId: string): TwinBindingTarget | null {
+    const part = this.part.value
+    if (part?.nodeId === nodeId) return { type: 'asset-node', instanceId: nodeId, assetNodeId: part.assetNodeId }
     const node = this.node(nodeId)
-    if (!node) return undefined
-    const key = twinBindingTargetKey(targetForNode(node))
+    return node ? targetForNode(node) : null
+  }
+
+  bindingFor(nodeId: string): TwinBinding | undefined {
+    const target = this.targetOf(nodeId)
+    if (!target) return undefined
+    const key = twinBindingTargetKey(target)
     return this.doc.value.bindings.find(binding => twinBindingTargetKey(binding.target) === key)
   }
 
   setBinding(nodeId: string, update: Omit<TwinBinding, 'id' | 'target'>, coalesceKey?: string): void {
-    const node = this.node(nodeId)
-    if (!node) return
-    const target = targetForNode(node)
+    const target = this.targetOf(nodeId)
+    if (!target) return
     this.edit(
       '设备绑定',
       draft => {
@@ -1181,15 +1423,27 @@ export class EditorSession {
 
   // ================================================================ effects, rules, interactions
 
+  /** Whether a target is what the inspector edits for a node (a selected part: exactly that part). */
+  private targets(nodeId: string): (target: TwinBindingTarget) => boolean {
+    const part = this.part.value
+    if (part?.nodeId !== nodeId) return target => targetNodeId(target) === nodeId
+    return target =>
+      target.type === 'asset-node' && target.instanceId === nodeId && target.assetNodeId === part.assetNodeId
+  }
+
   effectsFor(nodeId: string): EffectInstance[] {
-    return this.doc.value.effects.filter(effect => targetNodeId(effect.target) === nodeId)
+    const matches = this.targets(nodeId)
+    return this.doc.value.effects.filter(effect => matches(effect.target))
   }
 
   addEffect(nodeId: string, kind: EffectKind): void {
     const node = this.node(nodeId)
-    if (!node) return
-    const effect = createEffect(kind, targetForNode(node))
-    if (kind === 'floating-label' || kind === 'icon-marker') effect.parameters.text = node.name
+    const target = this.targetOf(nodeId)
+    if (!node || !target) return
+    const effect = createEffect(kind, target)
+    const part = this.part.value
+    if (kind === 'floating-label' || kind === 'icon-marker')
+      effect.parameters.text = part?.nodeId === nodeId ? this.partName(nodeId, part.assetNodeId) : node.name
     this.edit('添加特效', draft => void draft.effects.push(effect))
   }
 
@@ -1209,7 +1463,8 @@ export class EditorSession {
   }
 
   rulesFor(nodeId: string): VisualRule[] {
-    return this.doc.value.visualRules.filter(rule => targetNodeId(rule.target) === nodeId)
+    const matches = this.targets(nodeId)
+    return this.doc.value.visualRules.filter(rule => matches(rule.target))
   }
 
   addRule(nodeId: string): boolean {
@@ -1251,13 +1506,14 @@ export class EditorSession {
   }
 
   interactionsFor(nodeId: string): SceneInteraction[] {
-    return this.doc.value.interactions.filter(item => targetNodeId(item.source) === nodeId)
+    const matches = this.targets(nodeId)
+    return this.doc.value.interactions.filter(item => matches(item.source))
   }
 
   addInteraction(nodeId: string): void {
-    const node = this.node(nodeId)
-    if (!node) return
-    const interaction = createInteraction(targetForNode(node))
+    const target = this.targetOf(nodeId)
+    if (!target) return
+    const interaction = createInteraction(target)
     interaction.action = { type: 'emit-event', eventName: 'device-click' }
     this.edit('添加交互', draft => void draft.interactions.push(interaction))
   }

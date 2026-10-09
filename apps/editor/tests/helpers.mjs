@@ -82,4 +82,19 @@ export function screenPointOf(page, nodeId) {
   }, nodeId)
 }
 
+/** Screen coordinates of a model part's centre. */
+export function screenPointOfPart(page, nodeId, assetNodeId) {
+  return page.evaluate(
+    ([id, part]) => {
+      const s = window.__studio
+      const object = s.sync.partObject(id, part)
+      const box = new s.engine.contentBounds.constructor().setFromObject(object, true)
+      const center = box.getCenter(object.position.clone()).project(s.engine.camera)
+      const rect = s.canvas.getBoundingClientRect()
+      return { x: rect.left + ((center.x + 1) / 2) * rect.width, y: rect.top + ((1 - center.y) / 2) * rect.height }
+    },
+    [nodeId, assetNodeId],
+  )
+}
+
 export const mod = process.platform === 'darwin' ? 'Meta' : 'Control'

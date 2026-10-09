@@ -1,18 +1,14 @@
-import {
-  type BoxGeometry,
-  Group,
-  type Mesh,
-  type MeshStandardMaterial,
-  type Object3D,
-  PerspectiveCamera,
-  Scene,
-} from 'three'
+import { BoxGeometry, Group, Mesh, MeshStandardMaterial, type Object3D, PerspectiveCamera, Scene } from 'three'
 import { describe, expect, it, vi } from 'vitest'
 import { DocumentStore } from '../src/document/DocumentStore'
 import { type SceneDocumentV2, type SceneNodeV2, type SceneTransformV1, toSceneDocumentV2 } from '../src/domain/scene'
 import type { AssetRecord, AssetRepository } from '../src/infrastructure/assets/AssetRepository'
 import { type SceneHost, SceneSync } from '../src/runtime/scene/SceneSync'
 import { fixture } from './helpers'
+
+/** The material every loaded copy of the fake model shares, like clones from the engine's model cache. */
+const sharedMaterial = new MeshStandardMaterial({ color: '#808080' })
+const sharedGeometry = new BoxGeometry()
 
 /** Mimics an engine that indexes a tree (ids, picking BVH) only when it is added or removed. */
 class FakeHost implements SceneHost {
@@ -54,7 +50,9 @@ class FakeHost implements SceneHost {
       this.cache.add(url)
     }
     const node = (id: string) => Object.assign(new Group(), { name: id, userData: { assetNodeId: id } })
-    const [a, b, c] = [node('a'), node('b'), node('c')]
+    const mesh = (id: string) =>
+      Object.assign(new Mesh(sharedGeometry, sharedMaterial), { name: id, userData: { assetNodeId: id } })
+    const [a, b, c] = [mesh('a'), node('b'), mesh('c')]
     b.add(c)
     const model = new Group()
     model.add(a, b)
@@ -309,6 +307,56 @@ describe('update', () => {
     expect(model.getObjectByName('c')).toBeUndefined()
     expect(sync.objectFor('m1')).toBe(model)
     host.expectRegistryMatchesScene()
+  })
+
+  it('gives parts with a material override their own copy; the nearest override wins', async () => {
+    const { sync, edit, node } = await setup()
+    const model = sync.objectFor('m1')!
+    const model1 = (doc: SceneDocumentV2) => {
+      const target = node(doc, 'm1')
+      if (target.kind !== 'model') throw new Error('expected a model')
+      return target.model
+    }
+    await edit(doc => {
+      model1(doc).deleted = []
+      model1(doc).overrides.b = { material: { color: '#ff0000', opacity: 0.5 } }
+    })
+    const a = model.getObjectByName('A2') as Mesh
+    const c = model.getObjectByName('c') as Mesh
+    const look = (mesh: Mesh) => mesh.material as MeshStandardMaterial
+    expect(look(c)).not.toBe(sharedMaterial)
+    expect([look(c).color.getHexString(), look(c).opacity, look(c).transparent, look(c).depthWrite]).toEqual([
+      'ff0000',
+      0.5,
+      true,
+      false,
+    ])
+    expect(a.material).toBe(sharedMaterial)
+    expect(sharedMaterial.color.getHexString()).toBe('808080')
+
+    // c's own override replaces b's look entirely; the model root's applies to everything else.
+    await edit(doc => {
+      model1(doc).overrides.c = { material: { color: '#00ff00' } }
+      model1(doc).overrides.__asset_root__ = { material: { emissive: '#0000ff', emissiveIntensity: 3 } }
+    })
+    expect([look(c).color.getHexString(), look(c).opacity, look(c).transparent]).toEqual(['00ff00', 1, false])
+    expect([look(a).emissive.getHexString(), look(a).emissiveIntensity]).toEqual(['0000ff', 3])
+    expect(look(c).emissive.getHexString()).toBe('000000')
+
+    await edit(doc => void (model1(doc).overrides = {}))
+    expect(a.material).toBe(sharedMaterial)
+    expect(c.material).toBe(sharedMaterial)
+  })
+
+  it("lists a model's parts as nested in the file", async () => {
+    const { sync } = await setup()
+    const tree = sync.partTree('m1')
+    expect(tree.map(part => [part.id, part.mesh, part.children.map(child => child.id)])).toEqual([
+      ['a', true, []],
+      ['b', false, ['c']],
+    ])
+    expect(sync.partObject('m1', '__asset_root__')).toBe(sync.objectFor('m1'))
+    expect(sync.partBaseLook('m1', 'a').color).toBe('#808080')
   })
 
   it('changes primitive geometry in place', async () => {

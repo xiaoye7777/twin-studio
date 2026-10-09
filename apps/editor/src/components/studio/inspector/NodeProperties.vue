@@ -11,10 +11,13 @@ import {
   ArrowDownToLine,
   Copy,
   Group,
+  Replace,
   RotateCcw,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
-import type { PrimitiveShape, SceneNodeV2 } from '@twin-studio/core'
+import { MODEL_ROOT_PART, type PrimitiveShape, type SceneNodeV2 } from '@twin-studio/core'
+import { builtinModels } from '@/editor/builtinModels'
+import { useAssetStore } from '@/stores/assets'
 import UiColor from '@/components/ui/UiColor.vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
@@ -25,6 +28,7 @@ import UiSwitch from '@/components/ui/UiSwitch.vue'
 import UiText from '@/components/ui/UiText.vue'
 import { nodeKindLabels, useSession } from '@/studio/context'
 import ModelMotion from './ModelMotion.vue'
+import PartMaterial from './PartMaterial.vue'
 import { useShell } from '@/studio/shell'
 
 const props = defineProps<{ nodes: SceneNodeV2[] }>()
@@ -69,15 +73,22 @@ function patch<K extends SceneNodeV2['kind']>(
 }
 const commit = () => session.commit()
 
+const assetStore = useAssetStore()
 const assetName = computed(() => {
   const n = node.value
   if (n?.kind !== 'model') return ''
-  return n.name
+  const file = assetStore.assets.find(asset => asset.id === n.model.assetId)?.name ?? ''
+  return builtinModels.find(model => model.file === file)?.name ?? file.replace(/\.glb$/i, '')
+})
+const partCount = computed(() => {
+  void session.ui.syncRevision
+  return node.value?.kind === 'model' ? session.sync.partsOf(node.value.id).length : 0
 })
 const modelEdits = computed(() => {
   const n = node.value
   if (n?.kind !== 'model') return { overrides: 0, deleted: 0 }
-  return { overrides: Object.keys(n.model.overrides).length, deleted: n.model.deleted.length }
+  const parts = Object.keys(n.model.overrides).filter(id => id !== MODEL_ROOT_PART)
+  return { overrides: parts.length, deleted: n.model.deleted.length }
 })
 const childCount = computed(() => session.doc.value.nodes.filter(item => item.parentId === node.value?.id).length)
 
@@ -221,15 +232,27 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
     <!-- Kind-specific -->
     <template v-if="node?.kind === 'model'">
       <UiSection title="模型">
-        <UiRow label="资源"
-          ><span class="props__value">{{ assetName }}</span></UiRow
-        >
-        <UiRow label="部件修改"
-          ><span class="props__value"
-            >{{ modelEdits.overrides }} 处修改 · {{ modelEdits.deleted }} 个已删除部件</span
+        <UiRow label="资源">
+          <span class="props__value" data-testid="model-asset">{{ assetName }}</span>
+          <button
+            class="s-btn s-btn--sm"
+            title="换成另一个模型或新版本"
+            data-testid="replace-model"
+            @click="shell.dialog = 'replace-model'"
+          >
+            <Replace :size="12" />替换
+          </button>
+        </UiRow>
+        <UiRow label="部件"
+          ><span class="props__value" :title="'再次单击模型或双击，选中其中的部件'"
+            >{{ partCount }} 个 · {{ modelEdits.overrides }} 处修改 · {{ modelEdits.deleted }} 个已删除</span
           ></UiRow
         >
+        <p class="props__note s-hint">再次单击模型（或双击）选中其中的部件，可单独绑定设备、改材质、隐藏。</p>
         <div v-if="modelEdits.overrides || modelEdits.deleted" class="props__buttons">
+          <button v-if="modelEdits.deleted" class="s-btn" @click="session.restoreDeletedParts(node.id)">
+            <RotateCcw :size="13" />恢复删除的部件
+          </button>
           <button
             class="s-btn"
             @click="
@@ -243,6 +266,7 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
           </button>
         </div>
       </UiSection>
+      <PartMaterial :node-id="node.id" :asset-node-id="MODEL_ROOT_PART" title="整体材质" />
       <ModelMotion :node="node" />
     </template>
 

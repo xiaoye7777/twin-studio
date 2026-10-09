@@ -34,6 +34,8 @@ export {
   ModelAnimationSchema,
   ModelNodeOverrideSchemaV2,
   PartMotionSchema,
+  PartMaterialSchema,
+  MODEL_ROOT_PART,
   ModelNodeSchemaV2,
   PathNodeSchemaV2,
   PresentationSchema,
@@ -84,4 +86,5 @@ export type {
   Presentation,
   ModelAnimation,
   PartMotion,
+  PartMaterial,
 } from './sceneTypes'

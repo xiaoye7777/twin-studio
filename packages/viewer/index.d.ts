@@ -353,9 +353,25 @@ export type SceneNodeV2 = SceneNodeBaseV2 &
         kind: 'model'
         model: {
           assetId: string
+          /** Part edits by assetNodeId; `'__asset_root__'` holds the whole-model material. */
           overrides: Record<
             string,
-            { name?: string; transform?: SceneTransformV1; visible?: boolean; runtimeBid?: string }
+            {
+              name?: string
+              transform?: SceneTransformV1
+              visible?: boolean
+              runtimeBid?: string
+              /** Since 0.5.0. */
+              material?: {
+                color?: string
+                texture?: boolean
+                opacity?: number
+                metalness?: number
+                roughness?: number
+                emissive?: string
+                emissiveIntensity?: number
+              }
+            }
           >
           deleted: string[]
           /** Clip playback; absent = play the model's first clip, looping. Since 0.5.0. */

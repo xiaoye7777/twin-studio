@@ -25,6 +25,11 @@ interface IsolatedMaterial {
   clones: Material[]
   signature: string
 }
+
+/** Whether the mesh still wears the highlight copies (nothing replaced its material since). */
+const wears = (record: IsolatedMaterial): boolean =>
+  record.mesh.material === (Array.isArray(record.original) ? record.clones : record.clones[0])
+
 let activeLoops = 0
 export function getEffectDiagnostics(): { activeLoops: number } {
   return { activeLoops }
@@ -166,12 +171,15 @@ export class EffectRuntime {
       })
     const signature = (effect: EffectInstance) => JSON.stringify([effect.parameters.color, effect.parameters.opacity])
     this.materials = this.materials.filter(record => {
+      // The scene may have given the mesh a new material since (a part's material override); then the
+      // highlight is re-derived from that one instead of restoring the old original.
+      const worn = wears(record)
       const desired = byMesh.get(record.mesh)
-      if (desired && signature(desired) === record.signature) {
+      if (worn && desired && signature(desired) === record.signature) {
         byMesh.delete(record.mesh)
         return true
       }
-      record.mesh.material = record.original
+      if (worn) record.mesh.material = record.original
       record.clones.forEach(material => material.dispose())
       return false
     })
@@ -226,9 +234,9 @@ export class EffectRuntime {
       visual.dispose()
     })
     this.visuals = []
-    for (const { mesh, original, clones } of this.materials) {
-      mesh.material = original
-      clones.forEach(material => material.dispose())
+    for (const record of this.materials) {
+      if (wears(record)) record.mesh.material = record.original
+      record.clones.forEach(material => material.dispose())
     }
     this.materials = []
     this.host.setOutlined('effect', [])

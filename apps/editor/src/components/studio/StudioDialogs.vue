@@ -9,7 +9,7 @@ import { useShell } from '@/studio/shell'
 const session = useSession()
 const shell = useShell()
 const visible = computed({
-  get: () => shell.dialog !== null,
+  get: () => shell.dialog === 'shortcuts' || shell.dialog === 'batch-bind' || shell.dialog === 'array',
   set: value => {
     if (!value) shell.dialog = null
   },
@@ -62,7 +62,8 @@ const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'
 const shortcuts: Array<[string, string]> = [
   ['Q / W / E / R', '选择 / 移动 / 旋转 / 缩放'],
   ['F', '聚焦选中对象'],
-  ['双击对象', '选中最内层并聚焦'],
+  ['双击对象', '选中最内层并聚焦；模型上双击直接选中部件'],
+  ['再次单击已选模型', '进入模型，选中其中的部件（逐级深入）'],
   ['Alt + 单击', '直接选中组内对象'],
   ['Shift / ' + mod + ' + 单击', '多选'],
   ['Shift + 拖动', '框选（加 ' + mod + ' 追加到已选）'],
@@ -72,6 +73,7 @@ const shortcuts: Array<[string, string]> = [
   [`${mod} + G / ${mod} + Shift + G`, '组合 / 取消组合'],
   [`${mod} + S`, '保存（另有自动保存）'],
   ['Delete', '删除'],
+  ['Esc', '从部件回到模型 / 取消选择'],
   ['H', '显示 / 隐藏'],
   ['End', '放到地面'],
   ['0 / 7 / 1 / 3', '透视 / 顶 / 前 / 右视图'],

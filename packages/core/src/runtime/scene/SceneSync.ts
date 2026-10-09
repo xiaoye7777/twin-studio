@@ -1,7 +1,9 @@
-import { Group, type Mesh, type MeshStandardMaterial, type Object3D } from 'three'
+import { Group, type Material, Mesh, type MeshStandardMaterial, type Object3D } from 'three'
 import {
   applySceneTransform,
+  MODEL_ROOT_PART,
   type ModelNodeV2,
+  type PartMaterial,
   type PrimitiveNodeV2,
   type SceneDocumentV2,
   type SceneNodeV2,
@@ -24,6 +26,7 @@ import {
   updateLightObject,
 } from './nodeObjects'
 import { ModelAnimator } from './ModelAnimator'
+import { applyPartMaterial } from './partMaterial'
 import { setEditorMetadata } from './objectMetadata'
 
 /** The parts of the engine a scene document is rendered through. TwinEngine satisfies it; tests fake it. */
@@ -58,6 +61,18 @@ interface MountedNode {
   assetNodes?: Map<string, AssetNodeState>
   /** Model nodes only: clips and part motions. */
   animator?: ModelAnimator
+  /** Model nodes only: each mesh's material as loaded (shared with other instances of the model). */
+  materials?: Map<Mesh, Material | Material[]>
+  /** Model nodes only: per-instance copies for meshes under a part with a material override. */
+  ownMaterials?: Map<Mesh, Material[]>
+}
+
+/** A part of a model as the hierarchy shows it. */
+export interface ModelPart {
+  id: string
+  name: string
+  mesh: boolean
+  children: ModelPart[]
 }
 
 function needsRebuild(before: SceneNodeV2, after: SceneNodeV2): boolean {
@@ -110,6 +125,49 @@ export class SceneSync {
   /** The parts of a model node (for part motions), in file order. */
   partsOf(nodeId: string): Array<{ id: string; name: string }> {
     return [...(this.mounted.get(nodeId)?.assetNodes ?? [])].map(([id, state]) => ({ id, name: state.name || id }))
+  }
+
+  /** A model node's parts as the file nests them (names as imported). */
+  partTree(nodeId: string): ModelPart[] {
+    const entry = this.mounted.get(nodeId)
+    if (!entry?.assetNodes) return []
+    const byObject = new Map<Object3D, ModelPart>()
+    for (const [id, state] of entry.assetNodes)
+      byObject.set(state.object, { id, name: state.name || id, mesh: state.object instanceof Mesh, children: [] })
+    const roots: ModelPart[] = []
+    for (const state of entry.assetNodes.values()) {
+      const part = byObject.get(state.object)!
+      const parent = state.parent ? byObject.get(state.parent) : undefined
+      ;(parent ? parent.children : roots).push(part)
+    }
+    return roots
+  }
+
+  /** The imported look of the first mesh in a part, for showing what an override starts from. */
+  partBaseLook(nodeId: string, assetNodeId: string): Required<Omit<PartMaterial, 'texture'>> & { texture: boolean } {
+    const entry = this.mounted.get(nodeId)
+    let mesh: Mesh | null = null
+    this.partObject(nodeId, assetNodeId)?.traverse(object => {
+      if (!mesh && object instanceof Mesh) mesh = object
+    })
+    const base = mesh ? entry?.materials?.get(mesh) : undefined
+    const material = (Array.isArray(base) ? base[0] : base) as Partial<MeshStandardMaterial> | undefined
+    return {
+      color: `#${material?.color?.getHexString() ?? 'ffffff'}`,
+      texture: Boolean(material?.map),
+      opacity: material?.opacity ?? 1,
+      metalness: material?.metalness ?? 0,
+      roughness: material?.roughness ?? 1,
+      emissive: `#${material?.emissive?.getHexString() ?? '000000'}`,
+      emissiveIntensity: material?.emissiveIntensity ?? 1,
+    }
+  }
+
+  /** The object of a model part (the model itself for MODEL_ROOT_PART); null if not loaded. */
+  partObject(nodeId: string, assetNodeId: string): Object3D | null {
+    const entry = this.mounted.get(nodeId)
+    if (assetNodeId === MODEL_ROOT_PART) return entry?.object ?? null
+    return entry?.assetNodes?.get(assetNodeId)?.object ?? null
   }
 
   private animate(delta: number): void {
@@ -174,6 +232,7 @@ export class SceneSync {
     this.stopFrame()
     for (const entry of this.mounted.values()) {
       entry.animator?.dispose()
+      this.restoreMaterials(entry)
       if (entry.node?.kind !== 'model') disposeOwned(entry.object)
     }
     this.resources.dispose()
@@ -303,7 +362,9 @@ export class SceneSync {
       const model = await this.host.loadGLTFModel(this.resources.getOrCreate(asset).objectUrl)
       this.assertActive()
       const assetNodes = new Map<string, AssetNodeState>()
+      const materials = new Map<Mesh, Material | Material[]>()
       model.traverse(object => {
+        if (object instanceof Mesh) materials.set(object, object.material as Material | Material[])
         const transform = serializeTransform(object)
         // Original poses let the Editor reset a node without consulting the document.
         object.userData.editorInitialTransform = transform
@@ -318,6 +379,8 @@ export class SceneSync {
         object: this.tag(model, node),
         assetNodes,
         animator: new ModelAnimator(model, model.animations),
+        materials,
+        ownMaterials: new Map(),
       }
     } catch (error) {
       this.assertActive()
@@ -421,8 +484,49 @@ export class SceneSync {
       if (override.runtimeBid) state.object.userData.bid = override.runtimeBid
     }
     for (const id of deleted) states.get(id)?.object.removeFromParent()
+    this.applyMaterials(entry, node)
     const parts = new Map([...states].map(([id, state]) => [id, state.object]))
     entry.animator?.configure(node.model.animation, node.model.motions, parts)
+  }
+
+  /**
+   * Gives meshes under a part with a material override their own copy of the material; the nearest part
+   * with an override wins. Copies are (re)assigned on every change, so effect highlights re-derive from them.
+   */
+  private applyMaterials(entry: MountedNode, node: ModelNodeV2): void {
+    const overrides = node.model.overrides
+    const hasLooks = Object.values(overrides).some(override => override.material)
+    if (!hasLooks && !entry.ownMaterials?.size) return
+    for (const [mesh, base] of entry.materials ?? []) {
+      let look: PartMaterial | undefined
+      for (let object: Object3D | null = mesh; object && !look; object = object.parent) {
+        const id: unknown = object === entry.object ? MODEL_ROOT_PART : object.userData.assetNodeId
+        if (typeof id === 'string') look = overrides[id]?.material
+        if (object === entry.object) break
+      }
+      const owned = entry.ownMaterials!.get(mesh)
+      if (!look) {
+        if (owned) {
+          mesh.material = base
+          owned.forEach(material => material.dispose())
+          entry.ownMaterials!.delete(mesh)
+        }
+        continue
+      }
+      const sources = Array.isArray(base) ? base : [base]
+      const copies = owned ?? sources.map(material => material.clone())
+      copies.forEach((copy, index) => applyPartMaterial(copy, sources[index]!, look))
+      entry.ownMaterials!.set(mesh, copies)
+      mesh.material = Array.isArray(base) ? copies : copies[0]!
+    }
+  }
+
+  private restoreMaterials(entry: MountedNode): void {
+    for (const [mesh, copies] of entry.ownMaterials ?? []) {
+      mesh.material = entry.materials!.get(mesh)!
+      copies.forEach(material => material.dispose())
+    }
+    entry.ownMaterials?.clear()
   }
 
   private applyPrimitive(mesh: Mesh, node: PrimitiveNodeV2, before: PrimitiveNodeV2 | null): void {
@@ -444,6 +548,7 @@ export class SceneSync {
     const entry = this.mounted.get(id)!
     if (this.attachedTo.has(id)) this.detach(entry.object)
     entry.animator?.dispose()
+    this.restoreMaterials(entry)
     this.mounted.delete(id)
     this.attachedTo.delete(id)
     // Models share geometry with the engine's model cache; every other kind owns its resources. Children

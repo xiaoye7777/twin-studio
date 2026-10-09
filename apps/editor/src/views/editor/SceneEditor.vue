@@ -6,6 +6,7 @@ import ResizeHandle from '@/components/studio/ResizeHandle.vue'
 import InspectorPanel from '@/components/studio/InspectorPanel.vue'
 import LeftPanel from '@/components/studio/LeftPanel.vue'
 import StatusBar from '@/components/studio/StatusBar.vue'
+import ReplaceModelDialog from '@/components/studio/ReplaceModelDialog.vue'
 import StudioDialogs from '@/components/studio/StudioDialogs.vue'
 import StudioViewport from '@/components/studio/StudioViewport.vue'
 import TopBar from '@/components/studio/TopBar.vue'
@@ -81,6 +82,7 @@ onBeforeUnmount(() => {
     </div>
     <StatusBar v-if="session" />
     <StudioDialogs v-if="session?.ui.ready" />
+    <ReplaceModelDialog v-if="session?.ui.ready" />
   </div>
 </template>
 

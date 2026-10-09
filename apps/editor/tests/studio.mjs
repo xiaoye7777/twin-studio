@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { launch, mod, save, screenPointOf, settled, studio, waitForStudio } from './helpers.mjs'
+import { launch, mod, save, screenPointOf, screenPointOfPart, settled, studio, waitForStudio } from './helpers.mjs'
 
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5173'
 const { page, errors, close } = await launch()
@@ -280,6 +280,86 @@ try {
   // The library thumbnail goes through the same decoders.
   await card.locator('img').waitFor({ timeout: 20000 })
   report.compressedModels = 'PASS'
+
+  // ---------------------------------------------------------------- model parts
+  // Double-clicking a model selects the part under the pointer; the part gets its own material, visibility
+  // and device binding, and Esc goes back up to the model.
+  const nodeCount = (await doc()).nodes.length
+  await page.getByTestId('builtin-turbine').click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count + 1, nodeCount)
+  await settled(page)
+  const turbine = (await doc()).nodes.at(-1)
+  assert.equal(turbine.kind, 'model')
+  const blades = 'legacy:root/0/0'
+  await page.keyboard.press('f')
+  await page.waitForTimeout(900)
+  const hub = await screenPointOfPart(page, turbine.id, blades)
+  await page.mouse.dblclick(hub.x, hub.y)
+  await page.waitForFunction(id => window.__studio.part.value?.nodeId === id, turbine.id)
+  assert.equal(await studio(page, () => window.__studio.part.value.assetNodeId), blades)
+  await page.getByTestId('part-properties').waitFor()
+  await page.getByTestId('tab-scene').click()
+  await page.getByTestId('tree-part-blades').waitFor()
+  await page.getByTestId('material-preset-玻璃').click()
+  const glass = await studio(
+    page,
+    ([id, part]) => {
+      const material = window.__studio.sync.partObject(id, part).material
+      return { opacity: material.opacity, transparent: material.transparent }
+    },
+    [turbine.id, blades],
+  )
+  assert.deepEqual(glass, { opacity: 0.35, transparent: true })
+  await page.getByTestId('part-visible').click()
+  await page.waitForFunction(
+    ([id, part]) => window.__studio.sync.partObject(id, part).visible === false,
+    [turbine.id, blades],
+  )
+  await page.getByTestId('inspector-tab-data').click()
+  await studio(
+    page,
+    id =>
+      window.__studio.setBinding(id, {
+        device: { id: 'WT-BLADE', name: '叶片' },
+        variables: [{ id: 'v', key: 'vibration', name: '振动', dataType: 'number' }],
+      }),
+    turbine.id,
+  )
+  const partBinding = await studio(
+    page,
+    () => window.__studio.doc.value.bindings.find(b => b.device.id === 'WT-BLADE').target,
+  )
+  assert.deepEqual(partBinding, { type: 'asset-node', instanceId: turbine.id, assetNodeId: blades })
+  await page.getByTestId('inspector-tab-properties').click()
+  await page.keyboard.press('Escape')
+  await page.waitForFunction(id => !window.__studio.part.value && window.__studio.selection.value[0] === id, turbine.id)
+
+  // Replacing the model keeps the node and its part edits; the replacement here has no blades, so the
+  // dialog reports it. Undo brings the turbine back with everything intact.
+  await page.getByTestId('replace-model').click()
+  await page.getByTestId('replace-option-储热罐').click()
+  await page.getByTestId('replace-confirm').click()
+  await page.waitForFunction(() => !document.querySelector('[data-testid="replace-model-options"]')?.offsetParent)
+  await settled(page)
+  assert.notEqual((await doc()).nodes.find(node => node.id === turbine.id).model.assetId, turbine.model.assetId)
+  await page.keyboard.press(`${mod}+z`)
+  await settled(page)
+  const restored = (await doc()).nodes.find(node => node.id === turbine.id)
+  assert.equal(restored.model.assetId, turbine.model.assetId)
+  assert.equal(restored.model.overrides[blades].material.opacity, 0.35)
+
+  // Deleting a part removes what was bound to it.
+  await page.getByTestId('tree-part-blades').click()
+  await page.keyboard.press('Delete')
+  await page.waitForFunction(
+    id => window.__studio.doc.value.nodes.find(node => node.id === id).model.deleted.length === 1,
+    turbine.id,
+  )
+  assert.equal(
+    await studio(page, () => window.__studio.doc.value.bindings.some(b => b.device.id === 'WT-BLADE')),
+    false,
+  )
+  report.modelParts = 'PASS'
 
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))

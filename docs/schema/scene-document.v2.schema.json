@@ -557,6 +557,43 @@
                         },
                         "runtimeBid": {
                           "type": "string"
+                        },
+                        "material": {
+                          "type": "object",
+                          "properties": {
+                            "color": {
+                              "type": "string",
+                              "pattern": "^#[0-9a-f]{6}$"
+                            },
+                            "texture": {
+                              "type": "boolean"
+                            },
+                            "opacity": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "metalness": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "roughness": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "emissive": {
+                              "type": "string",
+                              "pattern": "^#[0-9a-f]{6}$"
+                            },
+                            "emissiveIntensity": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 20
+                            }
+                          },
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false

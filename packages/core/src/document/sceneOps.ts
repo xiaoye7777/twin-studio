@@ -142,15 +142,8 @@ export function worldMatrixOf(doc: Doc, id: string | null): Matrix4 {
 export function removeNodes(draft: Doc, ids: readonly string[]): Set<string> {
   const removed = new Set<string>()
   for (const id of ids) for (const nodeId of subtreeIds(draft, id)) removed.add(nodeId)
-  const gone = (target: TwinBindingTarget) => removed.has(targetNodeId(target))
   draft.nodes = draft.nodes.filter(node => !removed.has(node.id))
-  const bindingIds = new Set(draft.bindings.filter(binding => gone(binding.target)).map(binding => binding.id))
-  draft.bindings = draft.bindings.filter(binding => !bindingIds.has(binding.id))
-  draft.effects = draft.effects.filter(effect => !gone(effect.target))
-  draft.visualRules = draft.visualRules.filter(rule => !gone(rule.target) && !bindingIds.has(rule.bindingId))
-  draft.interactions = draft.interactions.filter(
-    item => !gone(item.source) && !('target' in item.action && item.action.target && gone(item.action.target)),
-  )
+  dropTargets(draft, target => removed.has(targetNodeId(target)))
   for (const tour of draft.tours) {
     for (const step of tour.steps) {
       if (step.nodeId && removed.has(step.nodeId)) step.nodeId = null
@@ -160,6 +153,41 @@ export function removeNodes(draft: Doc, ids: readonly string[]): Set<string> {
     }
   }
   return removed
+}
+
+/** Removes bindings, effects, rules and interactions aimed at targets that are gone. */
+function dropTargets(draft: Doc, gone: (target: TwinBindingTarget) => boolean): void {
+  const bindingIds = new Set(draft.bindings.filter(binding => gone(binding.target)).map(binding => binding.id))
+  draft.bindings = draft.bindings.filter(binding => !bindingIds.has(binding.id))
+  draft.effects = draft.effects.filter(effect => !gone(effect.target))
+  draft.visualRules = draft.visualRules.filter(rule => !gone(rule.target) && !bindingIds.has(rule.bindingId))
+  draft.interactions = draft.interactions.filter(
+    item => !gone(item.source) && !('target' in item.action && item.action.target && gone(item.action.target)),
+  )
+}
+
+/**
+ * Deletes parts of a model instance, and whatever pointed at them. `within` lists every part inside the
+ * deleted ones (they disappear with them), for cleaning up bindings, effects and motions on nested parts.
+ */
+export function removeModelParts(
+  draft: Doc,
+  nodeId: string,
+  partIds: readonly string[],
+  within: readonly string[] = partIds,
+): void {
+  const node = draft.nodes.find(item => item.id === nodeId)
+  if (node?.kind !== 'model') return
+  for (const id of partIds) if (!node.model.deleted.includes(id)) node.model.deleted.push(id)
+  const gone = new Set([...partIds, ...within])
+  dropTargets(
+    draft,
+    target => target.type === 'asset-node' && target.instanceId === nodeId && gone.has(target.assetNodeId),
+  )
+  if (node.model.motions) {
+    node.model.motions = node.model.motions.filter(motion => !gone.has(motion.assetNodeId))
+    if (!node.model.motions.length) delete node.model.motions
+  }
 }
 
 /** Deep-copies nodes (with subtrees and their effects) next to the originals. Returns the new top ids. */

@@ -16,12 +16,32 @@ import { SceneSettingsSchemaV2 } from './sceneSettingsV2'
 
 const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i, { message: '颜色必须是 #RRGGBB 格式' })
 
+/** The model's root in `overrides`: only `material` applies to it (the node itself carries the transform). */
+export const MODEL_ROOT_PART = '__asset_root__'
+
+/**
+ * A look applied to every mesh under a part (the nearest part with a material wins). Unset fields keep the
+ * model's own material.
+ */
+export const PartMaterialSchema = z.object({
+  /** Base colour; multiplies the texture unless `texture` is false. */
+  color: hexColor.optional(),
+  /** false removes the base colour texture, so `color` shows as is. */
+  texture: z.boolean().optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  metalness: z.number().min(0).max(1).optional(),
+  roughness: z.number().min(0).max(1).optional(),
+  emissive: hexColor.optional(),
+  emissiveIntensity: z.number().min(0).max(20).optional(),
+})
+
 /** Edits to a node inside an imported model, keyed by its stable assetNodeId. */
 export const ModelNodeOverrideSchemaV2 = z.object({
   name: z.string().optional(),
   transform: SceneTransformSchemaV1.optional(),
   visible: z.boolean().optional(),
   runtimeBid: z.string().optional(),
+  material: PartMaterialSchema.optional(),
 })
 
 export const ModelAnimationSchema = z.object({

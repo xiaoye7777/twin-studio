@@ -2,6 +2,7 @@
 import {
   Box,
   ChevronRight,
+  Component,
   Eye,
   EyeOff,
   Folder,
@@ -17,8 +18,8 @@ import {
   Tag,
   Unlock,
 } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue'
-import { targetNodeId, type SceneNodeV2 } from '@twin-studio/core'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { type ModelPart, targetNodeId, type SceneNodeV2 } from '@twin-studio/core'
 import { useSession } from '@/studio/context'
 import { useShell } from '@/studio/shell'
 
@@ -26,6 +27,10 @@ const session = useSession()
 const shell = useShell()
 const query = ref('')
 const collapsed = reactive(new Set<string>())
+/** Models whose parts are listed (models start closed). */
+const openModels = reactive(new Set<string>())
+/** Parts whose open state differs from the default (wrapper parts that hold everything start open). */
+const flippedParts = reactive(new Set<string>())
 const drag = reactive({ ids: [] as string[], over: '' as string, zone: '' as '' | 'before' | 'into' | 'after' })
 const menu = reactive({ open: false, x: 0, y: 0 })
 const renameText = ref('')
@@ -41,11 +46,34 @@ const icons: Record<string, unknown> = {
   light: Lightbulb,
 }
 
-interface Row {
+interface NodeRow {
+  type: 'node'
+  key: string
   node: SceneNodeV2
   depth: number
   hasChildren: boolean
+  open: boolean
   hiddenByParent: boolean
+}
+
+interface PartRow {
+  type: 'part'
+  key: string
+  nodeId: string
+  part: ModelPart
+  name: string
+  depth: number
+  open: boolean
+  hidden: boolean
+}
+
+type Row = NodeRow | PartRow
+
+const partKey = (nodeId: string, partId: string) => `${nodeId}/${partId}`
+const partOpenByDefault = (part: ModelPart, siblings: readonly ModelPart[]) =>
+  siblings.length === 1 && part.children.length > 0
+function isPartOpen(nodeId: string, part: ModelPart, siblings: readonly ModelPart[]): boolean {
+  return partOpenByDefault(part, siblings) !== flippedParts.has(partKey(nodeId, part.id))
 }
 
 const counts = computed(() => {
@@ -56,7 +84,11 @@ const counts = computed(() => {
     const id = targetNodeId(effect.target)
     effects.set(id, (effects.get(id) ?? 0) + 1)
   }
-  return { bound, effects }
+  const partOf = (target: (typeof doc.bindings)[number]['target']) =>
+    target.type === 'asset-node' ? partKey(target.instanceId, target.assetNodeId) : ''
+  const boundParts = new Set(doc.bindings.map(binding => partOf(binding.target)))
+  const partEffects = new Set(doc.effects.map(effect => partOf(effect.target)))
+  return { bound, effects, boundParts, partEffects }
 })
 
 const rows = computed<Row[]>(() => {
@@ -70,25 +102,102 @@ const rows = computed<Row[]>(() => {
   const term = query.value.trim().toLowerCase()
   const matches = (node: SceneNodeV2): boolean =>
     node.name.toLowerCase().includes(term) || (byParent.get(node.id) ?? []).some(matches)
+  void session.ui.syncRevision
   const result: Row[] = []
+  const walkParts = (
+    node: Extract<SceneNodeV2, { kind: 'model' }>,
+    parts: readonly ModelPart[],
+    depth: number,
+    hidden: boolean,
+  ) => {
+    for (const part of parts) {
+      if (node.model.deleted.includes(part.id)) continue
+      const override = node.model.overrides[part.id]
+      const open = part.children.length > 0 && isPartOpen(node.id, part, parts)
+      const partHidden = hidden || override?.visible === false
+      result.push({
+        type: 'part',
+        key: partKey(node.id, part.id),
+        nodeId: node.id,
+        part,
+        name: override?.name ?? part.name,
+        depth,
+        open,
+        hidden: partHidden,
+      })
+      if (open) walkParts(node, part.children, depth + 1, partHidden)
+    }
+  }
   const walk = (parentId: string | null, depth: number, hiddenByParent: boolean) => {
     for (const node of byParent.get(parentId) ?? []) {
       if (term && !matches(node)) continue
       const children = byParent.get(node.id) ?? []
-      result.push({ node, depth, hasChildren: children.length > 0, hiddenByParent })
-      if (children.length && (term || !collapsed.has(node.id)))
-        walk(node.id, depth + 1, hiddenByParent || !node.visible)
+      const parts = node.kind === 'model' ? session.sync.partTree(node.id) : []
+      const open = node.kind === 'model' ? openModels.has(node.id) : !collapsed.has(node.id)
+      result.push({
+        type: 'node',
+        key: node.id,
+        node,
+        depth,
+        hasChildren: children.length > 0 || parts.length > 0,
+        open,
+        hiddenByParent,
+      })
+      if (node.kind === 'model' && open && !term) walkParts(node, parts, depth + 1, hiddenByParent || !node.visible)
+      if (children.length && (term || open)) walk(node.id, depth + 1, hiddenByParent || !node.visible)
     }
   }
   walk(null, 0, false)
   return result
 })
 
-const selected = computed(() => new Set(session.selection.value))
+const selected = computed(() => new Set(session.part.value ? [] : session.selection.value))
+const selectedPart = computed(() =>
+  session.part.value ? partKey(session.part.value.nodeId, session.part.value.assetNodeId) : '',
+)
 
-function click(event: MouseEvent, row: Row): void {
+// Selecting a part in the viewport reveals it here.
+watch(
+  () => session.part.value,
+  part => {
+    if (!part) return
+    openModels.add(part.nodeId)
+    const path: Array<{ part: ModelPart; siblings: readonly ModelPart[] }> = []
+    const find = (parts: readonly ModelPart[]): boolean =>
+      parts.some(item => {
+        path.push({ part: item, siblings: parts })
+        if (item.id === part.assetNodeId || find(item.children)) return true
+        path.pop()
+        return false
+      })
+    find(session.sync.partTree(part.nodeId))
+    for (const { part: ancestor, siblings } of path.slice(0, -1)) {
+      const key = partKey(part.nodeId, ancestor.id)
+      if (partOpenByDefault(ancestor, siblings)) flippedParts.delete(key)
+      else flippedParts.add(key)
+    }
+  },
+)
+
+function toggleRow(row: Row): void {
+  if (row.type === 'part') {
+    const key = partKey(row.nodeId, row.part.id)
+    if (flippedParts.has(key)) flippedParts.delete(key)
+    else flippedParts.add(key)
+  } else if (row.node.kind === 'model') {
+    if (openModels.has(row.node.id)) openModels.delete(row.node.id)
+    else openModels.add(row.node.id)
+  } else toggleCollapse(row.node.id)
+}
+
+function openPartMenu(event: MouseEvent, row: PartRow): void {
+  session.selectPart(row.nodeId, row.part.id)
+  openMenu(event, null)
+}
+
+function click(event: MouseEvent, row: NodeRow): void {
   if (event.shiftKey && session.selection.value.length) {
-    const ids = rows.value.map(item => item.node.id)
+    const ids = rows.value.flatMap(item => (item.type === 'node' ? [item.node.id] : []))
     const from = ids.indexOf(session.selection.value.at(-1)!)
     const to = ids.indexOf(row.node.id)
     if (from >= 0 && to >= 0) {
@@ -119,13 +228,13 @@ function finishRename(node: SceneNodeV2): void {
 
 // ---------------------------------------------------------------- drag to reparent / reorder
 
-function onDragStart(event: DragEvent, row: Row): void {
+function onDragStart(event: DragEvent, row: NodeRow): void {
   drag.ids = selected.value.has(row.node.id) ? [...session.selection.value] : [row.node.id]
   event.dataTransfer?.setData('text/plain', drag.ids.join(','))
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 
-function onDragOver(event: DragEvent, row: Row): void {
+function onDragOver(event: DragEvent, row: NodeRow): void {
   if (!drag.ids.length || drag.ids.includes(row.node.id)) return
   event.preventDefault()
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
@@ -134,7 +243,7 @@ function onDragOver(event: DragEvent, row: Row): void {
   drag.zone = row.node.kind === 'group' && y > 0.28 && y < 0.72 ? 'into' : y < 0.5 ? 'before' : 'after'
 }
 
-function onDrop(event: DragEvent, row: Row): void {
+function onDrop(event: DragEvent, row: NodeRow): void {
   event.preventDefault()
   const ids = drag.ids
   const zone = drag.zone
@@ -167,7 +276,7 @@ function resetDrag(): void {
 
 // ---------------------------------------------------------------- context menu
 
-function openMenu(event: MouseEvent, row: Row | null): void {
+function openMenu(event: MouseEvent, row: NodeRow | null): void {
   event.preventDefault()
   if (row && !selected.value.has(row.node.id)) session.select([row.node.id])
   menu.open = true
@@ -186,6 +295,17 @@ function act(action: () => void): void {
 }
 
 const menuItems = computed(() => {
+  const part = session.part.value
+  if (part) {
+    const hidden = session.partOverride(part.nodeId, part.assetNodeId)?.visible === false
+    return [
+      { label: '聚焦', action: () => void session.focusSelection() },
+      { label: hidden ? '显示' : '隐藏', action: () => session.setPartVisible(part.nodeId, part.assetNodeId, hidden) },
+      { label: '恢复部件', action: () => session.resetPart(part.nodeId, part.assetNodeId) },
+      { label: '回到模型', action: () => session.selectParent() },
+      { label: '删除部件', action: () => session.deleteParts(part.nodeId, [part.assetNodeId]), danger: true },
+    ]
+  }
   const nodes = session.selectedNodes
   const one = nodes.length === 1 ? nodes[0]! : null
   const items: Array<{ label: string; action: () => void; danger?: boolean } | null> = [
@@ -243,83 +363,125 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
       @drop="onDropRoot"
       @click.self="session.clearSelection()"
     >
-      <div
-        v-for="row in rows"
-        :key="row.node.id"
-        class="tree__row"
-        :class="{
-          'is-selected': selected.has(row.node.id),
-          'is-hovered': session.hovered.value === row.node.id,
-          'is-hidden': !row.node.visible || row.hiddenByParent,
-          'is-drop-into': drag.over === row.node.id && drag.zone === 'into',
-          'is-drop-before': drag.over === row.node.id && drag.zone === 'before',
-          'is-drop-after': drag.over === row.node.id && drag.zone === 'after',
-        }"
-        :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
-        :data-testid="`tree-row-${row.node.name}`"
-        :data-node-id="row.node.id"
-        draggable="true"
-        @click="click($event, row)"
-        @dblclick="startRename(row.node)"
-        @contextmenu.stop="openMenu($event, row)"
-        @mouseenter="session.setHovered(row.node.id)"
-        @mouseleave="session.setHovered(null)"
-        @dragstart="onDragStart($event, row)"
-        @dragover="onDragOver($event, row)"
-        @dragleave="drag.over === row.node.id && (drag.over = '')"
-        @drop.stop="onDrop($event, row)"
-        @dragend="resetDrag"
-      >
-        <button
-          class="tree__chevron"
-          :class="{ 'is-open': !collapsed.has(row.node.id), 'is-empty': !row.hasChildren }"
-          tabindex="-1"
-          @click.stop="toggleCollapse(row.node.id)"
+      <template v-for="row in rows" :key="row.key">
+        <div
+          v-if="row.type === 'part'"
+          class="tree__row is-part"
+          :class="{ 'is-selected': selectedPart === row.key, 'is-hidden': row.hidden }"
+          :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
+          :data-testid="`tree-part-${row.name}`"
+          @click="session.selectPart(row.nodeId, row.part.id)"
+          @dblclick="(session.selectPart(row.nodeId, row.part.id), session.focusSelection())"
+          @contextmenu.stop.prevent="openPartMenu($event, row)"
+          @mouseenter="session.hoverPart({ nodeId: row.nodeId, assetNodeId: row.part.id })"
+          @mouseleave="session.hoverPart(null)"
         >
-          <ChevronRight :size="12" />
-        </button>
-        <component
-          :is="
-            row.node.kind === 'group' && !collapsed.has(row.node.id) && row.hasChildren
-              ? FolderOpen
-              : icons[row.node.kind]
-          "
-          class="tree__icon"
-          :class="`is-${row.node.kind}`"
-          :size="14"
-        />
-        <input
-          v-if="shell.renaming === row.node.id"
-          ref="renameInput"
-          v-model="renameText"
-          class="tree__rename"
-          @click.stop
-          @blur="finishRename(row.node)"
-          @keydown.enter.prevent="finishRename(row.node)"
-          @keydown.esc.prevent="shell.renaming = null"
-        />
-        <span v-else class="tree__name">{{ row.node.name }}</span>
-        <span class="tree__badges">
-          <Radio v-if="counts.bound.has(row.node.id)" class="tree__badge is-data" :size="12" title="已绑定设备" />
-          <Sparkles v-if="counts.effects.get(row.node.id)" class="tree__badge is-effect" :size="12" title="有特效" />
-        </span>
-        <button
-          class="tree__toggle"
-          :class="{ 'is-on': row.node.locked }"
-          :title="row.node.locked ? '解锁' : '锁定'"
-          @click.stop="session.setLocked([row.node.id], !row.node.locked)"
+          <button
+            class="tree__chevron"
+            :class="{ 'is-open': row.open, 'is-empty': !row.part.children.length }"
+            tabindex="-1"
+            @click.stop="toggleRow(row)"
+          >
+            <ChevronRight :size="12" />
+          </button>
+          <component :is="row.part.mesh ? Box : Component" class="tree__icon is-part" :size="13" />
+          <span class="tree__name">{{ row.name }}</span>
+          <span class="tree__badges">
+            <Radio v-if="counts.boundParts.has(row.key)" class="tree__badge is-data" :size="12" title="已绑定设备" />
+            <Sparkles v-if="counts.partEffects.has(row.key)" class="tree__badge is-effect" :size="12" title="有特效" />
+          </span>
+          <button
+            class="tree__toggle"
+            :class="{ 'is-on': session.partOverride(row.nodeId, row.part.id)?.visible === false }"
+            :title="session.partOverride(row.nodeId, row.part.id)?.visible === false ? '显示' : '隐藏'"
+            @click.stop="
+              session.setPartVisible(
+                row.nodeId,
+                row.part.id,
+                session.partOverride(row.nodeId, row.part.id)?.visible === false,
+              )
+            "
+          >
+            <EyeOff v-if="session.partOverride(row.nodeId, row.part.id)?.visible === false" :size="12" /><Eye
+              v-else
+              :size="12"
+            />
+          </button>
+        </div>
+        <div
+          v-else
+          class="tree__row"
+          :class="{
+            'is-selected': selected.has(row.node.id),
+            'is-hovered': session.hovered.value === row.node.id,
+            'is-hidden': !row.node.visible || row.hiddenByParent,
+            'is-drop-into': drag.over === row.node.id && drag.zone === 'into',
+            'is-drop-before': drag.over === row.node.id && drag.zone === 'before',
+            'is-drop-after': drag.over === row.node.id && drag.zone === 'after',
+          }"
+          :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
+          :data-testid="`tree-row-${row.node.name}`"
+          :data-node-id="row.node.id"
+          draggable="true"
+          @click="click($event, row)"
+          @dblclick="startRename(row.node)"
+          @contextmenu.stop="openMenu($event, row)"
+          @mouseenter="session.setHovered(row.node.id)"
+          @mouseleave="session.setHovered(null)"
+          @dragstart="onDragStart($event, row)"
+          @dragover="onDragOver($event, row)"
+          @dragleave="drag.over === row.node.id && (drag.over = '')"
+          @drop.stop="onDrop($event, row)"
+          @dragend="resetDrag"
         >
-          <Lock v-if="row.node.locked" :size="12" /><Unlock v-else :size="12" />
-        </button>
-        <button
-          class="tree__toggle"
-          :class="{ 'is-on': !row.node.visible }"
-          :title="row.node.visible ? '隐藏' : '显示'"
-          @click.stop="session.setVisible([row.node.id], !row.node.visible)"
-        >
-          <EyeOff v-if="!row.node.visible" :size="12" /><Eye v-else :size="12" />
-        </button>
-      </div>
+          <button
+            class="tree__chevron"
+            :class="{ 'is-open': row.open, 'is-empty': !row.hasChildren }"
+            tabindex="-1"
+            :data-testid="row.node.kind === 'model' ? `tree-expand-${row.node.name}` : undefined"
+            @click.stop="toggleRow(row)"
+          >
+            <ChevronRight :size="12" />
+          </button>
+          <component
+            :is="row.node.kind === 'group' && row.open && row.hasChildren ? FolderOpen : icons[row.node.kind]"
+            class="tree__icon"
+            :class="`is-${row.node.kind}`"
+            :size="14"
+          />
+          <input
+            v-if="shell.renaming === row.node.id"
+            ref="renameInput"
+            v-model="renameText"
+            class="tree__rename"
+            @click.stop
+            @blur="finishRename(row.node)"
+            @keydown.enter.prevent="finishRename(row.node)"
+            @keydown.esc.prevent="shell.renaming = null"
+          />
+          <span v-else class="tree__name">{{ row.node.name }}</span>
+          <span class="tree__badges">
+            <Radio v-if="counts.bound.has(row.node.id)" class="tree__badge is-data" :size="12" title="已绑定设备" />
+            <Sparkles v-if="counts.effects.get(row.node.id)" class="tree__badge is-effect" :size="12" title="有特效" />
+          </span>
+          <button
+            class="tree__toggle"
+            :class="{ 'is-on': row.node.locked }"
+            :title="row.node.locked ? '解锁' : '锁定'"
+            @click.stop="session.setLocked([row.node.id], !row.node.locked)"
+          >
+            <Lock v-if="row.node.locked" :size="12" /><Unlock v-else :size="12" />
+          </button>
+          <button
+            class="tree__toggle"
+            :class="{ 'is-on': !row.node.visible }"
+            :title="row.node.visible ? '隐藏' : '显示'"
+            @click.stop="session.setVisible([row.node.id], !row.node.visible)"
+          >
+            <EyeOff v-if="!row.node.visible" :size="12" /><Eye v-else :size="12" />
+          </button>
+        </div>
+      </template>
       <div v-if="!rows.length" class="s-empty">
         <Shapes :size="22" />
         <span>{{ query ? '没有匹配的对象' : '场景还是空的' }}</span>
@@ -463,6 +625,15 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
 }
 .tree__icon.is-light {
   color: #f0d070;
+}
+.tree__icon.is-part {
+  color: #9d8f7a;
+}
+.tree__row.is-part .tree__name {
+  color: var(--s-fg-2);
+}
+.tree__row.is-part.is-selected .tree__name {
+  color: var(--s-fg);
 }
 .tree__name {
   overflow: hidden;

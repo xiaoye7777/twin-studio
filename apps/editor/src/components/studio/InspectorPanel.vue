@@ -6,6 +6,7 @@ import NodeData from './inspector/NodeData.vue'
 import NodeEffects from './inspector/NodeEffects.vue'
 import NodeInteractions from './inspector/NodeInteractions.vue'
 import NodeProperties from './inspector/NodeProperties.vue'
+import PartProperties from './inspector/PartProperties.vue'
 import SceneData from './inspector/SceneData.vue'
 import SceneEnvironment from './inspector/SceneEnvironment.vue'
 import ScenePresentation from './inspector/ScenePresentation.vue'
@@ -14,6 +15,8 @@ const session = useSession()
 const shell = useShell()
 const nodes = computed(() => session.selection.value.flatMap(id => session.node(id) ?? []))
 const title = computed(() => {
+  const part = session.part.value
+  if (part) return `部件 · ${session.partName(part.nodeId, part.assetNodeId)}`
   if (!nodes.value.length) return '场景'
   if (nodes.value.length > 1) return `已选 ${nodes.value.length} 个对象`
   return nodeKindLabels[nodes.value[0]!.kind] ?? '对象'
@@ -62,7 +65,10 @@ const sceneTabs = [
     </div>
     <div class="s-scroll">
       <template v-if="nodes.length">
-        <NodeProperties v-if="shell.nodeTab === 'properties'" :nodes="nodes" />
+        <template v-if="shell.nodeTab === 'properties'">
+          <PartProperties v-if="session.part.value" :part="session.part.value" />
+          <NodeProperties v-else :nodes="nodes" />
+        </template>
         <NodeData v-else-if="shell.nodeTab === 'data'" :nodes="nodes" />
         <NodeEffects v-else-if="shell.nodeTab === 'effects'" :nodes="nodes" />
         <NodeInteractions v-else :nodes="nodes" />

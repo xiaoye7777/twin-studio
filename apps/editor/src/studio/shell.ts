@@ -1,6 +1,6 @@
 import { inject, type InjectionKey, reactive, watch } from 'vue'
 
-export type StudioDialog = 'shortcuts' | 'batch-bind' | 'array' | null
+export type StudioDialog = 'shortcuts' | 'batch-bind' | 'array' | 'replace-model' | null
 
 const LAYOUT_KEY = 'twin-studio:editor-layout'
 
