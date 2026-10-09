@@ -2,6 +2,7 @@
 import { Vector3 } from 'three'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useSession } from '@/studio/context'
+import { saveSelectionAsComponent } from '@/studio/saveComponent'
 import { useShell } from '@/studio/shell'
 
 interface Item {
@@ -77,6 +78,7 @@ const sections = computed<Item[][]>(() => {
           action: () => (nodes.length > 1 ? (shell.dialog = 'batch-bind') : (shell.nodeTab = 'data')),
         },
         ...(one ? [{ label: '添加特效…', action: () => (shell.nodeTab = 'effects') }] : []),
+        { label: '保存为组件…', action: () => void saveSelectionAsComponent(session) },
       ],
       [{ label: '删除', shortcut: 'Del', action: () => session.deleteSelection(), danger: true }],
     ]

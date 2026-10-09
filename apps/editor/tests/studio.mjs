@@ -431,6 +431,39 @@ try {
   assert.deepEqual((await doc()).nodes.find(node => node.id === turbine.id).transform.position, startAt)
   report.nudge = 'PASS'
 
+  // ---------------------------------------------------------------- component library
+  // A configured object saved as a component places again with the next device number.
+  await studio(
+    page,
+    id => {
+      const s = window.__studio
+      s.select([id])
+      s.setBinding(id, {
+        device: { id: 'WT-001', name: '风机 01' },
+        variables: [{ id: 'v', key: 'rotorSpeed', name: '转速', dataType: 'number' }],
+      })
+    },
+    turbine.id,
+  )
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  await page.getByText('保存为组件…').click()
+  await page.locator('.el-message-box input').fill('风机组件')
+  await page.locator('.el-message-box').getByRole('button', { name: '保存' }).click()
+  await page.getByTestId('tab-assets').click()
+  const componentCard = page.getByTestId('component-风机组件')
+  await componentCard.waitFor()
+  const placedBefore = (await doc()).nodes.length
+  await componentCard.click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count + 1, placedBefore)
+  const placed = await studio(page, () => {
+    const s = window.__studio
+    const id = s.selection.value[0]
+    const binding = s.doc.value.bindings.find(item => item.target.instanceId === id)
+    return { kind: s.node(id).kind, device: binding?.device }
+  })
+  assert.deepEqual(placed, { kind: 'model', device: { id: 'WT-002', name: '风机 02' } })
+  report.components = 'PASS'
+
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))
 } finally {

@@ -18,6 +18,9 @@ import {
   type EffectKind,
   EffectRuntime,
   type EngineStats,
+  extractComponent,
+  insertComponent,
+  type SceneComponentData,
   formatRuntimeValue,
   getBuiltinTemplates,
   groupNodes,
@@ -1009,6 +1012,41 @@ export class EditorSession {
     return node.kind === 'group' ? node.id : node.parentId
   }
 
+  /** The selection as a reusable component (with bindings, rules, effects), plus a picture of it. */
+  async componentFromSelection(): Promise<{ name: string; data: SceneComponentData; thumbnail?: string } | null> {
+    const doc = this.doc.value
+    const ids = topmost(doc, this.selection.value)
+    if (!ids.length) return null
+    const bounds = new Box3()
+    for (const id of ids) {
+      const object = this.sync.objectFor(id)
+      if (object) bounds.expandByObject(object, true)
+    }
+    if (bounds.isEmpty())
+      bounds.setFromCenterAndSize(new Vector3(...worldPositionOf(doc, ids[0]!)), new Vector3(1, 1, 1))
+    const center = bounds.getCenter(new Vector3())
+    const data = extractComponent(doc, ids, [center.x, bounds.min.y, center.z])
+    const size = bounds.getSize(new Vector3()).length() || 1
+    const eye = center.clone().add(new Vector3(1, 0.75, 1).normalize().multiplyScalar(size * 1.3))
+    const thumbnail =
+      (await this.captureFrom({ position: [eye.x, eye.y, eye.z], target: [center.x, center.y, center.z] }, 240)) ??
+      undefined
+    const first = nodeById(doc, ids[0]!)?.name ?? '组件'
+    return { name: ids.length === 1 ? first : `${first} 等 ${ids.length} 个`, data, thumbnail }
+  }
+
+  /** Places a component at a point (or where the camera looks), with new device ids. */
+  addComponent(data: SceneComponentData, at?: Vector3 | null): string[] {
+    const point = this.placement(at)
+    const parentId = this.insertionParent()
+    let roots: string[] = []
+    this.edit('添加组件', draft => {
+      roots = insertComponent(draft, data, [point.x, point.y, point.z], parentId)
+    })
+    this.select(roots)
+    return roots
+  }
+
   async addModel(assetId: string, at?: Vector3 | null): Promise<string | null> {
     const asset = await this.assets.get(assetId)
     if (!asset) throw new Error('资产不存在')
@@ -1890,6 +1928,11 @@ function edgeOf(box: Box3, axis: 0 | 1 | 2, edge: 'min' | 'center' | 'max'): num
   const min = box.min.getComponent(axis)
   const max = box.max.getComponent(axis)
   return edge === 'min' ? min : edge === 'max' ? max : (min + max) / 2
+}
+
+function worldPositionOf(doc: SceneDocumentV2, id: string): [number, number, number] {
+  const position = new Vector3().setFromMatrixPosition(worldMatrixOf(doc, id))
+  return [position.x, position.y, position.z]
 }
 
 function worldMatrixOfTransform(node: SceneNodeV2): Matrix4 {

@@ -21,6 +21,7 @@ import {
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { type ModelPart, targetNodeId, type SceneNodeV2 } from '@twin-studio/core'
 import { useSession } from '@/studio/context'
+import { saveSelectionAsComponent } from '@/studio/saveComponent'
 import { useShell } from '@/studio/shell'
 
 const session = useSession()
@@ -340,6 +341,7 @@ const menuItems = computed(() => {
             ),
         }
       : null,
+    nodes.length ? { label: '保存为组件…', action: () => void saveSelectionAsComponent(session) } : null,
     { label: '新建分组', action: () => void session.addGroup() },
     nodes.length ? { label: '删除', action: () => session.deleteSelection(), danger: true } : null,
   ]

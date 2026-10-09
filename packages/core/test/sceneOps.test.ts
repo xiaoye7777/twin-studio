@@ -5,7 +5,10 @@ import {
   ancestorIds,
   createEmptyDocument,
   duplicateNodes,
+  extractComponent,
   groupNodes,
+  insertComponent,
+  nextDeviceId,
   removeModelParts,
   removeNodes,
   reparentNodes,
@@ -234,6 +237,43 @@ describe('duplicating', () => {
       doc.effects.filter(effect => effect.target.type === 'primitive' && effect.target.nodeId === child.id),
     ).toHaveLength(1)
     expect(doc.bindings).toHaveLength(1)
+    expect(isSceneDocumentV2(doc)).toBe(true)
+  })
+})
+
+describe('components', () => {
+  it('numbers devices on from the highest in use', () => {
+    expect(nextDeviceId(new Set(['ESS-001', 'ESS-008', 'PV-020']), 'ESS-003')).toBe('ESS-009')
+    expect(nextDeviceId(new Set(['METER']), 'METER')).toBe('METER-2')
+  })
+
+  it('extracts a group with its binding, rule and effect, and places fresh copies', () => {
+    const source = fixture()
+    // Group A holds a1, which carries the binding, rule and effect; b's interaction targets a1 (outside).
+    const component = extractComponent(source, ['A'], [10, 0, 0])
+    expect(component.nodes.map(node => node.id)).toEqual(['A', 'a1'])
+    expect(component.nodes[0]!.transform.position).toEqual([0, 0, 0])
+    expect([component.bindings.length, component.visualRules.length, component.effects.length]).toEqual([1, 1, 1])
+    expect(component.interactions).toEqual([])
+
+    let roots: string[] = []
+    const doc = produce(source, draft => {
+      roots = insertComponent(draft, component, [0, 0, 20])
+      insertComponent(draft, component, [5, 0, 20])
+    })
+    expect(roots).toHaveLength(1)
+    const copy = doc.nodes.find(node => node.id === roots[0])!
+    expect(copy.name).toBe('分组 A 2')
+    const child = doc.nodes.find(node => node.parentId === copy.id)!
+    // a1 sits at world (10, 0, -2); relative to the origin (10, 0, 0) and placed at (0, 0, 20).
+    expect(worldPosition(doc, child.id)).toEqual([0, 0, 18])
+    expect(doc.bindings.map(binding => binding.device.id)).toEqual(['DEV-1', 'DEV-2', 'DEV-3'])
+    expect(doc.bindings.map(binding => binding.device.name)).toEqual(['设备 1', '设备 2', '设备 3'])
+    const binding = doc.bindings[1]!
+    expect(binding.target).toEqual({ type: 'primitive', nodeId: child.id })
+    const rule = doc.visualRules[1]!
+    expect([rule.bindingId, rule.target]).toEqual([binding.id, binding.target])
+    expect(doc.effects[1]!.target).toEqual({ type: 'primitive', nodeId: child.id })
     expect(isSceneDocumentV2(doc)).toBe(true)
   })
 })

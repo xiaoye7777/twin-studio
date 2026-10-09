@@ -7,7 +7,10 @@ import {
   type SceneNodeV2,
   type SceneTransformV1,
 } from '../domain/scene'
-import { targetNodeId, type TwinBindingTarget } from '../domain/twin'
+import type { EffectInstance } from '../domain/effects'
+import type { SceneInteraction } from '../domain/interactions'
+import { targetNodeId, type TwinBinding, type TwinBindingTarget } from '../domain/twin'
+import type { VisualRule } from '../domain/visualRules'
 
 /**
  * Edits on scene documents, written for Immer drafts (they mutate) but equally usable on plain copies.
@@ -302,4 +305,139 @@ export function ungroupNodes(draft: Doc, ids: readonly string[]): string[] {
     removeNodes(draft, [id])
   }
   return freed
+}
+
+/**
+ * A reusable piece of scene: nodes with what is attached to them (device bindings, alarm rules, effects and
+ * interactions). Top-level nodes are stored in world space relative to the component's origin.
+ */
+export interface SceneComponentData {
+  nodes: Node[]
+  bindings: TwinBinding[]
+  effects: EffectInstance[]
+  visualRules: VisualRule[]
+  interactions: SceneInteraction[]
+}
+
+/** Copies nodes (with subtrees) and everything attached to them out of a document, around `origin`. */
+export function extractComponent(
+  doc: Doc,
+  ids: readonly string[],
+  origin: [number, number, number],
+): SceneComponentData {
+  const top = topmost(doc, ids)
+  const included = new Set(top.flatMap(id => [...subtreeIds(doc, id)]))
+  const inside = (target: TwinBindingTarget) => included.has(targetNodeId(target))
+  const shift = new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2])
+  const nodes = doc.nodes
+    .filter(node => included.has(node.id))
+    .map(node => {
+      const copy = plain(node)
+      delete copy.runtimeBid
+      if (top.includes(node.id)) {
+        copy.parentId = null
+        copy.transform = transformOf(shift.clone().multiply(worldMatrixOf(doc, node.id)))
+      }
+      return copy
+    })
+  const bindings = doc.bindings.filter(binding => inside(binding.target))
+  const bindingIds = new Set(bindings.map(binding => binding.id))
+  return {
+    nodes,
+    bindings: plain(bindings),
+    effects: plain(doc.effects.filter(effect => inside(effect.target))),
+    visualRules: plain(doc.visualRules.filter(rule => inside(rule.target) && bindingIds.has(rule.bindingId))),
+    // Interactions that only make sense in this project (its views and tours, or other objects) stay behind.
+    interactions: plain(
+      doc.interactions.filter(
+        item =>
+          inside(item.source) &&
+          !('bookmarkId' in item.action) &&
+          !('tourId' in item.action) &&
+          (!item.action.target || inside(item.action.target)),
+      ),
+    ),
+  }
+}
+
+/** The next free device id in a numbered series: ESS-003 → ESS-009 when ESS-008 is the highest in use. */
+export function nextDeviceId(used: ReadonlySet<string>, id: string): string {
+  const match = /^(.*?)(\d+)$/.exec(id)
+  const prefix = match ? match[1]! : `${id}-`
+  const width = match ? match[2]!.length : 1
+  let highest = match ? 0 : 1
+  for (const other of used) {
+    if (!other.startsWith(prefix)) continue
+    const number = /^\d+$/.test(other.slice(prefix.length)) ? Number(other.slice(prefix.length)) : NaN
+    if (Number.isFinite(number)) highest = Math.max(highest, number)
+  }
+  return `${prefix}${String(highest + 1).padStart(width, '0')}`
+}
+
+/**
+ * Adds a component to a document at a world point (under `parentId`), with fresh ids throughout. Devices
+ * get the next free ids of their series, so each placed copy is a new device. Returns the new top ids.
+ */
+export function insertComponent(
+  draft: Doc,
+  component: SceneComponentData,
+  at: [number, number, number],
+  parentId: string | null = null,
+): string[] {
+  const nodeIds = new Map(component.nodes.map(node => [node.id, newId(node.kind === 'model' ? 'instance' : 'node')]))
+  const remap = (target: TwinBindingTarget): TwinBindingTarget => {
+    const copy = plain(target)
+    const id = nodeIds.get(targetNodeId(copy))!
+    if (copy.type === 'asset-instance' || copy.type === 'asset-node') copy.instanceId = id
+    else copy.nodeId = id
+    return copy
+  }
+  const parentInverse = worldMatrixOf(draft, parentId).invert()
+  const place = new Matrix4().makeTranslation(...at)
+  const roots: string[] = []
+  for (const original of component.nodes) {
+    const node = plain(original)
+    node.id = nodeIds.get(original.id)!
+    if (original.parentId && nodeIds.has(original.parentId)) node.parentId = nodeIds.get(original.parentId)!
+    else {
+      node.parentId = parentId
+      node.name = uniqueName(draft, node.name)
+      node.transform = transformOf(parentInverse.clone().multiply(place).multiply(matrixOf(original.transform)))
+      roots.push(node.id)
+    }
+    draft.nodes.push(node)
+  }
+  const used = new Set(draft.bindings.map(binding => binding.device.id))
+  const bindingIds = new Map<string, string>()
+  for (const binding of component.bindings) {
+    const id = newId('binding')
+    bindingIds.set(binding.id, id)
+    const deviceId = used.has(binding.device.id) ? nextDeviceId(used, binding.device.id) : binding.device.id
+    used.add(deviceId)
+    // Keep the name's own numbering style: 储能柜 03 → 储能柜 09 for ESS-009.
+    const number = /(\d+)$/.exec(deviceId)?.[1]
+    const name = number
+      ? binding.device.name.replace(/\d+$/, digits => String(Number(number)).padStart(digits.length, '0'))
+      : binding.device.name
+    draft.bindings.push({
+      ...plain(binding),
+      id,
+      target: remap(binding.target),
+      device: { ...binding.device, id: deviceId, name },
+    })
+  }
+  for (const effect of component.effects)
+    draft.effects.push({ ...plain(effect), id: newId('effect'), target: remap(effect.target) })
+  for (const rule of component.visualRules) {
+    const bindingId = bindingIds.get(rule.bindingId)
+    if (bindingId) draft.visualRules.push({ ...plain(rule), id: newId('rule'), bindingId, target: remap(rule.target) })
+  }
+  for (const item of component.interactions) {
+    const copy = plain(item)
+    copy.id = newId('interaction')
+    copy.source = remap(item.source)
+    if (item.action.target) copy.action.target = remap(item.action.target)
+    draft.interactions.push(copy)
+  }
+  return roots
 }

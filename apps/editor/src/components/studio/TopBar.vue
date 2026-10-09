@@ -9,6 +9,7 @@ import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageS
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { useProjectStore } from '@/stores/project'
 import { useSession } from '@/studio/context'
+import { saveSelectionAsComponent } from '@/studio/saveComponent'
 import { useShell } from '@/studio/shell'
 import DropMenu, { type MenuItem } from './DropMenu.vue'
 
@@ -83,6 +84,13 @@ const editMenu = computed<MenuItem[]>(() => {
     { label: '取消组合', shortcut: `${mod}⇧G`, disabled: !any, action: () => session.ungroupSelection() },
     { label: '放到地面', shortcut: 'End', disabled: !any, action: () => session.dropToGround() },
     { label: '全选', shortcut: `${mod}A`, action: () => session.selectAll() },
+    { divider: true },
+    { label: '保存为组件…', disabled: !any, action: () => void saveSelectionAsComponent(session) },
+    {
+      label: '替换模型…',
+      disabled: !(session.selectedNodes.length === 1 && session.selectedNodes[0]!.kind === 'model'),
+      action: () => (shell.dialog = 'replace-model'),
+    },
   ]
 })
 

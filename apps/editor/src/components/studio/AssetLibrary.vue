@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Box,
+  Boxes,
   Circle,
   Cone,
   Cylinder,
@@ -11,18 +12,55 @@ import {
   SquareDashed,
   Tag,
   Upload,
+  X,
 } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { PrimitiveShape } from '@twin-studio/core'
-import { writeAssetDragPayload, writeBuiltinModelDragPayload, writePrimitiveDragPayload } from '@/editor/assetDrag'
+import {
+  writeAssetDragPayload,
+  writeBuiltinModelDragPayload,
+  writeComponentDragPayload,
+  writePrimitiveDragPayload,
+} from '@/editor/assetDrag'
 import { builtinModels, importBuiltinModel, type BuiltinModel } from '@/editor/builtinModels'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
+import { useComponentStore } from '@/stores/components'
+import type { SceneComponentRecord } from '@/infrastructure/components/ComponentRepository'
 import { useSession } from '@/studio/context'
 import { modelThumbnail } from '@/studio/modelThumbnails'
 import UiSection from '@/components/ui/UiSection.vue'
 
 const session = useSession()
+const componentStore = useComponentStore()
+const myComponents = computed(() =>
+  componentStore.components.filter(item => !filter.value || item.name.includes(filter.value)),
+)
+
+function addComponent(item: SceneComponentRecord): void {
+  session.addComponent(item.data)
+}
+
+async function removeComponent(item: SceneComponentRecord): Promise<void> {
+  try {
+    await ElMessageBox.confirm(`从组件库删除「${item.name}」？已放置到场景中的不受影响。`, '删除组件', {
+      customClass: 'studio-dialog',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  await componentStore.remove(item.id)
+}
+
+function componentHint(item: SceneComponentRecord): string {
+  const { nodes, bindings, visualRules } = item.data
+  const parts = [`${nodes.length} 个对象`]
+  if (bindings.length) parts.push(`${bindings.length} 个设备`)
+  if (visualRules.length) parts.push(`${visualRules.length} 条告警规则`)
+  return `${item.name} · ${parts.join(' · ')} — 拖入视口或单击放置`
+}
 const assetStore = useAssetStore()
 const repository = new IndexedDbAssetRepository()
 const thumbs = reactive<Record<string, string>>({})
@@ -63,6 +101,7 @@ const drawing = [
 ] as const
 
 onMounted(async () => {
+  void componentStore.refresh()
   await assetStore.refresh()
   for (const model of builtinModels) {
     void modelThumbnail(`builtin:${model.file}`, `${import.meta.env.BASE_URL}demo-assets/${model.file}`).then(image => {
@@ -194,6 +233,36 @@ function sizeLabel(bytes: number): string {
       <p v-else class="library__note s-hint">建模同事交付的 .glb 模型导入后出现在这里，可在多个项目中复用。</p>
     </UiSection>
 
+    <UiSection title="我的组件" :count="myComponents.length" data-testid="component-library">
+      <div v-if="myComponents.length" class="library__grid">
+        <div
+          v-for="item in myComponents"
+          :key="item.id"
+          class="card"
+          role="button"
+          tabindex="0"
+          draggable="true"
+          :title="componentHint(item)"
+          :data-testid="`component-${item.name}`"
+          @dragstart="writeComponentDragPayload($event.dataTransfer!, item.id)"
+          @click="addComponent(item)"
+          @keydown.enter="addComponent(item)"
+        >
+          <span class="card__thumb">
+            <img v-if="item.thumbnail" :src="item.thumbnail" alt="" class="card__photo" />
+            <Boxes v-else :size="22" />
+          </span>
+          <span class="card__name">{{ item.name }}</span>
+          <button class="card__remove" title="从组件库删除" @click.stop="removeComponent(item)">
+            <X :size="11" />
+          </button>
+        </div>
+      </div>
+      <p v-else class="library__note s-hint">
+        选中配置好的对象（如带设备绑定和告警规则的储能柜），右键「保存为组件」，即可在任何项目中拖入复用，设备编号自动递增。
+      </p>
+    </UiSection>
+
     <UiSection title="基本体" :count="primitives.length">
       <div class="library__row">
         <button
@@ -258,6 +327,30 @@ function sizeLabel(bytes: number): string {
 .card:hover {
   border-color: var(--s-accent-line);
   background: var(--s-raised);
+}
+div.card {
+  position: relative;
+  cursor: pointer;
+}
+.card__photo {
+  object-fit: cover !important;
+}
+.card__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: none;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  cursor: pointer;
+}
+.card:hover .card__remove {
+  display: grid;
 }
 .card__thumb {
   display: grid;

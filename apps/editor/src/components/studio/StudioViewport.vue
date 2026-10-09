@@ -27,6 +27,7 @@ import { readAssetDragPayload, ASSET_DRAG_MIME } from '@/editor/assetDrag'
 import { getBuiltinModel, importBuiltinModel } from '@/editor/builtinModels'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
+import { useComponentStore } from '@/stores/components'
 import { SessionKey } from '@/studio/context'
 import type { EditorTool } from '@/studio/EditorSession'
 import { formatArea, formatLength } from '@/studio/MeasureTool'
@@ -110,6 +111,10 @@ async function onDrop(event: DragEvent): Promise<void> {
       const record = await importBuiltinModel(model, new IndexedDbAssetRepository())
       void assetStore.refresh()
       await s.addModel(record.id, point)
+    } else if (payload.type === 'component') {
+      const component = await useComponentStore().get(payload.componentId)
+      if (!component) throw new Error('组件不存在')
+      s.addComponent(component.data, point)
     } else s.addPrimitive(payload.presetId as PrimitiveShape, point)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '放置失败')
