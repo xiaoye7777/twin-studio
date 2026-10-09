@@ -5,6 +5,7 @@ import BottomDock from '@/components/studio/BottomDock.vue'
 import ResizeHandle from '@/components/studio/ResizeHandle.vue'
 import HistoryDialog from '@/components/studio/HistoryDialog.vue'
 import InspectorPanel from '@/components/studio/InspectorPanel.vue'
+import PerformanceDialog from '@/components/studio/PerformanceDialog.vue'
 import LeftPanel from '@/components/studio/LeftPanel.vue'
 import StatusBar from '@/components/studio/StatusBar.vue'
 import ReplaceModelDialog from '@/components/studio/ReplaceModelDialog.vue'
@@ -89,6 +90,7 @@ onBeforeUnmount(() => {
     <ReplaceModelDialog v-if="session?.ui.ready" />
     <ViewportMenu v-if="session?.ui.ready" />
     <HistoryDialog v-if="session?.ui.ready" />
+    <PerformanceDialog v-if="session?.ui.ready" />
   </div>
 </template>
 

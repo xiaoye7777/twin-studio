@@ -111,6 +111,16 @@ try {
   assert.equal(await studio(page, () => window.__studio.engine.rig.controls.maxDistance), 8000)
   report.tourPreview = 'PASS'
 
+  // Performance check from the viewport's stats: the sample is within the ordinary-PC budget.
+  await page.getByTestId('viewport-stats').click()
+  await page.getByTestId('performance-report').waitFor()
+  const tips = await page.getByTestId('performance-tips').textContent()
+  assert(tips.includes('建议范围内'), tips)
+  assert.equal(await page.locator('.perf__table tbody tr').count(), 8)
+  await page.keyboard.press('Escape')
+  await page.getByTestId('performance-report').waitFor({ state: 'hidden' })
+  report.performanceCheck = 'PASS'
+
   // Saving puts a picture of the opening view on the project card.
   await save(page)
   await page.waitForTimeout(500)

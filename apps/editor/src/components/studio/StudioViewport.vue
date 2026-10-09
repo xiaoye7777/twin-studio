@@ -29,10 +29,12 @@ import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
 import { useComponentStore } from '@/stores/components'
 import { SessionKey } from '@/studio/context'
+import { useShell } from '@/studio/shell'
 import type { EditorTool } from '@/studio/EditorSession'
 import { formatArea, formatLength } from '@/studio/MeasureTool'
 
 const sessionRef = inject(SessionKey)!
+const shell = useShell()
 const canvas = ref<HTMLCanvasElement>()
 defineExpose({ canvas })
 const assetStore = useAssetStore()
@@ -211,12 +213,17 @@ async function onDrop(event: DragEvent): Promise<void> {
       </div>
 
       <!-- Performance -->
-      <div class="viewport__stats" data-testid="viewport-stats">
+      <button
+        class="viewport__stats"
+        data-testid="viewport-stats"
+        title="性能体检：面数、绘制次数、贴图显存和优化建议"
+        @click="shell.dialog = 'performance'"
+      >
         <span>{{ nodeCount }} 个对象</span>
         <span>{{ triangles(ui.stats.triangles) }} 三角面</span>
         <span :class="{ 'is-low': ui.stats.fps < 30 }">{{ ui.stats.fps }} FPS</span>
         <span>{{ qualityLabel }}</span>
-      </div>
+      </button>
 
       <!-- Preview mode hint -->
       <div v-if="!editing" class="viewport__preview-badge s-float">
@@ -458,12 +465,17 @@ async function onDrop(event: DragEvent): Promise<void> {
   display: flex;
   gap: 10px;
   padding: 4px 9px;
+  border: 0;
   border-radius: 5px;
+  cursor: pointer;
   background: rgb(14 15 17 / 0.55);
   color: var(--s-fg-2);
   font-family: var(--s-mono);
   font-size: 10.5px;
-  pointer-events: none;
+}
+.viewport__stats:hover {
+  background: rgb(14 15 17 / 0.8);
+  color: var(--s-fg);
 }
 .viewport__stats .is-low {
   color: var(--s-warn);

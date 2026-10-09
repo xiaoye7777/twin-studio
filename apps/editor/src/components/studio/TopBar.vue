@@ -145,6 +145,7 @@ const viewMenu = computed<MenuItem[]>(() => {
       action: () => session.setQuality(value),
     })),
     { divider: true },
+    { label: '性能体检…', action: () => (shell.dialog = 'performance') },
     { label: '快捷键', shortcut: '?', action: () => (shell.dialog = 'shortcuts') },
   ]
 })

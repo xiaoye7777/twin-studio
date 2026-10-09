@@ -43,25 +43,29 @@ const options = computed(() => [
     .map(asset => ({ key: `asset:${asset.id}`, name: asset.name.replace(/\.glb$/i, ''), assetId: asset.id })),
 ])
 
-watch(visible, async open => {
-  if (!open) return
-  state.choice = ''
-  state.scope = 'one'
-  await assetStore.refresh()
-  for (const model of builtinModels)
-    void modelThumbnail(`builtin:${model.file}`, `${import.meta.env.BASE_URL}demo-assets/${model.file}`).then(
-      image => image && (thumbs[`builtin:${model.key}`] = image),
-    )
-  for (const asset of assetStore.assets) {
-    if (asset.assetType !== 'model' || builtinFiles.has(asset.name)) continue
-    const record = await repository.get(asset.id)
-    if (!record) continue
-    const url = URL.createObjectURL(record.blob)
-    const image = await modelThumbnail(`asset:${record.fingerprint}`, url)
-    URL.revokeObjectURL(url)
-    if (image) thumbs[`asset:${asset.id}`] = image
-  }
-})
+watch(
+  visible,
+  async open => {
+    if (!open) return
+    state.choice = ''
+    state.scope = 'one'
+    await assetStore.refresh()
+    for (const model of builtinModels)
+      void modelThumbnail(`builtin:${model.file}`, `${import.meta.env.BASE_URL}demo-assets/${model.file}`).then(
+        image => image && (thumbs[`builtin:${model.key}`] = image),
+      )
+    for (const asset of assetStore.assets) {
+      if (asset.assetType !== 'model' || builtinFiles.has(asset.name)) continue
+      const record = await repository.get(asset.id)
+      if (!record) continue
+      const url = URL.createObjectURL(record.blob)
+      const image = await modelThumbnail(`asset:${record.fingerprint}`, url)
+      URL.revokeObjectURL(url)
+      if (image) thumbs[`asset:${asset.id}`] = image
+    }
+  },
+  { immediate: true },
+)
 
 async function upload(event: Event): Promise<void> {
   const file = (event.target as HTMLInputElement).files?.[0]
