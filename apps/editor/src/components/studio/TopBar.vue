@@ -59,7 +59,8 @@ function addPrimitive(shape: PrimitiveShape): void {
 }
 
 const fileMenu = computed<MenuItem[]>(() => [
-  { label: '保存', shortcut: `${mod}S`, action: () => void session.save() },
+  { label: '保存', shortcut: `${mod}S`, action: () => void session.save(true) },
+  { label: '历史版本…', action: () => (shell.dialog = 'history') },
   { label: '导出项目包 (.twin.zip)', action: () => void exportPackage() },
   { label: '在数据大屏中预览', action: () => void openDashboardPreview() },
   { divider: true },

@@ -70,6 +70,8 @@ import {
 } from '@twin-studio/core'
 import { type DrawKind, type DrawResult, DrawTool } from './DrawTool'
 import { deviceIdFor, deviceVariables, type DeviceTemplate } from './deviceTemplates'
+import type { SceneHistoryRepository, SnapshotKind } from '@/infrastructure/history/SceneHistoryRepository'
+import { type MeasureMode, MeasureTool, type MeasureReadout } from './MeasureTool'
 import { type GizmoMode, TransformGizmo } from './TransformGizmo'
 
 export type EditorTool = 'select' | GizmoMode
@@ -89,6 +91,8 @@ export interface EditorSessionDeps {
   scenes: SceneRepository
   /** Called after each save with a small JPEG of the scene for the project card. */
   onCover?: (dataUrl: string) => void
+  /** Saved versions; saving keeps one at most every ten minutes, and on every manual save. */
+  history?: SceneHistoryRepository
   quality?: QualitySetting
 }
 
@@ -126,6 +130,19 @@ export class EditorSession {
     snap: { enabled: false, translate: 1, rotate: 15, scale: 0.1 },
     draw: null as DrawKind | null,
     drawPoints: 0,
+    measure: {
+      mode: null,
+      points: 0,
+      length: 0,
+      area: 0,
+      segment: null,
+      done: false,
+    } as MeasureReadout,
+    /** The viewport's right-click menu: where it opened and the scene point under it. */
+    contextMenu: null as { x: number; y: number; point: [number, number, number] | null } | null,
+    hasClipboard: false,
+    /** Bumped when a version is stored, so the history list refreshes. */
+    historyRevision: 0,
     canUndo: false,
     canRedo: false,
     undoLabel: '',
@@ -149,13 +166,17 @@ export class EditorSession {
   private readonly visibility = new RuntimeVisibilityLayer()
   private readonly gizmo: TransformGizmo
   private readonly drawTool: DrawTool
+  private readonly measureTool: MeasureTool
   readonly tours: TourPlayer
   private effects: EffectRuntime | null = null
   private rules: VisualRuleRuntime | null = null
   private preview: { interactions: InteractionRuntime; pointers: ViewerPointerEvents } | null = null
   private gizmoIds: string[] = []
-  private clipboard: { nodes: SceneNodeV2[]; effects: EffectInstance[] } | null = null
+  /** Copied nodes, their effects and where they appeared (centre of their bounds, for paste-here). */
+  private clipboard: { nodes: SceneNodeV2[]; effects: EffectInstance[]; center: Vector3 | null } | null = null
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null
+  /** The last document kept as a version, and when. */
+  private lastSnapshot: { document: SceneDocumentV2; at: number } | null = null
   private statsTimer: ReturnType<typeof setInterval>
   private pointer: { x: number; y: number; button: number } | null = null
   private hoverFrame: number | null = null
@@ -194,6 +215,7 @@ export class EditorSession {
         this.ui.drawPoints = state.points
       },
     )
+    this.measureTool = new MeasureTool(this.engine, readout => (this.ui.measure = readout))
     this.tours = new TourPlayer(
       {
         getTours: () => this.doc.value.tours,
@@ -227,6 +249,7 @@ export class EditorSession {
     canvas.addEventListener('pointerleave', this.onPointerLeave)
     window.addEventListener('pointerup', this.onPointerUp)
     canvas.addEventListener('dblclick', this.onDoubleClick)
+    canvas.addEventListener('contextmenu', this.onContextMenu)
     this.statsTimer = setInterval(() => {
       this.ui.stats = this.engine.getStats()
     }, 1000)
@@ -280,6 +303,7 @@ export class EditorSession {
     this.canvas.removeEventListener('pointerleave', this.onPointerLeave)
     window.removeEventListener('pointerup', this.onPointerUp)
     this.canvas.removeEventListener('dblclick', this.onDoubleClick)
+    this.canvas.removeEventListener('contextmenu', this.onContextMenu)
     this.exitPreview()
     this.tours.dispose()
     this.rules?.dispose()
@@ -288,6 +312,7 @@ export class EditorSession {
     this.visibility.dispose()
     this.gizmo.dispose()
     this.drawTool.dispose()
+    this.measureTool.dispose()
     this.sync.dispose()
     this.engine.dispose()
   }
@@ -352,7 +377,8 @@ export class EditorSession {
 
   // ================================================================ persistence
 
-  async save(): Promise<boolean> {
+  /** Saves now; `manual` (Ctrl/⌘ + S, the save button) also keeps a version. */
+  async save(manual = false): Promise<boolean> {
     if (this.autosaveTimer) clearTimeout(this.autosaveTimer)
     this.autosaveTimer = null
     const current = this.store.document
@@ -372,6 +398,8 @@ export class EditorSession {
       void (opening ? this.captureFrom(opening, 480) : this.captureClean(480)).then(
         cover => cover && this.deps.onCover?.(cover),
       )
+      const due = !this.lastSnapshot || Date.now() - this.lastSnapshot.at > 10 * 60_000
+      if (manual || due) void this.snapshot(manual ? '手动保存' : '自动保存', manual ? 'manual' : 'auto')
       return true
     } catch (error) {
       this.ui.saveState = 'error'
@@ -383,6 +411,38 @@ export class EditorSession {
             : String(error)
       return false
     }
+  }
+
+  // ================================================================ versions
+
+  /** Keeps the current document as a version (skipped when it equals the last one kept). */
+  async snapshot(label: string, kind: SnapshotKind = 'manual'): Promise<boolean> {
+    const history = this.deps.history
+    const document = this.store.document
+    if (!history || this.lastSnapshot?.document === document) return false
+    this.lastSnapshot = { document, at: Date.now() }
+    const thumbnail = (await this.captureClean(200)) ?? undefined
+    await history.add(
+      { projectId: this.projectId, label, kind, nodeCount: document.nodes.length, thumbnail },
+      JSON.stringify(document),
+    )
+    this.ui.historyRevision++
+    return true
+  }
+
+  /** Brings back a saved version as one undoable edit, keeping the current state as a version first. */
+  async restoreSnapshot(id: string): Promise<void> {
+    const json = await this.deps.history?.document(id)
+    if (!json) throw new Error('这个版本已不存在')
+    const { document } = loadSceneDocument(JSON.parse(json))
+    await this.snapshot('恢复前的版本', 'restore')
+    this.edit('恢复历史版本', draft => {
+      const target = draft as unknown as Record<string, unknown>
+      const source = plain(document) as unknown as Record<string, unknown>
+      for (const key of Object.keys(target)) if (!(key in source)) delete target[key]
+      for (const [key, value] of Object.entries(source)) if (key !== 'projectId') target[key] = value
+    })
+    this.select([])
   }
 
   private scheduleAutosave(): void {
@@ -419,6 +479,7 @@ export class EditorSession {
     this.engine.setOutlined('selection', [])
     this.engine.setOutlined('hover', [])
     this.drawTool.setPreviewHidden(true)
+    this.measureTool.setHidden(true)
     try {
       const blob = await render()
       if (!blob) return null
@@ -430,6 +491,7 @@ export class EditorSession {
     } finally {
       if (this.ui.mode === 'edit') this.engine.setHelpers(helpers)
       this.drawTool.setPreviewHidden(false)
+      this.measureTool.setHidden(false)
       this.refreshSelectionVisuals()
     }
   }
@@ -644,11 +706,17 @@ export class EditorSession {
   private readonly onPointerUp = (event: PointerEvent): void => {
     const start = this.pointer
     this.pointer = null
-    if (!start || start.button !== 0 || this.ui.mode !== 'edit' || !this.ui.ready) return
+    if (!start || this.ui.mode !== 'edit' || !this.ui.ready) return
     if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 4) return
+    if (start.button === 2 && event.target === this.canvas) return this.openContextMenu(event.clientX, event.clientY)
+    if (start.button !== 0) return
     if (event.target !== this.canvas || this.gizmo.active) return
     if (this.drawTool.active) {
       this.drawTool.click(event.clientX, event.clientY)
+      return
+    }
+    if (this.measureTool.active) {
+      this.measureTool.click(event.clientX, event.clientY)
       return
     }
     const additive = event.shiftKey || event.ctrlKey || event.metaKey
@@ -662,8 +730,30 @@ export class EditorSession {
     this.select([id], additive ? 'toggle' : 'replace')
   }
 
+  /** Right-click without dragging (a right drag pans the camera): select what is under it and open the menu. */
+  private openContextMenu(clientX: number, clientY: number): void {
+    if (this.drawTool.active || this.measureTool.active) return
+    const id = this.pickNode(clientX, clientY, false)
+    const part = this.part.value
+    const insidePart = part && id && this.sync.nodeIdOf(this.engine.pick(clientX, clientY)!.object) === part.nodeId
+    if (!insidePart) {
+      if (!id) this.clearSelection()
+      else if (!this.selection.value.includes(id)) this.select([id])
+    }
+    const point = this.engine.pointAt(clientX, clientY)
+    this.ui.contextMenu = { x: clientX, y: clientY, point: point ? [point.x, point.y, point.z] : null }
+  }
+
+  closeContextMenu(): void {
+    this.ui.contextMenu = null
+  }
+
+  private readonly onContextMenu = (event: MouseEvent): void => {
+    if (this.ui.mode === 'edit') event.preventDefault()
+  }
+
   private readonly onDoubleClick = (event: MouseEvent): void => {
-    if (this.ui.mode !== 'edit' || this.drawTool.active) return
+    if (this.ui.mode !== 'edit' || this.drawTool.active || this.measureTool.active) return
     // Inside a model the innermost thing is a part; the camera stays, parts can be small.
     const part = this.pickPart(event.clientX, event.clientY, true)
     if (part) return this.selectPart(part.nodeId, part.assetNodeId)
@@ -676,6 +766,7 @@ export class EditorSession {
 
   private readonly onPointerMove = (event: PointerEvent): void => {
     if (this.drawTool.active) this.drawTool.move(event.clientX, event.clientY)
+    if (this.measureTool.active) this.measureTool.move(event.clientX, event.clientY)
     if (this.hoverFrame !== null) return
     const { clientX, clientY } = event
     this.hoverFrame = requestAnimationFrame(() => {
@@ -685,6 +776,7 @@ export class EditorSession {
       const ground = ndc ? this.engine.raycastGround(ndc) : null
       this.ui.cursor = ground ? [ground.x, ground.y, ground.z] : null
       if (this.ui.mode !== 'edit' || this.pointer || this.gizmo.dragging || this.drawTool.active) return
+      if (this.measureTool.active) return
       const part = this.pickPart(clientX, clientY, false)
       if (part) {
         this.setHovered(null)
@@ -974,6 +1066,7 @@ export class EditorSession {
 
   startDrawing(kind: DrawKind): void {
     if (this.ui.mode !== 'edit') return
+    this.measureTool.stop()
     this.drawTool.snapStep = this.ui.snap.enabled ? this.ui.snap.translate : 0
     this.drawTool.start(kind)
     this.clearSelection()
@@ -989,6 +1082,30 @@ export class EditorSession {
 
   undoDrawPoint(): void {
     this.drawTool.undoPoint()
+  }
+
+  /** Distance / area measuring in the viewport (not saved). */
+  startMeasure(mode: MeasureMode): void {
+    if (this.ui.mode !== 'edit') return
+    this.drawTool.cancel()
+    this.measureTool.snapStep = this.ui.snap.enabled ? this.ui.snap.translate : 0
+    this.measureTool.start(mode)
+  }
+
+  stopMeasure(): void {
+    this.measureTool.stop()
+  }
+
+  finishMeasure(): void {
+    this.measureTool.finish()
+  }
+
+  undoMeasurePoint(): void {
+    this.measureTool.undoPoint()
+  }
+
+  clearMeasure(): void {
+    this.measureTool.clear()
   }
 
   private finishDrawing({ kind, points }: DrawResult): void {
@@ -1148,32 +1265,46 @@ export class EditorSession {
     const ids = topmost(doc, this.selection.value)
     if (!ids.length) return
     const included = new Set(ids.flatMap(id => [...subtreeIds(doc, id)]))
+    const bounds = new Box3()
+    for (const id of ids) {
+      const object = this.sync.objectFor(id)
+      if (object) bounds.expandByObject(object, true)
+    }
     this.clipboard = {
       nodes: plain(doc.nodes.filter(node => included.has(node.id))) as SceneNodeV2[],
       effects: plain(doc.effects.filter(effect => included.has(targetNodeId(effect.target)))) as EffectInstance[],
+      center: bounds.isEmpty() ? null : bounds.getCenter(new Vector3()),
     }
+    this.ui.hasClipboard = true
   }
 
-  paste(): void {
+  /** Pastes the copied nodes beside the originals, or centred on a scene point (right-click → paste here). */
+  paste(at?: Vector3 | null): void {
     const clip = this.clipboard
     if (!clip) return
     const remap = new Map(clip.nodes.map(node => [node.id, newId(node.kind === 'model' ? 'instance' : 'node')]))
     const roots: string[] = []
     this.edit('粘贴', draft => {
+      const parentOf = (original: SceneNodeV2) =>
+        original.parentId && !remap.has(original.parentId) && nodeById(draft, original.parentId)
+          ? original.parentId
+          : null
+      const top = clip.nodes.filter(node => !node.parentId || !remap.has(node.parentId))
+      const world = (node: SceneNodeV2) =>
+        new Vector3(...node.transform.position).applyMatrix4(worldMatrixOf(draft, parentOf(node)))
+      const center =
+        clip.center ?? top.reduce((sum, node) => sum.add(world(node)), new Vector3()).divideScalar(top.length || 1)
+      const shift = at ? new Vector3(at.x - center.x, 0, at.z - center.z) : new Vector3(3, 0, 3)
       for (const original of clip.nodes) {
         const node = plain(original) as SceneNodeV2
         node.id = remap.get(original.id)!
         const parentInClip = original.parentId ? remap.get(original.parentId) : undefined
-        node.parentId =
-          parentInClip ?? (original.parentId && nodeById(draft, original.parentId) ? original.parentId : null)
+        node.parentId = parentInClip ?? parentOf(original)
         delete node.runtimeBid
         if (!parentInClip) {
           node.name = uniqueName(draft, node.name)
-          node.transform.position = [
-            node.transform.position[0] + 3,
-            node.transform.position[1],
-            node.transform.position[2] + 3,
-          ]
+          const target = world(original).add(shift).applyMatrix4(worldMatrixOf(draft, node.parentId).invert())
+          node.transform.position = [target.x, target.y, target.z]
           roots.push(node.id)
         }
         draft.nodes.push(node)
@@ -1633,6 +1764,7 @@ export class EditorSession {
   enterPreview(): void {
     if (this.ui.mode === 'preview' || !this.effects) return
     this.drawTool.cancel()
+    this.measureTool.stop()
     this.clearSelection()
     this.ui.mode = 'preview'
     this.engine.setHelpers({ grid: false, axes: false })

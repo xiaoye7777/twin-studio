@@ -7,6 +7,7 @@ import CreateProjectDialog from '@/components/project/CreateProjectDialog.vue'
 import ProjectCard from '@/components/project/ProjectCard.vue'
 import { createZeroCarbonPark } from '@/demo/zeroCarbonPark'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
+import { SceneHistoryRepository } from '@/infrastructure/history/SceneHistoryRepository'
 import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageService'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { type Project, useProjectStore } from '@/stores/project'
@@ -90,7 +91,7 @@ async function renameProject(project: Project): Promise<void> {
 async function removeProject(project: Project): Promise<void> {
   try {
     await ElMessageBox.confirm(
-      `删除「${project.name}」？场景数据将从本机移除，此操作不可撤销。建议先导出项目包备份。`,
+      `删除「${project.name}」？场景数据和历史版本将从本机移除，此操作不可撤销。建议先导出项目包备份。`,
       '删除项目',
       {
         type: 'warning',
@@ -100,6 +101,7 @@ async function removeProject(project: Project): Promise<void> {
       },
     )
     await scenes.remove(project.id)
+    void new SceneHistoryRepository().removeProject(project.id).catch(() => {})
     projectStore.removeProject(project.id)
   } catch {
     // Cancelled.

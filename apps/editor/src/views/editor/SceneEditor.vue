@@ -3,14 +3,17 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef } from '
 import { useRoute, useRouter } from 'vue-router'
 import BottomDock from '@/components/studio/BottomDock.vue'
 import ResizeHandle from '@/components/studio/ResizeHandle.vue'
+import HistoryDialog from '@/components/studio/HistoryDialog.vue'
 import InspectorPanel from '@/components/studio/InspectorPanel.vue'
 import LeftPanel from '@/components/studio/LeftPanel.vue'
 import StatusBar from '@/components/studio/StatusBar.vue'
 import ReplaceModelDialog from '@/components/studio/ReplaceModelDialog.vue'
 import StudioDialogs from '@/components/studio/StudioDialogs.vue'
+import ViewportMenu from '@/components/studio/ViewportMenu.vue'
 import StudioViewport from '@/components/studio/StudioViewport.vue'
 import TopBar from '@/components/studio/TopBar.vue'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
+import { SceneHistoryRepository } from '@/infrastructure/history/SceneHistoryRepository'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { useProjectStore } from '@/stores/project'
 import { SessionKey } from '@/studio/context'
@@ -45,6 +48,7 @@ onMounted(async () => {
     projectName: project.name,
     assets: new IndexedDbAssetRepository(),
     scenes: new LocalSceneRepository(),
+    history: new SceneHistoryRepository(),
     onCover: cover => projects.updateProject(projectId, { cover }),
   })
   session.value = opened
@@ -83,6 +87,8 @@ onBeforeUnmount(() => {
     <StatusBar v-if="session" />
     <StudioDialogs v-if="session?.ui.ready" />
     <ReplaceModelDialog v-if="session?.ui.ready" />
+    <ViewportMenu v-if="session?.ui.ready" />
+    <HistoryDialog v-if="session?.ui.ready" />
   </div>
 </template>
 

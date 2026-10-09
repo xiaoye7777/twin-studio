@@ -12,6 +12,7 @@ import {
   Pause,
   Play,
   Rotate3d,
+  Ruler,
   Scaling,
   SkipBack,
   SkipForward,
@@ -28,6 +29,7 @@ import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
 import { SessionKey } from '@/studio/context'
 import type { EditorTool } from '@/studio/EditorSession'
+import { formatArea, formatLength } from '@/studio/MeasureTool'
 
 const sessionRef = inject(SessionKey)!
 const canvas = ref<HTMLCanvasElement>()
@@ -63,6 +65,15 @@ const drawHint = computed(() => {
   const need = draw === 'area' ? 3 : 2
   const name = draw === 'area' ? '区域' : '能流线'
   return `绘制${name}：已放置 ${points} 个点 · 单击加点 · ${points >= need ? '双击或回车完成' : `至少 ${need} 个点`} · Backspace 撤销点 · Esc 取消`
+})
+
+const measure = computed(() => ui.value?.measure)
+const measureHint = computed(() => {
+  const m = measure.value
+  if (!m?.mode) return ''
+  if (m.done) return '单击开始新的测量 · Esc 退出'
+  const need = m.mode === 'area' ? 3 : 2
+  return `单击取点（可点在模型表面）· ${m.points >= need ? '双击或回车结束' : `至少 ${need} 个点`} · Backspace 撤销 · Esc 退出`
 })
 
 const qualityLabel = computed(() => {
@@ -111,7 +122,7 @@ async function onDrop(event: DragEvent): Promise<void> {
 <template>
   <div
     class="viewport"
-    :class="{ 'is-dropping': dropping, 'is-drawing': !!ui?.draw }"
+    :class="{ 'is-dropping': dropping, 'is-drawing': !!ui?.draw, 'is-measuring': !!ui?.measure.mode }"
     data-testid="viewport"
     @dragover="onDragOver"
     @dragleave="dropping = false"
@@ -155,6 +166,15 @@ async function onDrop(event: DragEvent): Promise<void> {
           @click="ui.draw === tool.id ? session.cancelDrawing() : session.startDrawing(tool.id)"
         >
           <component :is="tool.icon" :size="15" />
+        </button>
+        <button
+          class="s-icon-btn"
+          :class="{ 'is-active': !!ui.measure.mode }"
+          title="测量距离与面积（M）"
+          data-testid="tool-measure"
+          @click="ui.measure.mode ? session.stopMeasure() : session.startMeasure('distance')"
+        >
+          <Ruler :size="15" />
         </button>
         <span class="viewport__tools-sep" />
         <button
@@ -200,6 +220,46 @@ async function onDrop(event: DragEvent): Promise<void> {
 
       <!-- Drawing hint -->
       <div v-if="drawHint" class="viewport__hint s-float" data-testid="draw-hint">{{ drawHint }}</div>
+
+      <!-- Measuring -->
+      <div v-if="measure?.mode" class="viewport__measure s-float" data-testid="measure-panel">
+        <div class="viewport__measure-head">
+          <button
+            v-for="mode in ['distance', 'area'] as const"
+            :key="mode"
+            class="viewport__measure-mode"
+            :class="{ 'is-active': measure.mode === mode }"
+            :data-testid="`measure-${mode}`"
+            @click="session.startMeasure(mode)"
+          >
+            {{ mode === 'distance' ? '距离' : '面积' }}
+          </button>
+          <button class="s-icon-btn" title="清除" @click="session.clearMeasure()">清除</button>
+          <button class="s-icon-btn" title="退出测量（Esc）" @click="session.stopMeasure()">✕</button>
+        </div>
+        <dl class="viewport__measure-values" data-testid="measure-values">
+          <template v-if="measure.mode === 'area'">
+            <dt>面积</dt>
+            <dd data-testid="measure-area">{{ formatArea(measure.area) }}</dd>
+            <dt>周长</dt>
+            <dd>{{ formatLength(measure.length) }}</dd>
+          </template>
+          <template v-else>
+            <dt>总长</dt>
+            <dd data-testid="measure-length">{{ formatLength(measure.length) }}</dd>
+          </template>
+          <template v-if="measure.segment">
+            <dt>当前段</dt>
+            <dd>{{ formatLength(measure.segment.length) }}</dd>
+            <dt>水平 / 高差</dt>
+            <dd>
+              {{ formatLength(measure.segment.horizontal) }} / {{ measure.segment.height >= 0 ? '+' : ''
+              }}{{ measure.segment.height.toFixed(2) }} m
+            </dd>
+          </template>
+        </dl>
+        <p class="viewport__measure-hint">{{ measureHint }}</p>
+      </div>
 
       <!-- Tour playback -->
       <div v-if="ui.tour.playing" class="viewport__tour" data-testid="tour-bar">
@@ -261,8 +321,69 @@ async function onDrop(event: DragEvent): Promise<void> {
   pointer-events: none;
   content: '';
 }
-.viewport.is-drawing .viewport__canvas {
+.viewport.is-drawing .viewport__canvas,
+.viewport.is-measuring .viewport__canvas {
   cursor: crosshair;
+}
+.viewport__measure {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  display: flex;
+  width: 280px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  transform: translateX(-50%);
+  font-size: 12px;
+}
+.viewport__measure-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.viewport__measure-head .s-icon-btn {
+  width: auto;
+  padding: 0 6px;
+  font-size: 11.5px;
+}
+.viewport__measure-head .s-icon-btn:first-of-type {
+  margin-left: auto;
+}
+.viewport__measure-mode {
+  padding: 3px 10px;
+  border: 1px solid var(--s-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--s-fg-2);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.viewport__measure-mode.is-active {
+  border-color: #5ec8ff;
+  background: rgb(94 200 255 / 0.12);
+  color: #bfe9ff;
+}
+.viewport__measure-values {
+  display: grid;
+  margin: 0;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+}
+.viewport__measure-values dt {
+  color: var(--s-fg-3);
+}
+.viewport__measure-values dd {
+  margin: 0;
+  color: var(--s-fg);
+  font-family: var(--s-mono);
+  text-align: right;
+}
+.viewport__measure-hint {
+  margin: 0;
+  color: var(--s-fg-3);
+  font-size: 11px;
+  line-height: 1.5;
 }
 .viewport__canvas {
   display: block;

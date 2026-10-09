@@ -361,6 +361,61 @@ try {
   )
   report.modelParts = 'PASS'
 
+  // ---------------------------------------------------------------- right-click menu
+  // Copy from the menu on an object, then paste where the menu opens on another spot.
+  const turbineAt = await screenPointOf(page, turbine.id)
+  await page.mouse.click(turbineAt.x, turbineAt.y, { button: 'right' })
+  await page.getByTestId('viewport-menu').waitFor()
+  await page.getByTestId('menu-复制').click()
+  const view = await page.getByTestId('viewport-canvas').boundingBox()
+  await page.mouse.click(view.x + view.width * 0.2, view.y + view.height * 0.85, { button: 'right' })
+  await page.getByTestId('viewport-menu').waitFor()
+  const spot = await studio(page, () => window.__studio.ui.contextMenu.point)
+  const countBefore = (await doc()).nodes.length
+  await page.getByTestId('menu-粘贴到这里').click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count + 1, countBefore)
+  await settled(page)
+  const pastedCenter = await studio(page, () => {
+    const s = window.__studio
+    const object = s.sync.objectFor(s.selection.value[0])
+    const center = new s.engine.contentBounds.constructor()
+      .setFromObject(object, true)
+      .getCenter(object.position.clone())
+    return [center.x, center.z]
+  })
+  assert(Math.hypot(pastedCenter[0] - spot[0], pastedCenter[1] - spot[2]) < 0.5, `pasted at ${pastedCenter}`)
+  report.contextMenu = 'PASS'
+
+  // ---------------------------------------------------------------- measuring
+  await page.keyboard.press('m')
+  await page.getByTestId('measure-panel').waitFor()
+  await page.mouse.click(view.x + view.width * 0.3, view.y + view.height * 0.6)
+  await page.waitForTimeout(400)
+  await page.mouse.click(view.x + view.width * 0.6, view.y + view.height * 0.7)
+  await page.keyboard.press('Enter')
+  const measured = await studio(page, () => ({ ...window.__studio.ui.measure }))
+  assert(measured.done && measured.points === 2 && measured.length > 0.5, JSON.stringify(measured))
+  assert.equal((await doc()).nodes.length, countBefore + 1, 'measuring does not edit the scene')
+  await page.keyboard.press('Escape')
+  await page.getByTestId('measure-panel').waitFor({ state: 'detached' })
+  report.measure = 'PASS'
+
+  // ---------------------------------------------------------------- version history
+  // Ctrl/⌘ + S keeps a version; restoring one is a single undoable step.
+  await save(page)
+  await page.waitForFunction(() => window.__studio.ui.historyRevision > 0)
+  const kept = (await doc()).nodes.length
+  await page.keyboard.press('Delete')
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count - 1, kept)
+  await page.getByRole('button', { name: '文件' }).click()
+  await page.getByText('历史版本…').click()
+  await page.getByTestId('snapshot-list').waitFor()
+  await page.getByTestId('snapshot-restore').first().click()
+  await page.locator('.el-message-box').getByRole('button', { name: '恢复' }).click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count, kept)
+  assert.equal(await studio(page, () => window.__studio.ui.undoLabel), '恢复历史版本')
+  report.versionHistory = 'PASS'
+
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))
 } finally {

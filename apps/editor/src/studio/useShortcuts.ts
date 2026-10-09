@@ -35,10 +35,15 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
       if (key === 'enter') return run(() => s.finishDrawingNow())
       if (key === 'backspace' || key === 'delete') return run(() => s.undoDrawPoint())
     }
+    if (s.ui.measure.mode) {
+      if (key === 'escape') return run(() => s.stopMeasure())
+      if (key === 'enter') return run(() => s.finishMeasure())
+      if (key === 'backspace' || key === 'delete') return run(() => s.undoMeasurePoint())
+    }
     if (mod && key === 'z' && event.shiftKey) return run(() => s.redo())
     if (mod && key === 'z') return run(() => s.undo())
     if (mod && key === 'y') return run(() => s.redo())
-    if (mod && key === 's') return run(() => void s.save())
+    if (mod && key === 's') return run(() => void s.save(true))
     if (mod && key === 'd') return run(() => s.duplicateSelection())
     if (mod && key === 'c') return run(() => s.copySelection())
     if (mod && key === 'v') return run(() => s.paste())
@@ -68,6 +73,8 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
         return run(() => s.dropToGround())
       case 'p':
         return run(() => s.enterPreview())
+      case 'm':
+        return run(() => (s.ui.measure.mode ? s.stopMeasure() : s.startMeasure('distance')))
       case '7':
         return run(() => void s.viewFrom('top'))
       case '1':
