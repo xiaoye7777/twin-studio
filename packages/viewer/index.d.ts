@@ -358,6 +358,17 @@ export type SceneNodeV2 = SceneNodeBaseV2 &
             { name?: string; transform?: SceneTransformV1; visible?: boolean; runtimeBid?: string }
           >
           deleted: string[]
+          /** Clip playback; absent = play the model's first clip, looping. Since 0.5.0. */
+          animation?: { clip: string | null; speed: number; loop: boolean }
+          /** Spinning parts (turbine blades…); speed in °/s, or a live variable × factor. Since 0.5.0. */
+          motions?: {
+            id: string
+            assetNodeId: string
+            axis: 'x' | 'y' | 'z'
+            speed: number
+            speedVariable: string | null
+            factor: number
+          }[]
         }
       }
     | {

@@ -37,6 +37,7 @@ export interface TwinEngineOptions {
   quality?: QualitySetting
   /** Editor scenes keep the drawing buffer for thumbnails and screenshots. */
   preserveDrawingBuffer?: boolean
+  /** Serve the Draco decoder from here instead of the bundled copy (rarely needed). */
   dracoDecoderPath?: string
 }
 
@@ -123,7 +124,7 @@ export class TwinEngine {
     this.rig = new CameraRig(this.camera, canvas)
     this.rig.flyTo({ position: [60, 45, 60], target: [0, 0, 0] }, { duration: 0 })
     this.atmosphere = new Atmosphere(this.renderer, this.scene)
-    this.loader = new ModelLoader({ dracoDecoderPath: options.dracoDecoderPath })
+    this.loader = new ModelLoader({ renderer: this.renderer, dracoDecoderPath: options.dracoDecoderPath })
     this.pipeline = new RenderPipeline(this.renderer, this.scene, this.camera, this.profile)
     this.adaptive = new AdaptiveQuality(({ scale, stepDown }) => {
       if (stepDown && this.profile.level !== 'low') this.applyProfile(LOWER[this.profile.level])

@@ -17,6 +17,7 @@ export default defineConfig({
       fileName: () => 'twin-viewer.js',
       cssFileName: 'twin-viewer',
     },
-    rollupOptions: { external: ['vue', 'three', /^three\//] },
+    // three stays a peer dependency, but `?url` imports (bundled decoders) are inlined into a lazy chunk.
+    rollupOptions: { external: id => /^(vue|three)(\/|$)/.test(id) && !id.includes('?') },
   },
 })

@@ -5,12 +5,18 @@
 ## 1. 文件格式
 
 - **glTF 2.0 二进制（.glb）**，一个文件包含全部贴图。不支持外部引用的贴图或 .bin（导入时会被拒绝），也暂不支持 FBX / OBJ。
-- **压缩用 Meshopt，不要用 Draco。** Meshopt 由 SDK 直接解码，无需额外文件；Draco 需要单独部署解码器，大屏现场可能离线。
-- 贴图用 JPG / PNG，或 WebP（`EXT_texture_webp`）。暂不支持 KTX2。
+- **网格压缩推荐 Meshopt，Draco 也支持。** 两种解码器都已打包进编辑器和 Viewer SDK，大屏现场离线也能打开；Meshopt 解码更快，优先使用。
+- 贴图用 JPG / PNG / WebP（`EXT_texture_webp`），或 **KTX2**（`KHR_texture_basisu`）。KTX2 贴图在显卡里保持压缩，显存占用约为 PNG / WebP 的 1/4–1/6，大场景在普通电脑上更流畅。
 - 推荐用 gltf-transform 一步完成压缩与贴图优化：
 
 ```bash
 npx @gltf-transform/cli optimize input.glb output.glb --compress meshopt --texture-compress webp --texture-size 2048
+```
+
+贴图多、场景大时改用 KTX2（需要先安装 [KTX-Software](https://github.com/KhronosGroup/KTX-Software/releases)）：
+
+```bash
+npx @gltf-transform/cli optimize input.glb output.glb --compress meshopt --texture-compress ktx2 --texture-size 2048
 ```
 
 ## 2. 坐标与尺寸
@@ -50,13 +56,15 @@ npx @gltf-transform/cli optimize input.glb output.glb --compress meshopt --textu
 
 ## 6. 动画
 
-模型中的动画会被保留，但平台当前还不会播放。需要动起来的部件（风机叶片、门）先做成独立节点并命名好，后续版本会支持。
+- **模型自带的动画片段会自动播放**（默认第一个片段，循环）。在编辑器「属性 → 动画」里可以换片段、调速度、关闭循环或不播放。片段命名有意义，例如 `Door_Open`、`Conveyor_Run`。
+- **持续旋转的部件（风机叶片、风扇、转轮）不需要做动画**：把它做成独立节点，**节点原点放在转轴中心**，编辑器里添加「部件运动」即可，转速还可以跟随实时数据（例如风机转速）。原点不在转轴上时，部件会绕错误的位置甩动。
 
 ## 7. 交付检查清单
 
-- [ ] 单个 .glb，贴图内嵌，Meshopt 压缩
+- [ ] 单个 .glb，贴图内嵌，Meshopt（或 Draco）压缩
 - [ ] 1 单位 = 1 米，Y 轴向上，原点在底部中心
 - [ ] 需要绑定的部件是独立节点，名称有意义，并设置了 `assetNodeId`
+- [ ] 需要旋转的部件原点在转轴中心
 - [ ] 面数和贴图在预算内，材质已合并复用
 - [ ] 夜间发光部位使用了自发光
 - [ ] 在编辑器中导入后检查：比例正确、贴图正常、选中部件时轮廓完整

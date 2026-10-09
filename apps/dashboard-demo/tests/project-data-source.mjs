@@ -3,12 +3,18 @@
 // data, alarms, two-way selection, tours, views, layers and the connection lifecycle.
 import assert from 'node:assert/strict'
 import { readFile, writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import { createDemo, launch, save, setDataSource } from '../../editor/tests/helpers.mjs'
 
 const editor = process.env.EDITOR_URL || 'http://127.0.0.1:5173'
 const dashboard = process.env.TEST_BASE_URL || 'http://127.0.0.1:5200'
 const dataPort = process.env.TWIN_DATA_PORT || '8787'
 const { page, errors, close } = await launch()
+const decoderErrors = []
+page.on('console', message => {
+  if (message.type() === 'error' && /gltf|draco|ktx2|basis|texture/i.test(message.text()))
+    decoderErrors.push(message.text())
+})
 const report = {}
 const connections = async () => (await (await fetch(`http://127.0.0.1:${dataPort}/status`)).json()).connections
 const waitConnections = async count => {
@@ -20,6 +26,13 @@ const sdk = fn => page.evaluate(fn)
 try {
   // ---------------------------------------------------------------- editor: export
   const projectId = await createDemo(page, editor)
+  // A Draco + KTX2 delivery travels in the package; the SDK must decode it with its bundled decoders.
+  await page.getByTestId('tab-assets').click()
+  await page
+    .getByTestId('asset-upload')
+    .setInputFiles(fileURLToPath(new URL('../../editor/tests/fixtures/turbine-draco-ktx2.glb', import.meta.url)))
+  await page.getByTestId('asset-turbine-draco-ktx2.glb').click()
+  await page.waitForFunction(() => window.__studio.doc.value.nodes.some(node => node.name === 'turbine-draco-ktx2'))
   await setDataSource(page, dataPort)
   await save(page)
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-package').click()])
@@ -85,6 +98,10 @@ try {
   })
   await page.waitForFunction(() => window.sdkViewer.getRuntimeState().dataSourceMessageCount > 0)
   await waitConnections(1)
+  assert(await sdk(() => window.sdkViewer.getNodes().some(node => node.name === 'turbine-draco-ktx2')))
+  assert.equal(await page.locator('.twin-viewer__warning').count(), 0, 'every model loaded')
+  assert.deepEqual(decoderErrors, [])
+  report.compressedModel = 'PASS'
   await page.getByTestId('device-ESS-003').click()
   assert.equal(await sdk(() => window.sdkViewer.getSelection().deviceId), 'ESS-003')
   await page.waitForFunction(
@@ -153,6 +170,7 @@ try {
   report.legacyPackageAndDispose = 'PASS'
 
   assert.deepEqual(errors, [])
+  assert.deepEqual(decoderErrors, [])
   console.log(JSON.stringify(report, null, 2))
 } finally {
   await close()

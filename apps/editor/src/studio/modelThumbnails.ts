@@ -11,11 +11,11 @@ import {
   WebGLRenderer,
 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
+import { GltfReader } from '@twin-studio/core'
 
 const CACHE_PREFIX = 'twin-studio:thumb:v1:'
 let renderer: WebGLRenderer | null = null
+let reader: GltfReader | null = null
 let queue: Promise<unknown> = Promise.resolve()
 
 /**
@@ -52,8 +52,8 @@ async function render(url: string): Promise<string | null> {
     renderer.setPixelRatio(1)
     renderer.setSize(240, 180, false)
   }
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
-  const gltf = await loader.loadAsync(url)
+  reader ??= new GltfReader({ renderer })
+  const gltf = await reader.read(url)
   const scene = new Scene()
   const pmrem = new PMREMGenerator(renderer)
   const environment = pmrem.fromScene(new RoomEnvironment(), 0.04)

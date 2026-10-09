@@ -2,6 +2,7 @@
 // document, the 3D scene and the undo history; then saves, reloads, previews and exports.
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import { launch, mod, save, screenPointOf, settled, studio, waitForStudio } from './helpers.mjs'
 
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5173'
@@ -252,6 +253,33 @@ try {
   const final = await doc()
   assert.equal(final.effects.length + final.visualRules.length + final.interactions.length, 0)
   report.deleteCascade = 'PASS'
+
+  // ---------------------------------------------------------------- compressed deliveries
+  // Draco geometry and KTX2 textures decode with the decoders bundled into the app (no CDN).
+  await page.getByTestId('tab-assets').click()
+  await page
+    .getByTestId('asset-upload')
+    .setInputFiles(fileURLToPath(new URL('./fixtures/turbine-draco-ktx2.glb', import.meta.url)))
+  const card = page.getByTestId('asset-turbine-draco-ktx2.glb')
+  await card.click()
+  await page.waitForFunction(() => window.__studio.doc.value.nodes.some(node => node.name === 'turbine-draco-ktx2'))
+  await settled(page)
+  const compressed = await studio(page, () => {
+    const s = window.__studio
+    const node = s.doc.value.nodes.find(item => item.name === 'turbine-draco-ktx2')
+    const meshes = []
+    s.sync.objectFor(node.id).traverse(object => object.isMesh && meshes.push(object))
+    return {
+      meshes: meshes.length,
+      vertices: meshes.every(mesh => mesh.geometry.attributes.position.count > 0),
+      ktx2: meshes.some(mesh => mesh.material.map?.isCompressedTexture === true),
+    }
+  })
+  assert(compressed.meshes > 0 && compressed.vertices, JSON.stringify(compressed))
+  assert(compressed.ktx2, 'KTX2 texture decoded')
+  // The library thumbnail goes through the same decoders.
+  await card.locator('img').waitFor({ timeout: 20000 })
+  report.compressedModels = 'PASS'
 
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))

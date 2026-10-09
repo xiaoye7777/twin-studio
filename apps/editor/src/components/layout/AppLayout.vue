@@ -28,7 +28,7 @@ const nav = [
       </RouterLink>
       <div class="home__version">
         <span>编辑器 v2 · 场景格式 v2</span>
-        <span>Viewer SDK 0.4.0</span>
+        <span>Viewer SDK 0.5.0</span>
       </div>
     </aside>
     <main class="home__main">

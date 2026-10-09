@@ -107,7 +107,7 @@ async function upload(event: Event): Promise<void> {
   try {
     for (const file of files) {
       if (!file.name.toLowerCase().endsWith('.glb')) {
-        ElMessage.warning(`${file.name}：目前支持 .glb 模型（建议导出时开启 Meshopt 压缩）`)
+        ElMessage.warning(`${file.name}：目前支持 .glb 模型（支持 Meshopt / Draco / KTX2 压缩）`)
         continue
       }
       const { asset, isNew } = await assetStore.importAsset(file, 'model')
@@ -163,7 +163,15 @@ function sizeLabel(bytes: number): string {
         <button class="s-btn s-btn--sm" :disabled="uploading" @click="fileInput?.click()">
           <Upload :size="12" />{{ uploading ? '导入中…' : '导入 GLB' }}
         </button>
-        <input ref="fileInput" type="file" accept=".glb,model/gltf-binary" multiple hidden @change="upload" />
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".glb,model/gltf-binary"
+          multiple
+          hidden
+          data-testid="asset-upload"
+          @change="upload"
+        />
       </template>
       <div v-if="myModels.length" class="library__grid">
         <button
@@ -172,6 +180,7 @@ function sizeLabel(bytes: number): string {
           class="card"
           draggable="true"
           :title="`${asset.name} · ${sizeLabel(asset.size)}`"
+          :data-testid="`asset-${asset.name}`"
           @dragstart="writeAssetDragPayload($event.dataTransfer!, asset.id)"
           @click="addAsset(asset.id)"
         >

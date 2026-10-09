@@ -1,8 +1,6 @@
 import { type Material, Mesh, type Object3D, type Texture } from 'three'
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { GltfReader, type GltfReaderOptions } from './gltfReader'
 
 /**
  * Gives every node of an imported model a stable id. Ids embedded by the exporter win; otherwise the id is
@@ -22,31 +20,23 @@ export function normalizeAssetNodeIds(root: Object3D): void {
   visit(root, 'root')
 }
 
-export interface ModelLoaderOptions {
-  /** Directory serving draco_decoder.wasm / draco_wasm_wrapper.js. Without it, Draco files are rejected. */
-  dracoDecoderPath?: string
-}
+export type ModelLoaderOptions = GltfReaderOptions
 
 /** Loads glTF files once per URL and hands out independent clones that share geometry and materials. */
 export class ModelLoader {
-  private readonly loader = new GLTFLoader()
-  private readonly draco: DRACOLoader | null = null
+  private readonly reader: GltfReader
   private readonly templates = new Map<string, Promise<Object3D>>()
   private disposed = false
 
   constructor(options: ModelLoaderOptions = {}) {
-    this.loader.setMeshoptDecoder(MeshoptDecoder)
-    if (options.dracoDecoderPath) {
-      this.draco = new DRACOLoader().setDecoderPath(options.dracoDecoderPath)
-      this.loader.setDRACOLoader(this.draco)
-    }
+    this.reader = new GltfReader(options)
   }
 
   async load(url: string): Promise<Object3D> {
     if (this.disposed) throw new DOMException('Model loading cancelled', 'AbortError')
     let template = this.templates.get(url)
     if (!template) {
-      template = this.loader.loadAsync(url).then(gltf => {
+      template = this.reader.read(url).then(gltf => {
         const root = gltf.scene
         root.animations = gltf.animations
         normalizeAssetNodeIds(root)
@@ -90,6 +80,6 @@ export class ModelLoader {
       }
       disposables.forEach(item => item.dispose())
     })
-    this.draco?.dispose()
+    this.reader.dispose()
   }
 }

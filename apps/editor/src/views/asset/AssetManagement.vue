@@ -146,7 +146,8 @@ async function remove(id: string, name: string): Promise<void> {
       <Box :size="28" />
       <h2>还没有资源</h2>
       <p>
-        导入建模同事交付的 .glb 模型（建议使用 Meshopt 压缩）或 .hdr 环境贴图；内置模型在编辑器中首次使用时自动入库。
+        导入建模同事交付的 .glb 模型（支持 Meshopt / Draco 压缩和 KTX2 贴图）或 .hdr
+        环境贴图；内置模型在编辑器中首次使用时自动入库。
       </p>
     </div>
   </section>
