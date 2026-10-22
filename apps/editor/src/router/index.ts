@@ -19,6 +19,12 @@ const router = createRouter({
           meta: { title: '项目管理' },
         },
         {
+          path: 'screens',
+          name: 'screens',
+          component: () => import('@/views/screen/ScreenList.vue'),
+          meta: { title: '数据大屏' },
+        },
+        {
           path: 'assets',
           name: 'assets',
           component: () => import('@/views/asset/AssetManagement.vue'),
@@ -37,6 +43,18 @@ const router = createRouter({
       name: 'editor',
       component: () => import('@/views/editor/SceneEditor.vue'),
       meta: { title: '场景编辑器' },
+    },
+    {
+      path: '/screens/:screenId/edit',
+      name: 'screen-editor',
+      component: () => import('@/views/screen/ScreenEditor.vue'),
+      meta: { title: '大屏编辑器' },
+    },
+    {
+      path: '/screens/:screenId/preview',
+      name: 'screen-preview',
+      component: () => import('@/views/screen/ScreenPreview.vue'),
+      meta: { title: '大屏预览' },
     },
     {
       path: '/projects/:projectId/dashboard',

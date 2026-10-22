@@ -18,6 +18,7 @@
     "@element-plus/icons-vue": "2.3.2",
     "@twin-studio/core": "workspace:*",
     "@twin-studio/viewer": "workspace:*",
+    "echarts": "5.6.0",
     "element-plus": "2.11.8",
     "lucide-vue-next": "1.0.0",
     "pinia": "3.0.4",

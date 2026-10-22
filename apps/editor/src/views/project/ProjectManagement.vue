@@ -121,7 +121,7 @@ function openDashboard(project: Project): void {
   <section class="projects">
     <header class="projects__head">
       <div>
-        <h1>项目</h1>
+        <h1>三维场景</h1>
         <p>搭建园区三维场景，配置设备数据与告警，导出给数据大屏放映</p>
       </div>
       <div class="projects__actions">
