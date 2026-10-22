@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import EditorWorkspace from '@/screen/editor/EditorWorkspace.vue'
 import { ScreenEditorSession } from '@/screen/editor/session'
 import { screenRepository } from '@/screen/storage/ScreenRepository'
@@ -23,6 +23,12 @@ onMounted(async () => {
   window.document.title = `${document.name} · 大屏编辑器`
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
+})
+
+// Leaving saves the screen with a fresh list thumbnail (bounded, so navigation never hangs).
+onBeforeRouteLeave(async () => {
+  const s = session.value
+  if (s) await Promise.race([s.leave(), new Promise(resolve => setTimeout(resolve, 2500))])
 })
 
 onBeforeUnmount(() => {

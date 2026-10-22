@@ -50,7 +50,9 @@ onMounted(async () => {
     assets: new IndexedDbAssetRepository(),
     scenes: new LocalSceneRepository(),
     history: new SceneHistoryRepository(),
-    onCover: cover => projects.updateProject(projectId, { cover }),
+    // A save also marks the project as updated; opening only refreshes the picture.
+    onCover: (cover, saved) =>
+      saved ? projects.updateProject(projectId, { cover }) : projects.setCover(projectId, cover),
   })
   session.value = opened
   if (import.meta.env.DEV) (window as unknown as { __studio?: EditorSession }).__studio = opened

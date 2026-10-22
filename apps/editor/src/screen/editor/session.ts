@@ -1,6 +1,7 @@
 import { type InjectionKey, inject, reactive, shallowRef } from 'vue'
 import { type DocumentChange, DocumentStore } from '@twin-studio/core'
 import { newScreenId, type ScreenDocument, type ScreenPage, type Widget } from '../model'
+import { captureScreen } from '../render/capture'
 import { ScreenRuntime } from '../runtime/ScreenRuntime'
 import { type ScreenRepository, screenRepository } from '../storage/ScreenRepository'
 import { createWidget } from '../widgets'
@@ -53,6 +54,11 @@ export class ScreenEditorSession {
     inspectorTab: 'style' as 'style' | 'data' | 'events',
   })
   private clipboard: Widget[] | null = null
+  /** The rendered page in the canvas (set by the canvas), for thumbnails. */
+  pageElement: HTMLElement | null = null
+  private cover: string | undefined
+  private coverAt = 0
+  private capturing: Promise<void> | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   /** A coalesced edit (drag, slider) is still open: saving now would split it into two undo steps. */
   private openEdit = false
@@ -63,6 +69,7 @@ export class ScreenEditorSession {
     document: ScreenDocument,
     private readonly repository: ScreenRepository = screenRepository,
   ) {
+    this.cover = document.cover
     this.store = new DocumentStore(document, 200)
     this.doc = shallowRef(this.store.document)
     this.runtime.setDocument(this.store.document)
@@ -124,18 +131,62 @@ export class ScreenEditorSession {
     const current = this.store.document
     this.ui.saveState = 'saving'
     try {
-      await this.repository.save({ ...current, updatedAt: new Date().toISOString() })
+      await this.repository.save({ ...current, cover: this.cover, updatedAt: new Date().toISOString() })
       // Open previews of this screen reload it.
       screenChannel()?.postMessage({ type: 'saved', id: current.id })
       if (this.store.document === current) this.store.markSaved()
       this.ui.saveState = this.store.isDirty ? 'unsaved' : 'saved'
       this.ui.lastSaved = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      // The list thumbnail follows the page, at most every 20 s while editing.
+      if (Date.now() - this.coverAt > 20_000) void this.refreshCover()
       return true
     } catch (error) {
       this.ui.saveState = 'error'
       this.ui.saveError = error instanceof Error ? error.message : String(error)
       return false
     }
+  }
+
+  /**
+   * Renders a new list thumbnail and stores it with the screen (outside the edit history). Runs when the
+   * browser is idle; `now` waits for it (leaving the editor).
+   */
+  refreshCover(now = false): Promise<void> {
+    if (this.capturing) return this.capturing
+    const element = this.pageElement
+    if (!element) return Promise.resolve()
+    this.coverAt = Date.now()
+    this.capturing = new Promise<void>(resolve => {
+      const run = async () => {
+        try {
+          const image = await captureScreen(element, this.store.document, this.runtime.viewers, this.runtime.charts)
+          if (image && !this.disposed) {
+            this.cover = image
+            await this.repository.save({ ...this.store.document, cover: image, updatedAt: new Date().toISOString() })
+          } else if (image) this.cover = image
+        } catch {
+          // A thumbnail is a convenience; the screen itself is saved either way.
+        } finally {
+          this.capturing = null
+          resolve()
+        }
+      }
+      if (now || typeof requestIdleCallback === 'undefined') void run()
+      else requestIdleCallback(() => void run(), { timeout: 3000 })
+    })
+    return this.capturing
+  }
+
+  /** The canvas has drawn the page; a screen without a thumbnail gets one once widgets have loaded. */
+  attachPage(element: HTMLElement | null): void {
+    this.pageElement = element
+    if (element && !this.cover) setTimeout(() => !this.disposed && !this.cover && void this.refreshCover(), 6000)
+  }
+
+  /** Before leaving the editor: save, with a fresh thumbnail. */
+  async leave(): Promise<void> {
+    await this.refreshCover(true)
+    await this.save()
   }
 
   dispose(): void {

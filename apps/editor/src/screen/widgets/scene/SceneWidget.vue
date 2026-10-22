@@ -18,7 +18,6 @@ const viewer = ref<TwinSceneViewerPublicApi | null>(null)
 const source = shallowRef<Blob | null>(null)
 const error = ref('')
 const loading = ref(false)
-let registered: TwinSceneViewerPublicApi | null = null
 
 // The package follows the screen's linked project.
 watch(
@@ -41,12 +40,11 @@ watch(
 )
 
 function onLoaded(): void {
-  if (registered) runtime.viewers.delete(registered)
-  registered = viewer.value
-  if (!registered) return
-  runtime.viewers.add(registered)
+  const api = viewer.value
+  if (!api) return
+  runtime.viewers.set(props.widget.id, api)
   // Layers switched off on the screen stay off in a reloaded view.
-  for (const id of runtime.hiddenLayers) registered.setNodeVisible(id, false)
+  for (const id of runtime.hiddenLayers) api.setNodeVisible(id, false)
 }
 
 function onSelection(selection: ViewerSelection): void {
@@ -54,7 +52,7 @@ function onSelection(selection: ViewerSelection): void {
 }
 
 onBeforeUnmount(() => {
-  if (registered) runtime.viewers.delete(registered)
+  if (runtime.viewers.get(props.widget.id) === viewer.value) runtime.viewers.delete(props.widget.id)
 })
 </script>
 

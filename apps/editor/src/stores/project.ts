@@ -71,9 +71,24 @@ export const useProjectStore = defineStore('project', () => {
     if (project) Object.assign(project, patch, { updatedAt: new Date().toISOString() })
   }
 
+  /** The card picture; not an edit, so the project's update time stays. */
+  function setCover(id: string, cover: string): void {
+    const project = getProjectById(id)
+    if (project) project.cover = cover
+  }
+
   function removeProject(id: string): void {
     projects.value = projects.value.filter(project => project.id !== id)
   }
 
-  return { projects, projectCount, createProject, getProjectById, addImportedProject, updateProject, removeProject }
+  return {
+    projects,
+    projectCount,
+    createProject,
+    getProjectById,
+    addImportedProject,
+    updateProject,
+    setCover,
+    removeProject,
+  }
 })

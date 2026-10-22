@@ -129,7 +129,8 @@ async function importScreen(event: Event): Promise<void> {
         @mouseleave="menu = ''"
       >
         <button class="card__cover" :title="`编辑 ${screen.name}`" @click="edit(screen)">
-          <ScreenThumbnail :screen="screen" />
+          <img v-if="screen.cover" class="card__image" :src="screen.cover" alt="" />
+          <ScreenThumbnail v-else :screen="screen" />
           <span class="card__open"><PenLine :size="14" />进入编辑器</span>
         </button>
         <div class="card__body">
@@ -220,6 +221,12 @@ async function importScreen(event: Event): Promise<void> {
   border-radius: 10px 10px 0 0;
   background: #05080f;
   cursor: pointer;
+}
+.card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .card__open {
   position: absolute;

@@ -90,9 +90,11 @@ try {
 
   // ---------------------------------------------------------------- list card and preview
   const screenId = (await doc()).id
-  await page.evaluate(() => window.__screen.save())
-  await page.goto(`${base}/screens`)
-  await page.getByTestId('screen-card-运营大屏测试').waitFor()
+  // Leaving through the editor saves the screen with a picture of the page for its card.
+  await page.locator('.topbar .s-icon-btn').first().click()
+  await page.waitForURL(/\/screens$/)
+  await page.getByTestId('screen-card-运营大屏测试').locator('img.card__image').waitFor({ timeout: 15000 })
+  report.cardThumbnail = 'PASS'
   await page.goto(`${base}/screens/${screenId}/preview`)
   await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]', { timeout: 60000 })
   await page.waitForFunction(() => document.querySelectorAll('.table__body .table__row').length > 0, null, {
@@ -103,7 +105,10 @@ try {
   await page.waitForFunction(() => window.__screenRuntime.selectedDeviceId.value !== null)
   const link = await page.evaluate(() => {
     const runtime = window.__screenRuntime
-    return { selected: runtime.selectedDeviceId.value, inViewer: [...runtime.viewers][0].getSelection()?.deviceId }
+    return {
+      selected: runtime.selectedDeviceId.value,
+      inViewer: [...runtime.viewers.values()][0].getSelection()?.deviceId,
+    }
   })
   assert.equal(link.inViewer, link.selected)
   await page.waitForFunction(() => document.querySelector('.panel__name')?.textContent.trim().length > 0)

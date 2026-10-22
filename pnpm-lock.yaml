@@ -86,6 +86,9 @@ importers:
       element-plus:
         specifier: 2.11.8
         version: 2.11.8(vue@3.5.25(typescript@5.9.3))
+      html-to-image:
+        specifier: 1.11.11
+        version: 1.11.11
       lucide-vue-next:
         specifier: 1.0.0
         version: 1.0.0(vue@3.5.25(typescript@5.9.3))
@@ -1643,6 +1646,9 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
+
+  html-to-image@1.11.11:
+    resolution: {integrity: sha512-9gux8QhvjRO/erSnDPv28noDZcPZmYE7e1vFsBLKLlRlKDSqNJYebj6Qz1TGd5lsRV+X+xYyjCKjuZdABinWjA==}
 
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
@@ -3664,6 +3670,8 @@ snapshots:
   hookable@5.5.3: {}
 
   html-escaper@2.0.2: {}
+
+  html-to-image@1.11.11: {}
 
   ignore@5.3.2: {}
 

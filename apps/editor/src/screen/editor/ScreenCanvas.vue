@@ -51,10 +51,12 @@ onMounted(() => {
     }
   })
   resizeObserver.observe(viewport.value!)
+  session.attachPage(viewport.value!.querySelector<HTMLElement>('[data-testid="screen-page"]'))
   window.addEventListener('keydown', onKey)
   window.addEventListener('keyup', onKey)
 })
 onBeforeUnmount(() => {
+  session.attachPage(null)
   resizeObserver?.disconnect()
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('keyup', onKey)

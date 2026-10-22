@@ -32,6 +32,12 @@ const backgroundStyle = computed(() => {
   color: #e2e8f0;
   font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
+.page.is-capturing :deep(*),
+.page.is-capturing :deep(*::before),
+.page.is-capturing :deep(*::after) {
+  animation: none !important;
+  transition: none !important;
+}
 .page__decor {
   position: absolute;
   inset: 0;

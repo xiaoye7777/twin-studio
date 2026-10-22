@@ -94,7 +94,7 @@ export interface EditorSessionDeps {
   assets: AssetRepository
   scenes: SceneRepository
   /** Called after each save with a small JPEG of the scene for the project card. */
-  onCover?: (dataUrl: string) => void
+  onCover?: (dataUrl: string, saved: boolean) => void
   /** Saved versions; saving keeps one at most every ten minutes, and on every manual save. */
   history?: SceneHistoryRepository
   quality?: QualitySetting
@@ -287,6 +287,8 @@ export class EditorSession {
       this.ui.ready = true
       // Models finish streaming in the first second; thumbnails taken after that show the full scene.
       setTimeout(() => void this.fillBookmarkThumbnails(), 1500)
+      // Projects get a card picture as soon as they are opened, not only after the first save.
+      setTimeout(() => !this.disposed && this.refreshCover(), 2500)
     } catch (error) {
       this.ui.error = error instanceof Error ? error.message : String(error)
     }
@@ -398,10 +400,7 @@ export class EditorSession {
       this.ui.saveState = this.store.isDirty ? 'unsaved' : 'saved'
       this.ui.saveError = ''
       this.ui.lastSaved = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-      const opening = this.store.document.cameraView
-      void (opening ? this.captureFrom(opening, 480) : this.captureClean(480)).then(
-        cover => cover && this.deps.onCover?.(cover),
-      )
+      this.refreshCover(true)
       const due = !this.lastSnapshot || Date.now() - this.lastSnapshot.at > 10 * 60_000
       if (manual || due) void this.snapshot(manual ? '手动保存' : '自动保存', manual ? 'manual' : 'auto')
       return true
@@ -447,6 +446,14 @@ export class EditorSession {
       for (const [key, value] of Object.entries(source)) if (key !== 'projectId') target[key] = value
     })
     this.select([])
+  }
+
+  /** The project card's picture: the opening view (or the current one); `saved` after a save. */
+  private refreshCover(saved = false): void {
+    const opening = this.store.document.cameraView
+    void (opening ? this.captureFrom(opening, 480) : this.captureClean(480)).then(
+      cover => cover && !this.disposed && this.deps.onCover?.(cover, saved),
+    )
   }
 
   private scheduleAutosave(): void {

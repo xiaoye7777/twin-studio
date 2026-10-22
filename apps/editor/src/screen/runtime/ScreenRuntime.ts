@@ -1,4 +1,4 @@
-import { computed, type InjectionKey, reactive, ref, shallowRef } from 'vue'
+import { computed, type InjectionKey, reactive, ref, shallowRef, watch } from 'vue'
 import { Object3D } from 'three'
 import {
   BindingTargetResolver,
@@ -6,6 +6,7 @@ import {
   evaluateCondition,
   type SceneDocumentV2,
   TwinDataRuntime,
+  type TwinRuntimeValueData,
   type TwinSceneViewerPublicApi,
   type TwinVariableDefinition,
 } from '@twin-studio/core'
@@ -64,6 +65,8 @@ class AnyTarget extends BindingTargetResolver {
 }
 
 const HISTORY_INTERVAL = 2000
+/** Widgets redraw at most this often: gateways send each variable separately, dozens a second. */
+const REFRESH_INTERVAL = 1000
 const HISTORY_LIMIT = 900
 
 /**
@@ -82,8 +85,12 @@ export class ScreenRuntime {
   /** The device the screen is about: picked in a 3D view, a table, a chart or a button. */
   readonly selectedDeviceId = ref<string | null>(null)
   readonly historyRevision = ref(0)
-  /** 3D views on the screen, for actions such as flying to a view. */
-  readonly viewers = new Set<TwinSceneViewerPublicApi>()
+  /** Bumped when widgets should redraw with the latest values (throttled). */
+  readonly dataTick = ref(0)
+  /** Charts on the screen, so thumbnails can draw them at rest instead of mid-animation. */
+  readonly charts = new Set<{ setOption(option: object): void; getZr(): { refreshImmediately(): void } }>()
+  /** 3D views on the screen by widget id, for actions such as flying to a view (and thumbnails). */
+  readonly viewers = new Map<string, TwinSceneViewerPublicApi>()
   /** Layers (top-level groups) hidden by layer switches on the screen. */
   readonly hiddenLayers = reactive(new Set<string>())
   /** A guided tour is playing in a 3D view on the screen. */
@@ -96,6 +103,11 @@ export class ScreenRuntime {
   private readonly times: number[] = []
   private readonly samples = new Map<string, Array<number | null>>()
   private readonly sampler: ReturnType<typeof setInterval>
+  /** The values widgets show, refreshed at most once per REFRESH_INTERVAL. */
+  private snapshot = new Map<string, unknown>()
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null
+  private lastRefresh = 0
+  private readonly stopWatch: () => void
   private linked: string | null | undefined = undefined
   private disposed = false
 
@@ -119,13 +131,13 @@ export class ScreenRuntime {
   )
 
   readonly alarms = computed<ScreenAlarm[]>(() => {
-    void this.twin.runtimeRevision
+    void this.dataTick.value
     const scene = this.scene.value
     if (!scene) return []
     const alarms: ScreenAlarm[] = []
     for (const rule of scene.visualRules) {
       if (!rule.enabled) continue
-      const value = this.twin.getRuntimeValue(rule.bindingId, rule.variableKey)?.value
+      const value = this.snapshot.get(`${rule.bindingId}|${rule.variableKey}`) as TwinRuntimeValueData | undefined
       if (value === undefined || !evaluateCondition(rule.condition, value)) continue
       const device = this.devices.value.find(item => item.bindingId === rule.bindingId)
       const variable = device?.variables.find(item => item.key === rule.variableKey)
@@ -143,6 +155,28 @@ export class ScreenRuntime {
 
   constructor(readonly editing: boolean) {
     this.sampler = setInterval(() => this.sample(), HISTORY_INTERVAL)
+    this.stopWatch = watch(
+      () => this.twin.runtimeRevision,
+      () => this.scheduleRefresh(),
+    )
+  }
+
+  /** Takes in new values at most once per interval, so charts animate and counters settle. */
+  private scheduleRefresh(): void {
+    if (this.refreshTimer) return
+    const wait = Math.max(0, this.lastRefresh + REFRESH_INTERVAL - Date.now())
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = null
+      this.lastRefresh = Date.now()
+      const next = new Map<string, unknown>()
+      for (const device of this.devices.value)
+        for (const variable of device.variables) {
+          const value = this.twin.getRuntimeValue(device.bindingId, variable.key)?.value
+          if (value !== undefined) next.set(`${device.bindingId}|${variable.key}`, value)
+        }
+      this.snapshot = next
+      this.dataTick.value++
+    }, wait)
   }
 
   setDocument(document: ScreenDocument): void {
@@ -157,6 +191,8 @@ export class ScreenRuntime {
     this.sceneError.value = ''
     this.times.length = 0
     this.samples.clear()
+    this.snapshot = new Map()
+    this.dataTick.value++
     if (!projectId) return
     try {
       const scene = await this.scenes.load(projectId)
@@ -220,7 +256,7 @@ export class ScreenRuntime {
   }
 
   value(device: ScreenDevice, key: string): unknown {
-    return this.twin.getRuntimeValue(device.bindingId, key)?.value
+    return this.snapshot.get(`${device.bindingId}|${key}`)
   }
 
   // ================================================================ data
@@ -229,7 +265,7 @@ export class ScreenRuntime {
     const binding = widget.data
     if (!binding) return null
     if (binding.source === 'static') return staticData(binding.json)
-    void this.twin.runtimeRevision
+    void this.dataTick.value
     const data = emptyData()
     const variableInfo = (devices: ScreenDevice[], key: string) =>
       devices.flatMap(device => device.variables).find(variable => variable.key === key)
@@ -366,7 +402,7 @@ export class ScreenRuntime {
 
   /** Runs an action; `$item` in a device id stands for the clicked item (a row, a bar, a button). */
   async run(action: ScreenAction, item?: string): Promise<void> {
-    const viewers = [...this.viewers]
+    const viewers = [...this.viewers.values()]
     switch (action.type) {
       case 'select-device': {
         const wanted = action.deviceId === '$item' ? item : action.deviceId
@@ -417,6 +453,8 @@ export class ScreenRuntime {
   dispose(): void {
     this.disposed = true
     clearInterval(this.sampler)
+    this.stopWatch()
+    if (this.refreshTimer) clearTimeout(this.refreshTimer)
     this.data.stop()
     this.viewers.clear()
   }

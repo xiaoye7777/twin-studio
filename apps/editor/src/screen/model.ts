@@ -88,6 +88,8 @@ export interface ScreenDocument {
   sceneProjectId: string | null
   /** Back to front. */
   widgets: Widget[]
+  /** A JPEG of the page for the screen list, refreshed by the editor (not part of the edit history). */
+  cover?: string
 }
 
 export const pagePresets = [
