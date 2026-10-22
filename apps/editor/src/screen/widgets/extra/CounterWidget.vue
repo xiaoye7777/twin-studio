@@ -81,7 +81,7 @@ const chars = computed(() => {
 .digit__roll {
   display: flex;
   flex-direction: column;
-  transition: transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .digit__roll span {
   height: 1.3em;
