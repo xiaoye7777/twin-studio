@@ -9,6 +9,8 @@ import { staticData } from './staticData'
  */
 export class ScreenRuntime {
   readonly document = shallowRef<ScreenDocument | null>(null)
+  /** Screen pixels per page pixel (the preview's scale); charts render sharp at it. */
+  readonly scale = shallowRef(1)
 
   constructor(readonly editing: boolean) {}
 
