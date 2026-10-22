@@ -1,5 +1,7 @@
-import { Activity, CircleGauge, Globe, Hash, Minus, ScrollText, Table } from 'lucide-vue-next'
+import { Activity, BellRing, CircleGauge, Cpu, Globe, Hash, Minus, ScrollText, Table } from 'lucide-vue-next'
+import AlarmListWidget from './extra/AlarmListWidget.vue'
 import CounterWidget from './extra/CounterWidget.vue'
+import DevicePanelWidget from './extra/DevicePanelWidget.vue'
 import DividerWidget from './extra/DividerWidget.vue'
 import IframeWidget from './extra/IframeWidget.vue'
 import MarqueeWidget from './extra/MarqueeWidget.vue'
@@ -169,6 +171,47 @@ export const extraWidgets: WidgetDefinition[] = [
     },
     clickable: true,
     component: TableWidget,
+  },
+  {
+    type: 'alarm-list',
+    name: '告警列表',
+    category: '列表',
+    icon: BellRing,
+    description: '关联场景当前触发的告警；点击告警可在三维中定位设备',
+    size: [460, 260],
+    props: { fontSize: 15, textColor: '#cbd5e1', okText: '当前无告警，设备运行正常' },
+    fields: [
+      { key: 'fontSize', label: '字号', type: 'number', min: 8, max: 48, step: 1, unit: 'px' },
+      { key: 'textColor', label: '文字颜色', type: 'color' },
+      { key: 'okText', label: '无告警时', type: 'text' },
+    ],
+    data: { shape: 'rows', sources: ['alarms'], default: { source: 'alarms' } },
+    clickable: true,
+    component: AlarmListWidget,
+  },
+  {
+    type: 'device-panel',
+    name: '设备详情',
+    category: '列表',
+    icon: Cpu,
+    description: '显示选中设备的全部实时变量',
+    size: [420, 260],
+    props: {
+      title: '设备详情',
+      color: '#38bdf8',
+      textColor: '#cbd5e1',
+      fontSize: 15,
+      emptyText: '在三维场景中点击设备查看详情',
+    },
+    fields: [
+      { key: 'title', label: '标题', type: 'text' },
+      { key: 'emptyText', label: '未选中时', type: 'text' },
+      { key: 'fontSize', label: '字号', type: 'number', min: 8, max: 48, step: 1, unit: 'px' },
+      { key: 'color', label: '主色', type: 'color' },
+      { key: 'textColor', label: '文字颜色', type: 'color' },
+    ],
+    data: { shape: 'rows', sources: ['selected'], default: { source: 'selected' } },
+    component: DevicePanelWidget,
   },
   {
     type: 'marquee',
