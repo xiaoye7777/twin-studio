@@ -9,7 +9,10 @@ import {
   type TwinSceneViewerPublicApi,
   type TwinVariableDefinition,
 } from '@twin-studio/core'
+import { IndexedDbAssetRepository } from '@/infrastructure/assets'
+import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageService'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
+import { useProjectStore } from '@/stores/project'
 import { deviceTemplates } from '@/studio/deviceTemplates'
 import type { DataBinding, ScreenAction, ScreenDocument, Widget } from '../model'
 import { formatDate, formatNumber } from '../widgets/format'
@@ -81,7 +84,14 @@ export class ScreenRuntime {
   readonly historyRevision = ref(0)
   /** 3D views on the screen, for actions such as flying to a view. */
   readonly viewers = new Set<TwinSceneViewerPublicApi>()
+  /** Layers (top-level groups) hidden by layer switches on the screen. */
+  readonly hiddenLayers = reactive(new Set<string>())
+  /** A guided tour is playing in a 3D view on the screen. */
+  readonly tourPlaying = ref(false)
+  /** The 3D view last moved to, for highlighting the active view button. */
+  readonly activeView = ref<string | null>(null)
   private readonly data = new TwinDataRuntime(this.twin, new AnyTarget())
+  private packageFor: { projectId: string; blob: Promise<Blob> } | null = null
   private readonly scenes = new LocalSceneRepository()
   private readonly times: number[] = []
   private readonly samples = new Map<string, Array<number | null>>()
@@ -97,6 +107,15 @@ export class ScreenRuntime {
       bindingId: binding.id,
       variables: binding.variables,
     })),
+  )
+
+  readonly bookmarks = computed(() => (this.scene.value?.bookmarks ?? []).map(({ id, name }) => ({ id, name })))
+  readonly tours = computed(() => (this.scene.value?.tours ?? []).map(({ id, name }) => ({ id, name })))
+  /** Top-level groups: the scene's zones, used as layers. */
+  readonly layers = computed(() =>
+    (this.scene.value?.nodes ?? [])
+      .filter(node => node.parentId === null && node.kind === 'group')
+      .map(({ id, name }) => ({ id, name })),
   )
 
   readonly alarms = computed<ScreenAlarm[]>(() => {
@@ -171,6 +190,22 @@ export class ScreenRuntime {
       }
     if (this.times.length > HISTORY_LIMIT) this.times.shift()
     this.historyRevision.value++
+  }
+
+  /** The linked project as a package for 3D widgets (exported once per project and shared). */
+  scenePackage(): Promise<Blob> | null {
+    const projectId = this.document.value?.sceneProjectId
+    if (!projectId) return null
+    if (this.packageFor?.projectId !== projectId) {
+      const projects = useProjectStore()
+      const project = projects.getProjectById(projectId)
+      const service = new ProjectPackageService(new LocalSceneRepository(), new IndexedDbAssetRepository(), projects)
+      this.packageFor = {
+        projectId,
+        blob: project ? service.exportProject(project) : Promise.reject(new Error('关联的三维项目已被删除')),
+      }
+    }
+    return this.packageFor.blob
   }
 
   device(id: string | null | undefined): ScreenDevice | undefined {
@@ -345,24 +380,34 @@ export class ScreenRuntime {
         }
         return
       }
-      case 'fly-to-view':
-        for (const viewer of viewers) void viewer.flyToBookmark(action.bookmarkId)
+      case 'fly-to-view': {
+        const bookmarkId = action.bookmarkId === '$item' ? item : action.bookmarkId
+        if (!bookmarkId) return
+        this.activeView.value = bookmarkId
+        for (const viewer of viewers) void viewer.flyToBookmark(bookmarkId)
         return
+      }
       case 'reset-view':
+        this.activeView.value = null
         for (const viewer of viewers) void viewer.resetView()
         return
       case 'play-tour':
+        this.tourPlaying.value = viewers.length > 0
         for (const viewer of viewers) void viewer.playTour(action.tourId)
         return
       case 'stop-tour':
+        this.tourPlaying.value = false
         for (const viewer of viewers) viewer.stopTour()
         return
-      case 'toggle-layer':
-        for (const viewer of viewers) {
-          const node = viewer.getNodes().find(entry => entry.id === action.nodeId)
-          if (node) viewer.setNodeVisible(node.id, !node.visible)
-        }
+      case 'toggle-layer': {
+        const nodeId = action.nodeId === '$item' ? item : action.nodeId
+        if (!nodeId) return
+        const hidden = !this.hiddenLayers.has(nodeId)
+        if (hidden) this.hiddenLayers.add(nodeId)
+        else this.hiddenLayers.delete(nodeId)
+        for (const viewer of viewers) viewer.setNodeVisible(nodeId, !hidden)
         return
+      }
       case 'open-url':
         if (/^https?:\/\//i.test(action.url)) window.open(action.url, '_blank', 'noopener')
         return

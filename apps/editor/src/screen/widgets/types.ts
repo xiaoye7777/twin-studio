@@ -18,6 +18,8 @@ export interface FieldDef {
   step?: number
   unit?: string
   hint?: string
+  /** Options read from the linked scene instead of `options`. */
+  optionsFrom?: 'bookmarks' | 'tours' | 'layers' | 'devices'
   /** Show only when this returns true for the current props. */
   visible?: (props: Record<string, unknown>) => boolean
 }

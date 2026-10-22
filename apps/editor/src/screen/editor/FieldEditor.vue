@@ -1,16 +1,34 @@
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
 import { Plus, X } from 'lucide-vue-next'
+import { computed, inject } from 'vue'
 import UiColor from '@/components/ui/UiColor.vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiSlider from '@/components/ui/UiSlider.vue'
 import UiSwitch from '@/components/ui/UiSwitch.vue'
+import { ScreenRuntimeKey } from '../runtime/ScreenRuntime'
 import { screenPalette } from '../widgets/format'
 import type { FieldDef } from '../widgets/types'
 
 const props = defineProps<{ field: FieldDef; value: unknown }>()
 /** `live` updates merge into one undo step until `commit`. */
 const emit = defineEmits<{ update: [value: unknown, live?: boolean]; commit: [] }>()
+const runtime = inject(ScreenRuntimeKey, null)
+
+/** Static options, or the linked scene's views, tours, layers or devices. */
+const options = computed(() => {
+  const from = props.field.optionsFrom
+  if (!from || !runtime) return props.field.options ?? []
+  const list =
+    from === 'devices'
+      ? runtime.devices.value.map(device => ({ id: device.id, name: device.name }))
+      : from === 'bookmarks'
+        ? runtime.bookmarks.value
+        : from === 'tours'
+          ? runtime.tours.value
+          : runtime.layers.value
+  return [{ value: '', label: '（默认）' }, ...list.map(item => ({ value: item.id, label: item.name }))]
+})
 
 const palettes: string[][] = [
   screenPalette,
@@ -86,13 +104,13 @@ function setColor(index: number, color: string): void {
     @change="
       emit(
         'update',
-        typeof field.options?.[0]?.value === 'number'
+        typeof options[0]?.value === 'number'
           ? Number(($event.target as HTMLSelectElement).value)
           : ($event.target as HTMLSelectElement).value,
       )
     "
   >
-    <option v-for="option in field.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+    <option v-for="option in options" :key="option.value" :value="option.value">{{ option.label }}</option>
   </select>
   <UiSwitch
     v-else-if="field.type === 'switch'"

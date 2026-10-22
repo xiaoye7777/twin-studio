@@ -125,6 +125,8 @@ export class ScreenEditorSession {
     this.ui.saveState = 'saving'
     try {
       await this.repository.save({ ...current, updatedAt: new Date().toISOString() })
+      // Open previews of this screen reload it.
+      screenChannel()?.postMessage({ type: 'saved', id: current.id })
       if (this.store.document === current) this.store.markSaved()
       this.ui.saveState = this.store.isDirty ? 'unsaved' : 'saved'
       this.ui.lastSaved = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
@@ -433,6 +435,15 @@ export class ScreenEditorSession {
     this.ui.panX = (width - page.width * this.ui.zoom) / 2
     this.ui.panY = (height - page.height * this.ui.zoom) / 2
   }
+}
+
+let channel: BroadcastChannel | null | undefined
+
+/** Tells previews in other tabs that a screen changed. */
+export function screenChannel(): BroadcastChannel | null {
+  if (channel === undefined)
+    channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('twin-studio-screens')
+  return channel
 }
 
 export function boundsOf(rects: readonly Rect[]): Rect {
