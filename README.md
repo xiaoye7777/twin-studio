@@ -4,7 +4,7 @@
 
 | 目录 | 包名 | 说明 |
 | --- | --- | --- |
-| `apps/editor` | `@twin-studio/editor` | 三维场景编辑器（使用说明见 [apps/editor/README.md](apps/editor/README.md)） |
+| `apps/editor` | `@twin-studio/editor` | 三维场景编辑器（使用说明见 [apps/editor/README.md](apps/editor/README.md)）与数据大屏编辑器（见 [apps/editor/docs/data-screens.md](apps/editor/docs/data-screens.md)） |
 | `packages/core` | `@twin-studio/core` | 内部共享层：渲染引擎、场景格式与迁移、文档仓库、场景同步、数据 / 特效 / 规则 / 交互 / 导览运行时。不单独发布 |
 | `packages/viewer` | `@twin-studio/viewer` | 对外交付的 Vue 3 Viewer SDK（接入说明见 [packages/viewer/README.md](packages/viewer/README.md)） |
 | `apps/dashboard-demo` | `@twin-studio/dashboard-demo` | 模拟大屏项目，验证 SDK 接入，也是接入示例 |
@@ -43,7 +43,7 @@ pnpm dev:dashboard   # 构建 SDK 后启动大屏 demo（含模拟器）
 ```bash
 pnpm lint && pnpm format:check && pnpm type-check
 pnpm test:unit       # core 单元测试（场景格式、迁移、文档仓库、场景同步、编辑操作、导览…）
-pnpm test:e2e        # 浏览器端到端：editor / demo / dashboard 三套，可用 -- --only <名称> 单独运行
+pnpm test:e2e        # 浏览器端到端：editor / demo / screens / dashboard 四套，可用 -- --only <名称> 单独运行
 pnpm build
 ```
 
