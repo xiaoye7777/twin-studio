@@ -48,7 +48,8 @@ async function draw(
     // 3D views are drawn separately; web pages from other sites cannot be captured.
     filter: node =>
       !(node instanceof HTMLCanvasElement && node.closest('[data-widget-type="scene"]')) &&
-      !(node instanceof HTMLIFrameElement),
+      !(node instanceof HTMLIFrameElement) &&
+      !(node instanceof HTMLElement && node.classList.contains('widget__api')),
   })
   const context = canvas.getContext('2d')
   if (!context) return null

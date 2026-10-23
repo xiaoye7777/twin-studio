@@ -27,8 +27,10 @@ const actionTypes: Array<{ value: ScreenAction['type']; label: string }> = [
   { value: 'play-tour', label: '播放导览' },
   { value: 'stop-tour', label: '停止导览' },
   { value: 'toggle-layer', label: '显示 / 隐藏图层' },
+  { value: 'set-variable', label: '设置大屏变量（联动其他组件）' },
   { value: 'open-url', label: '打开网址' },
 ]
+const variables = computed(() => session.doc.value.variables ?? [])
 
 function defaultAction(type: ScreenAction['type']): ScreenAction {
   switch (type) {
@@ -42,6 +44,8 @@ function defaultAction(type: ScreenAction['type']): ScreenAction {
       return { type, nodeId: runtime.layers.value[0]?.id ?? '' }
     case 'open-url':
       return { type, url: 'https://' }
+    case 'set-variable':
+      return { type, variable: variables.value[0]?.name ?? '', value: '$item' }
     default:
       return { type }
   }
@@ -147,6 +151,56 @@ function remove(id: string): void {
               <option v-for="layer in runtime.layers.value" :key="layer.id" :value="layer.id">{{ layer.name }}</option>
             </select>
           </UiRow>
+          <template v-else-if="event.action.type === 'set-variable'">
+            <UiRow label="变量">
+              <select
+                class="s-select"
+                :value="event.action.variable"
+                data-testid="event-variable"
+                @change="
+                  setAction(event.id, {
+                    type: 'set-variable',
+                    variable: ($event.target as HTMLSelectElement).value,
+                    value: (event.action as { value: string }).value,
+                  })
+                "
+              >
+                <option v-if="!variables.length" value="">（请先在页面设置中添加变量）</option>
+                <option v-for="variable in variables" :key="variable.name" :value="variable.name">
+                  {{ variable.name }}
+                </option>
+              </select>
+            </UiRow>
+            <UiRow label="设为">
+              <select
+                class="s-select"
+                :value="event.action.value === '$item' ? '$item' : 'fixed'"
+                @change="
+                  setAction(event.id, {
+                    type: 'set-variable',
+                    variable: (event.action as { variable: string }).variable,
+                    value: ($event.target as HTMLSelectElement).value === '$item' ? '$item' : '',
+                  })
+                "
+              >
+                <option value="$item">{{ itemHint }}的名称</option>
+                <option value="fixed">固定值</option>
+              </select>
+            </UiRow>
+            <UiRow v-if="event.action.value !== '$item'" label="值">
+              <input
+                class="s-input"
+                :value="event.action.value"
+                @change="
+                  setAction(event.id, {
+                    type: 'set-variable',
+                    variable: (event.action as { variable: string }).variable,
+                    value: ($event.target as HTMLInputElement).value,
+                  })
+                "
+              />
+            </UiRow>
+          </template>
           <UiRow v-else-if="event.action.type === 'open-url'" label="网址">
             <input
               class="s-input"
@@ -167,7 +221,8 @@ function remove(id: string): void {
     <UiSection title="三维联动说明" :open="false">
       <p class="s-hint note">
         三维 → 大屏：在三维场景组件中点击设备，会把它设为「选中设备」，设备详情等组件随之更新。<br />
-        大屏 → 三维：表格行、告警、图表、按钮的点击动作可以选中并定位设备、切换视角、播放导览或开关图层。
+        大屏 → 三维：表格行、告警、图表、按钮的点击动作可以选中并定位设备、切换视角、播放导览或开关图层。<br />
+        组件 → 组件：点击动作「设置大屏变量」后，参数跟随该变量的接口组件会自动重新请求。
       </p>
     </UiSection>
   </div>

@@ -25,6 +25,12 @@ const router = createRouter({
           meta: { title: '数据大屏' },
         },
         {
+          path: 'datasources',
+          name: 'datasources',
+          component: () => import('@/views/datasource/DataSourceCenter.vue'),
+          meta: { title: '数据接口' },
+        },
+        {
           path: 'assets',
           name: 'assets',
           component: () => import('@/views/asset/AssetManagement.vue'),

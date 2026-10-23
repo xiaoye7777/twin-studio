@@ -32,7 +32,7 @@ const commonFields: FieldDef[] = [
   },
 ]
 
-const rowsSources: DataSourceKind[] = ['static', 'devices', 'history']
+const rowsSources: DataSourceKind[] = ['static', 'api', 'devices', 'history']
 const rows = (json: unknown) => ({
   shape: 'rows' as const,
   sources: rowsSources,
@@ -236,7 +236,7 @@ export const chartWidgets: WidgetDefinition[] = [
     ],
     data: {
       shape: 'value',
-      sources: ['static', 'device', 'aggregate', 'stat'],
+      sources: ['static', 'api', 'device', 'aggregate', 'stat'],
       default: { source: 'static', json: '72' },
     },
     component: ChartWidget,

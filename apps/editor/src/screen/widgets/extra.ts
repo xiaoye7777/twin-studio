@@ -11,7 +11,7 @@ import type { FieldDef, WidgetDefinition } from './types'
 
 const valueData = (json: string) => ({
   shape: 'value' as const,
-  sources: ['static' as const, 'device' as const, 'aggregate' as const, 'stat' as const],
+  sources: ['static' as const, 'api' as const, 'device' as const, 'aggregate' as const, 'stat' as const],
   default: { source: 'static' as const, json },
 })
 
@@ -151,7 +151,7 @@ export const extraWidgets: WidgetDefinition[] = [
     ],
     data: {
       shape: 'rows',
-      sources: ['static', 'devices', 'alarms', 'selected', 'history'],
+      sources: ['static', 'api', 'devices', 'alarms', 'selected', 'history'],
       default: {
         source: 'static',
         json: JSON.stringify(

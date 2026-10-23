@@ -1,3 +1,5 @@
+import type { ApiBinding } from './datasources/model'
+
 /**
  * Data screens (数据大屏): a 2D page of widgets laid out on a fixed design canvas, scaled to whatever screen
  * plays it. Widgets read static data or live data from a linked 3D scene's devices, and can drive the 3D
@@ -31,6 +33,8 @@ export type ScreenAction =
   | { type: 'stop-tour' }
   | { type: 'toggle-layer'; nodeId: string }
   | { type: 'open-url'; url: string }
+  /** `$item` sets the clicked item's name. */
+  | { type: 'set-variable'; variable: string; value: string }
 
 export interface WidgetEvent {
   id: string
@@ -38,7 +42,8 @@ export interface WidgetEvent {
   action: ScreenAction
 }
 
-export type DataSourceKind = 'static' | 'device' | 'aggregate' | 'devices' | 'history' | 'alarms' | 'selected' | 'stat'
+export type DataSourceKind =
+  'static' | 'api' | 'device' | 'aggregate' | 'devices' | 'history' | 'alarms' | 'selected' | 'stat'
 
 /** Where a widget's data comes from. Fields not used by the kind are ignored. */
 export interface DataBinding {
@@ -58,6 +63,32 @@ export interface DataBinding {
   window?: number
   /** stat: scene-level figure. */
   stat?: 'devices' | 'online' | 'alarms'
+  /** api: a dataset from the data interfaces (数据接口). */
+  api?: ApiBinding
+}
+
+/**
+ * A value shared across the screen: filters set it, clicks set it, and interface parameters read it, so
+ * one choice re-queries every widget that depends on it.
+ */
+export interface ScreenVariable {
+  /** Shown to users and used to refer to it, e.g. 园区. */
+  name: string
+  /** The value when the screen opens. */
+  value: string
+  description?: string
+}
+
+/** Variables every screen has; their values follow what happens on the screen. */
+export const builtinVariables = [
+  { name: '@selectedDeviceId', label: '选中设备编号', description: '在三维视图或其他组件中选中的设备' },
+  { name: '@selectedDeviceName', label: '选中设备名称', description: '在三维视图或其他组件中选中的设备' },
+  { name: '@today', label: '今天', description: '当天日期，如 2026-10-23' },
+  { name: '@month', label: '本月', description: '当前月份，如 2026-10' },
+] as const
+
+export function variableLabel(name: string): string {
+  return builtinVariables.find(item => item.name === name)?.label ?? name
 }
 
 export interface Widget {
@@ -88,6 +119,8 @@ export interface ScreenDocument {
   sceneProjectId: string | null
   /** Back to front. */
   widgets: Widget[]
+  /** Shared values for filters and linked widgets. */
+  variables?: ScreenVariable[]
   /** A JPEG of the page for the screen list, refreshed by the editor (not part of the edit history). */
   cover?: string
 }

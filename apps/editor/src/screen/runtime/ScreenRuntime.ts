@@ -15,6 +15,9 @@ import { ProjectPackageService } from '@/infrastructure/packages/ProjectPackageS
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { useProjectStore } from '@/stores/project'
 import { deviceTemplates } from '@/studio/deviceTemplates'
+import { ApiDataManager, type ApiRequestSpec, type ApiState, requestKey } from '../datasources/ApiDataManager'
+import { apiUse, apiWidgetData } from '../datasources/mapping'
+import { useDataSourceStore } from '../datasources/store'
 import type { DataBinding, ScreenAction, ScreenDocument, Widget } from '../model'
 import { formatDate, formatNumber } from '../widgets/format'
 import type { WidgetClick, WidgetData } from '../widgets/types'
@@ -97,6 +100,14 @@ export class ScreenRuntime {
   readonly tourPlaying = ref(false)
   /** The 3D view last moved to, for highlighting the active view button. */
   readonly activeView = ref<string | null>(null)
+  /** Current values of the screen's variables (filters and clicks change them). */
+  readonly variables = reactive<Record<string, string>>({})
+  /** Data interfaces: datasets the widgets use, loaded and refreshed here. */
+  readonly sources = useDataSourceStore()
+  private readonly api = new ApiDataManager()
+  /** Variable values as the document last set them, to tell an edited default from a filter change. */
+  private variableDefaults = new Map<string, string>()
+  private readonly stopApiWatch: () => void
   private readonly data = new TwinDataRuntime(this.twin, new AnyTarget())
   private packageFor: { projectId: string; blob: Promise<Blob> } | null = null
   private readonly scenes = new LocalSceneRepository()
@@ -159,6 +170,11 @@ export class ScreenRuntime {
       () => this.twin.runtimeRevision,
       () => this.scheduleRefresh(),
     )
+    void this.sources.load()
+    this.stopApiWatch = watch(
+      () => this.apiSpecs(),
+      specs => this.api.sync(specs),
+    )
   }
 
   /** Takes in new values at most once per interval, so charts animate and counters settle. */
@@ -181,7 +197,37 @@ export class ScreenRuntime {
 
   setDocument(document: ScreenDocument): void {
     this.document.value = document
+    this.syncVariables(document)
     if (document.sceneProjectId !== this.linked) void this.link(document.sceneProjectId)
+  }
+
+  /** New variables start at their value; an edited value applies at once; removed ones go away. */
+  private syncVariables(document: ScreenDocument): void {
+    const defaults = new Map((document.variables ?? []).map(variable => [variable.name, variable.value]))
+    for (const name of Object.keys(this.variables)) if (!defaults.has(name)) delete this.variables[name]
+    for (const [name, value] of defaults)
+      if (!(name in this.variables) || this.variableDefaults.get(name) !== value) this.variables[name] = value
+    this.variableDefaults = defaults
+  }
+
+  /** A variable's current value; built-in ones follow the selection and the date. */
+  variable(name: string): string {
+    switch (name) {
+      case '@selectedDeviceId':
+        return this.selectedDeviceId.value ?? ''
+      case '@selectedDeviceName':
+        return this.device(this.selectedDeviceId.value)?.name ?? ''
+      case '@today':
+        return formatDate(new Date(), 'YYYY-MM-DD')
+      case '@month':
+        return formatDate(new Date(), 'YYYY-MM')
+    }
+    return this.variables[name] ?? ''
+  }
+
+  setVariable(name: string, value: string): void {
+    if (name.startsWith('@')) return
+    this.variables[name] = value
   }
 
   private async link(projectId: string | null): Promise<void> {
@@ -259,12 +305,59 @@ export class ScreenRuntime {
     return this.snapshot.get(`${device.bindingId}|${key}`)
   }
 
+  // ================================================================ interfaces
+
+  /** The request a widget's interface binding makes now (parameters filled from variables), if complete. */
+  apiRequest(widget: Widget): ApiRequestSpec | null {
+    const binding = widget.data?.api
+    if (widget.data?.source !== 'api' || !binding) return null
+    const dataset = this.sources.dataset(binding.datasetId)
+    const connection = dataset && this.sources.connection(dataset.connectionId)
+    if (!dataset || !connection) return null
+    const values: Record<string, string> = {}
+    for (const param of dataset.params) {
+      const given = binding.params[param.key]
+      values[param.key] = given?.variable ? this.variable(given.variable) : (given?.value ?? param.default ?? '')
+    }
+    return {
+      key: requestKey(dataset.id, values),
+      dataset,
+      connection,
+      values,
+      interval: binding.refresh ?? dataset.refresh,
+    }
+  }
+
+  private apiSpecs(): ApiRequestSpec[] {
+    void this.sources.revision
+    return (this.document.value?.widgets ?? []).flatMap(widget => this.apiRequest(widget) ?? [])
+  }
+
+  /** How a widget's interface is doing (for the data panel and error badges). */
+  apiState(widget: Widget): ApiState | undefined {
+    const spec = this.apiRequest(widget)
+    return spec ? this.api.states.get(spec.key) : undefined
+  }
+
+  /** Loads a widget's interface again now (or every interface). */
+  reloadApi(widget?: Widget): void {
+    const spec = widget && this.apiRequest(widget)
+    this.api.reload(spec ? spec.key : undefined)
+  }
+
   // ================================================================ data
 
-  dataFor(widget: Widget): WidgetData | null {
+  /** `shape` is the widget's data shape: one value, or rows. */
+  dataFor(widget: Widget, shape: 'value' | 'rows' = 'rows'): WidgetData | null {
     const binding = widget.data
     if (!binding) return null
     if (binding.source === 'static') return staticData(binding.json)
+    if (binding.source === 'api') {
+      const spec = this.apiRequest(widget)
+      const state = spec && this.api.states.get(spec.key)
+      if (!spec || !state || state.body === undefined) return emptyData()
+      return apiWidgetData(binding.api!, spec.dataset, state.body, apiUse(widget.type, shape))
+    }
     void this.dataTick.value
     const data = emptyData()
     const variableInfo = (devices: ScreenDevice[], key: string) =>
@@ -447,6 +540,9 @@ export class ScreenRuntime {
       case 'open-url':
         if (/^https?:\/\//i.test(action.url)) window.open(action.url, '_blank', 'noopener')
         return
+      case 'set-variable':
+        if (action.variable) this.setVariable(action.variable, action.value === '$item' ? (item ?? '') : action.value)
+        return
     }
   }
 
@@ -454,6 +550,8 @@ export class ScreenRuntime {
     this.disposed = true
     clearInterval(this.sampler)
     this.stopWatch()
+    this.stopApiWatch()
+    this.api.dispose()
     if (this.refreshTimer) clearTimeout(this.refreshTimer)
     this.data.stop()
     this.viewers.clear()

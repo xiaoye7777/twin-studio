@@ -85,7 +85,7 @@ export const basicWidgets: WidgetDefinition[] = [
     ],
     data: {
       shape: 'value',
-      sources: ['static', 'device', 'aggregate', 'stat'],
+      sources: ['static', 'api', 'device', 'aggregate', 'stat'],
       default: { source: 'static', json: '' },
     },
     component: TextWidget,
@@ -153,7 +153,7 @@ export const basicWidgets: WidgetDefinition[] = [
     ],
     data: {
       shape: 'value',
-      sources: ['static', 'device', 'aggregate', 'stat'],
+      sources: ['static', 'api', 'device', 'aggregate', 'stat'],
       default: { source: 'static', json: '1286' },
     },
     clickable: true,

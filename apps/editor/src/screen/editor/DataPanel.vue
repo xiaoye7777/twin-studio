@@ -3,10 +3,12 @@ import { computed, ref, watch } from 'vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
 import UiSection from '@/components/ui/UiSection.vue'
+import { apiUse } from '../datasources/mapping'
 import type { DataBinding, DataSourceKind, Widget } from '../model'
 import { deviceTypeName } from '../runtime/ScreenRuntime'
 import { widgetDefinition } from '../widgets'
 import { formatNumber } from '../widgets/format'
+import ApiBindingPanel from './ApiBindingPanel.vue'
 import { useScreenSession } from './session'
 
 const props = defineProps<{ widget: Widget }>()
@@ -18,6 +20,7 @@ const linked = computed(() => !!session.doc.value.sceneProjectId)
 
 const sourceNames: Record<DataSourceKind, string> = {
   static: '静态数据',
+  api: '接口数据',
   device: '单个设备变量',
   aggregate: '多设备汇总',
   devices: '设备列表',
@@ -28,6 +31,7 @@ const sourceNames: Record<DataSourceKind, string> = {
 }
 const sourceHints: Record<DataSourceKind, string> = {
   static: '手动填写的数据，不随时间变化',
+  api: '从后端接口读取（接口在「数据接口」中登记，这里按名称选用）',
   device: '某台设备的一个变量的实时值',
   aggregate: '多台设备同一变量的合计、平均、最大、最小或计数',
   devices: '每台设备一行，列为选择的变量',
@@ -37,7 +41,8 @@ const sourceHints: Record<DataSourceKind, string> = {
   stat: '设备数、在线数或告警数',
 }
 const sources = computed<DataSourceKind[]>(() => definition.value?.data?.sources ?? ['static'])
-const sceneSource = (kind: DataSourceKind) => kind !== 'static'
+const sceneSource = (kind: DataSourceKind) => kind !== 'static' && kind !== 'api'
+const use = computed(() => apiUse(props.widget.type, definition.value?.data?.shape ?? 'rows'))
 
 const devices = computed(() => runtime.devices.value)
 const types = computed(() => [...new Set(devices.value.map(device => device.type).filter(Boolean))])
@@ -82,6 +87,7 @@ function setSource(source: DataSourceKind): void {
   }
   if (source === 'history' && !binding.value.window) patch.window = 300
   if (source === 'stat' && !binding.value.stat) patch.stat = 'devices'
+  if (source === 'api' && !binding.value.api) patch.api = { datasetId: '', params: {} }
   update(patch, '数据来源')
 }
 
@@ -116,7 +122,7 @@ function applyJson(): void {
   update({ json: text.value })
 }
 
-const preview = computed(() => runtime.dataFor(props.widget))
+const preview = computed(() => runtime.dataFor(props.widget, definition.value?.data?.shape))
 const status = computed(() => {
   if (!linked.value) return ''
   if (runtime.sceneError.value) return runtime.sceneError.value
@@ -149,7 +155,11 @@ const status = computed(() => {
       <p v-if="!linked && sources.some(sceneSource)" class="note s-hint">
         在页面设置（点击画布空白处）中关联三维场景后，可以使用设备实时数据。
       </p>
-      <p v-else-if="status" class="note" :class="{ 'is-live': runtime.twin.dataSourceStatus === 'connected' }">
+      <p
+        v-else-if="status && sceneSource(binding.source)"
+        class="note"
+        :class="{ 'is-live': runtime.twin.dataSourceStatus === 'connected' }"
+      >
         <i />{{ status }}
       </p>
     </UiSection>
@@ -168,6 +178,8 @@ const status = computed(() => {
         <p class="s-hint">数值写一个数字；图表和表格写对象数组，第一个文字列为分类，数字列为数据。</p>
       </div>
     </UiSection>
+
+    <ApiBindingPanel v-else-if="binding.source === 'api'" :widget="widget" :use="use" />
 
     <UiSection v-else-if="binding.source === 'device'" title="设备变量">
       <UiRow label="设备">
@@ -320,7 +332,15 @@ const status = computed(() => {
           }}
           <small>{{ preview.units.value ?? '' }}</small>
         </p>
-        <p v-else class="s-hint">暂无数据{{ binding.source !== 'static' ? '（实时数据连接后显示）' : '' }}</p>
+        <p v-else class="s-hint">
+          暂无数据{{
+            binding.source === 'api'
+              ? '（接口加载后显示）'
+              : binding.source !== 'static'
+                ? '（实时数据连接后显示）'
+                : ''
+          }}
+        </p>
       </div>
     </UiSection>
   </div>

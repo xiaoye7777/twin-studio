@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Boxes, FolderKanban, LayoutDashboard } from 'lucide-vue-next'
+import { Boxes, FolderKanban, LayoutDashboard, Plug } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import '@/studio/studio.css'
 
@@ -7,6 +7,7 @@ const route = useRoute()
 const nav = [
   { to: '/projects', label: '三维场景', icon: FolderKanban },
   { to: '/screens', label: '数据大屏', icon: LayoutDashboard },
+  { to: '/datasources', label: '数据接口', icon: Plug },
   { to: '/assets', label: '资源库', icon: Boxes },
 ]
 </script>

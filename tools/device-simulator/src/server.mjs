@@ -11,6 +11,7 @@ import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { unzipSync } from 'fflate'
 import { WebSocketServer } from 'ws'
+import { handleDemoApi } from './demoApi.mjs'
 
 const { values: args } = parseArgs({
   // pnpm forwards a literal "--" separator from `pnpm simulator -- --port …`.
@@ -146,9 +147,17 @@ const profile = args.package
   ? packageProfile(resolve(process.env.INIT_CWD ?? process.cwd(), args.package))
   : zeroCarbonProfile
 
-const server = createServer((request, response) => {
+const server = createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*')
+  response.setHeader('Access-Control-Allow-Headers', '*')
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS')
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
+  if (request.method === 'OPTIONS') {
+    response.statusCode = 204
+    response.end()
+    return
+  }
+  if (await handleDemoApi(request, response, tick)) return
   if (request.url === '/status') {
     response.end(
       JSON.stringify({ connections: clients.size, tick, profile: profile.name, devices: profile.deviceCount }),
@@ -193,6 +202,7 @@ server.listen(port, host, () => {
   console.log(`[device-simulator] ${profile.name} · ${profile.deviceCount} devices · every ${intervalMs} ms`)
   console.log(`[device-simulator] ws://${host}:${port}/realtime`)
   console.log(`[device-simulator] http://${host}:${port}/status`)
+  console.log(`[device-simulator] demo API: http://${host}:${port}/screen/datasets · /openapi.json`)
 })
 
 function shutdown() {
