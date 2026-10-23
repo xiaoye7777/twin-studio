@@ -34,6 +34,12 @@ export interface ChartProps {
   style?: 'arc' | 'progress' | 'speed'
   // radar
   shape?: 'polygon' | 'circle'
+  // scatter
+  symbolSize?: number
+  xUnit?: string
+  // funnel
+  sort?: 'descending' | 'ascending' | 'none'
+  gap?: number
 }
 
 const axisLine = 'rgba(148, 163, 184, 0.28)'
@@ -354,7 +360,90 @@ export function radarOption(p: ChartProps, data: WidgetData): ChartOption {
   }
 }
 
+/** Points: the first number column across, the second up, an optional third the bubble size. */
+export function scatterOption(p: ChartProps, data: WidgetData): ChartOption {
+  const colors = palette(p)
+  const [x, y, size] = data.measures
+  const sizes = size ? data.rows.map(row => Number(row[size]) || 0) : []
+  const largest = Math.max(1, ...sizes)
+  const base = p.symbolSize ?? 14
+  return {
+    color: colors,
+    tooltip: {
+      ...tooltip('item'),
+      formatter: (item: { data: [number, number, string] }) =>
+        `${item.data[2]}<br/>${x ? label(x, data) : ''}：${formatNumber(item.data[0])}<br/>${y ? label(y, data) : ''}：${formatNumber(item.data[1])}`,
+    },
+    legend: { show: false },
+    grid: { ...grid({ ...p, showLegend: false }), right: 24 },
+    xAxis: {
+      ...valueAxis(p, 'x', p.xUnit ?? ''),
+      nameLocation: 'end',
+      splitLine: { show: p.showGrid !== false, lineStyle: { color: splitLine, type: 'dashed' } },
+    },
+    yAxis: valueAxis(p, 'y'),
+    series: [
+      {
+        id: 'scatter',
+        type: 'scatter',
+        data: data.rows.map(row => [
+          Number(row[x ?? '']) || 0,
+          Number(row[y ?? '']) || 0,
+          String(row[data.dimension] ?? ''),
+        ]),
+        symbolSize: (_: unknown, params: { dataIndex: number }) =>
+          size ? Math.max(6, base * 2.2 * Math.sqrt((sizes[params.dataIndex] ?? 0) / largest)) : base,
+        itemStyle: {
+          color: (params: { dataIndex: number }) => colors[params.dataIndex % colors.length]!,
+          opacity: 0.85,
+          shadowBlur: 10,
+          shadowColor: 'rgba(56, 189, 248, 0.35)',
+        },
+        label: {
+          show: !!p.showLabel,
+          formatter: (params: { data: [number, number, string] }) => params.data[2],
+          position: 'top',
+          color: p.textColor,
+          fontSize: p.fontSize * 0.9,
+        },
+      },
+    ],
+  }
+}
+
+export function funnelOption(p: ChartProps, data: WidgetData): ChartOption {
+  const measure = data.measures[0] ?? 'value'
+  return {
+    color: palette(p),
+    tooltip: { ...tooltip('item'), formatter: '{b}：{c}' },
+    legend: legend(p),
+    series: [
+      {
+        id: 'funnel',
+        type: 'funnel',
+        top: p.showLegend && p.legendPosition === 'top' ? p.fontSize * 3 : 10,
+        bottom: p.showLegend && p.legendPosition === 'bottom' ? p.fontSize * 3 : 10,
+        left: '10%',
+        width: p.showLegend && p.legendPosition === 'right' ? '62%' : '80%',
+        sort: p.sort ?? 'descending',
+        gap: p.gap ?? 4,
+        label: {
+          show: true,
+          position: 'inside',
+          color: '#fff',
+          fontSize: p.fontSize,
+          formatter: p.showLabel ? '{b}  {c}' : '{b}',
+        },
+        itemStyle: { borderWidth: 0, opacity: 0.88 },
+        data: data.rows.map(row => ({ name: String(row[data.dimension] ?? ''), value: row[measure] })),
+      },
+    ],
+  }
+}
+
 export const chartBuilders: Record<string, (p: ChartProps, data: WidgetData) => ChartOption> = {
+  'chart-scatter': scatterOption,
+  'chart-funnel': funnelOption,
   'chart-line': lineOption,
   'chart-bar': barOption,
   'chart-combo': comboOption,

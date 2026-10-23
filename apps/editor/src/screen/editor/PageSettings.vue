@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Plus, Trash2 } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
+import { Check, Plus, Sparkles, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import UiColor from '@/components/ui/UiColor.vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
 import UiSection from '@/components/ui/UiSection.vue'
 import { useProjectStore } from '@/stores/project'
-import { builtinVariables, pagePresets, type ScreenDocument, type ScreenScaleMode } from '../model'
+import { builtinVariables, pagePresets, type ScreenDocument, type ScreenScaleMode, staggerEntrances } from '../model'
+import { applyTheme, type ScreenTheme, themeOf, themes } from '../themes'
 import FieldEditor from './FieldEditor.vue'
 import { useScreenSession } from './session'
 
@@ -24,6 +26,26 @@ const scaleModes: Array<{ value: ScreenScaleMode; label: string; hint: string }>
   { value: 'height', label: '高度铺满', hint: '上下铺满，宽度方向居中' },
   { value: 'stretch', label: '拉伸铺满', hint: '铺满屏幕，比例不同时拉伸变形' },
 ]
+
+// ---------------------------------------------------------------- theme and entrances
+
+const currentTheme = computed(() => (doc.value.page.theme ? themeOf(doc.value).id : ''))
+
+function setTheme(theme: ScreenTheme): void {
+  session.updatePage((_, d) => applyTheme(d, theme), `主题：${theme.name}`)
+  ElMessage.success(`已切换为「${theme.name}」，可撤销`)
+}
+
+function stagger(): void {
+  session.updatePage((_, d) => staggerEntrances(d.widgets), '一键入场动画')
+  ElMessage.success('已为所有组件设置依次入场，预览中查看效果')
+}
+
+function clearEntrances(): void {
+  session.updatePage((_, d) => {
+    for (const widget of d.widgets) delete widget.enter
+  }, '清除入场动画')
+}
 
 // ---------------------------------------------------------------- variables
 
@@ -98,6 +120,24 @@ function setPreset(id: string): void {
 
 <template>
   <div data-testid="page-settings">
+    <UiSection title="主题">
+      <div class="themes">
+        <button
+          v-for="theme in themes"
+          :key="theme.id"
+          class="theme"
+          :class="{ 'is-active': currentTheme === theme.id }"
+          :title="`应用「${theme.name}」：统一修改背景和所有组件的颜色`"
+          :data-testid="`theme-${theme.name}`"
+          @click="setTheme(theme)"
+        >
+          <span class="theme__swatch" :style="{ background: theme.background }">
+            <i v-for="color in theme.palette.slice(0, 4)" :key="color" :style="{ background: color }" />
+          </span>
+          <span class="theme__name"><Check v-if="currentTheme === theme.id" :size="11" />{{ theme.name }}</span>
+        </button>
+      </div>
+    </UiSection>
     <UiSection title="画布">
       <UiRow label="尺寸">
         <select
@@ -179,6 +219,15 @@ function setPreset(id: string): void {
         />
       </UiRow>
     </UiSection>
+    <UiSection title="入场动画" :open="false">
+      <div class="actions">
+        <button class="s-btn s-btn--sm" data-testid="stagger-entrances" @click="stagger">
+          <Sparkles :size="12" />一键依次入场
+        </button>
+        <button class="s-btn s-btn--ghost s-btn--sm" @click="clearEntrances">全部清除</button>
+      </div>
+      <p class="hint s-hint">按从上到下、从左到右的顺序依次浮现；单个组件可在其「样式 → 入场动画」中调整。</p>
+    </UiSection>
     <UiSection title="大屏变量" :count="variables.length">
       <template #actions>
         <button class="s-icon-btn" title="添加变量" data-testid="add-variable" @click="addVariable">
@@ -241,6 +290,53 @@ function setPreset(id: string): void {
 <style scoped>
 .hint {
   margin: 4px 0 0;
+  padding: 0 12px;
+}
+.themes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px;
+}
+.theme {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--s-line-2);
+  border-radius: var(--s-radius-sm);
+  background: var(--s-field);
+  color: var(--s-fg-2);
+  font-size: 11px;
+  cursor: pointer;
+}
+.theme:hover,
+.theme.is-active {
+  border-color: var(--s-accent-line);
+  color: var(--s-fg);
+}
+.theme__swatch {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border-radius: 3px;
+}
+.theme__swatch i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.theme__name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.actions {
+  display: flex;
+  gap: 6px;
   padding: 0 12px;
 }
 .variable {

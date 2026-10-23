@@ -1,4 +1,4 @@
-import { Clock, Frame, Hash, Image, PanelTop, Type, TextCursorInput } from 'lucide-vue-next'
+import { Clock, Frame, Hash, Image, PanelTop, Type, TextCursorInput, Video } from 'lucide-vue-next'
 import BorderWidget from './basic/BorderWidget.vue'
 import ClockWidget from './basic/ClockWidget.vue'
 import HeaderWidget from './basic/HeaderWidget.vue'
@@ -6,6 +6,7 @@ import ImageWidget from './basic/ImageWidget.vue'
 import KpiWidget from './basic/KpiWidget.vue'
 import TextWidget from './basic/TextWidget.vue'
 import TitleWidget from './basic/TitleWidget.vue'
+import VideoWidget from './basic/VideoWidget.vue'
 import type { FieldDef, WidgetDefinition } from './types'
 
 const align: FieldDef = {
@@ -182,6 +183,33 @@ export const basicWidgets: WidgetDefinition[] = [
     ],
     clickable: true,
     component: ImageWidget,
+  },
+  {
+    type: 'video',
+    name: '视频',
+    category: '媒体',
+    icon: Video,
+    description: '播放视频文件（mp4 / webm），静音自动播放',
+    size: [480, 270],
+    props: { src: '', poster: '', loop: true, controls: false, fit: 'cover', radius: 0 },
+    fields: [
+      { key: 'src', label: '视频地址', type: 'text', hint: 'http(s):// 开头的 mp4 / webm 地址' },
+      { key: 'poster', label: '封面图', type: 'image' },
+      { key: 'loop', label: '循环播放', type: 'switch' },
+      { key: 'controls', label: '播放控件', type: 'switch' },
+      {
+        key: 'fit',
+        label: '填充',
+        type: 'select',
+        options: [
+          { value: 'cover', label: '铺满裁切' },
+          { value: 'contain', label: '完整显示' },
+          { value: 'fill', label: '拉伸' },
+        ],
+      },
+      { key: 'radius', label: '圆角', type: 'number', min: 0, max: 200, step: 1, unit: 'px' },
+    ],
+    component: VideoWidget,
   },
   {
     type: 'decor-border',

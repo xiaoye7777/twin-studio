@@ -1,6 +1,6 @@
 import type { SceneDocumentV2 } from '@twin-studio/core'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
-import type { DataBinding, ScreenDocument, Widget } from './model'
+import { type DataBinding, type ScreenDocument, staggerEntrances, type Widget } from './model'
 import { createWidget } from './widgets'
 
 export const templates = [
@@ -219,5 +219,6 @@ function parkWidgets(base: ScreenDocument, scene: SceneDocumentV2 | null): Widge
     '储能表格',
   )
   table.events = [{ id: 'event-table', trigger: 'click', action: { type: 'select-device', deviceId: '$item' } }]
+  staggerEntrances(widgets)
   return widgets
 }

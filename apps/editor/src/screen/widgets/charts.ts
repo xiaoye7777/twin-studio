@@ -1,4 +1,4 @@
-import { ChartBar, ChartColumn, ChartLine, ChartPie, CircleGauge, Radar } from 'lucide-vue-next'
+import { ChartBar, ChartColumn, ChartLine, ChartPie, ChartScatter, CircleGauge, Filter, Radar } from 'lucide-vue-next'
 import type { DataSourceKind } from '../model'
 import ChartWidget from './charts/ChartWidget.vue'
 import { screenPalette } from './format'
@@ -269,6 +269,67 @@ export const chartWidgets: WidgetDefinition[] = [
         上月: [80, 70, 85, 95, 78, 74][i],
       })),
     ),
+    component: ChartWidget,
+  },
+  {
+    type: 'chart-scatter',
+    name: '散点图',
+    category: '图表',
+    icon: ChartScatter,
+    description: '两个指标的关系；可用第三个指标表示气泡大小',
+    size: [460, 320],
+    props: { ...common, showLegend: false, symbolSize: 16, showLabel: true, showGrid: true, xUnit: '', unit: '' },
+    fields: [
+      { key: 'symbolSize', label: '点大小', type: 'number', min: 4, max: 60, step: 1, unit: 'px', group: '散点' },
+      { key: 'showLabel', label: '显示名称', type: 'switch', group: '散点' },
+      { key: 'xUnit', label: '横轴单位', type: 'text', group: '坐标轴' },
+      { key: 'unit', label: '纵轴单位', type: 'text', group: '坐标轴' },
+      { key: 'showGrid', label: '网格线', type: 'switch', group: '坐标轴' },
+      ...commonFields.slice(0, 3),
+    ],
+    data: rows([
+      { 建筑: 'A1 研发楼', 面积: 18600, 能耗: 76.4, 人数: 820 },
+      { 建筑: 'A2 办公楼', 面积: 12400, 能耗: 58.2, 人数: 640 },
+      { 建筑: 'B1 数据中心', 面积: 6800, 能耗: 132.5, 人数: 60 },
+      { 建筑: 'B2 生产车间', 面积: 22100, 能耗: 98.1, 人数: 410 },
+      { 建筑: 'C1 仓储中心', 面积: 15200, 能耗: 32.7, 人数: 90 },
+      { 建筑: 'C2 员工公寓', 面积: 9800, 能耗: 44.9, 人数: 520 },
+    ]),
+    clickable: true,
+    component: ChartWidget,
+  },
+  {
+    type: 'chart-funnel',
+    name: '漏斗图',
+    category: '图表',
+    icon: Filter,
+    description: '逐级转化或分层占比',
+    size: [420, 300],
+    props: { ...common, legendPosition: 'right', sort: 'descending', gap: 4, showLabel: true },
+    fields: [
+      {
+        key: 'sort',
+        label: '排序',
+        type: 'select',
+        group: '漏斗',
+        options: [
+          { value: 'descending', label: '从大到小' },
+          { value: 'ascending', label: '从小到大（倒漏斗）' },
+          { value: 'none', label: '按数据顺序' },
+        ],
+      },
+      { key: 'gap', label: '间距', type: 'number', min: 0, max: 30, step: 1, unit: 'px', group: '漏斗' },
+      { key: 'showLabel', label: '显示数值', type: 'switch', group: '漏斗' },
+      ...commonFields,
+    ],
+    data: rows([
+      { 环节: '告警产生', 数量: 186 },
+      { 环节: '已派单', 数量: 142 },
+      { 环节: '已到场', 数量: 118 },
+      { 环节: '已处理', 数量: 97 },
+      { 环节: '已复核', 数量: 88 },
+    ]),
+    clickable: true,
     component: ChartWidget,
   },
 ]

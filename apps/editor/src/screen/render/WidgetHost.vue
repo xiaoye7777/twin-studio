@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import type { Widget } from '../model'
 import { ScreenRuntimeKey } from '../runtime/ScreenRuntime'
 import { widgetDefinition, type WidgetClick } from '../widgets'
@@ -30,6 +30,37 @@ const style = computed(() => {
   }
 })
 
+/** The entrance plays once when the screen opens, and in the editor when asked to replay. */
+const root = ref<HTMLElement>()
+const replaying = ref(false)
+watch(
+  () => runtime.replay.value,
+  replay => {
+    if (!props.editing || replay?.id !== props.widget.id) return
+    // Off, a reflow, on again: the animation restarts without re-creating the widget.
+    replaying.value = false
+    void nextTick(() => {
+      void root.value?.offsetWidth
+      replaying.value = true
+    })
+  },
+)
+/**
+ * On a running screen the entrance ends by the clock too: if the browser pauses animations (a hidden tab,
+ * power saving) the widget must still show, never stay at its invisible first frame.
+ */
+const entered = ref(false)
+if (!props.editing && props.widget.enter) {
+  const { delay, duration } = props.widget.enter
+  setTimeout(() => (entered.value = true), (delay + duration) * 1000 + 600)
+}
+const entering = computed(() => {
+  const enter = props.widget.enter
+  if (!enter) return null
+  if (props.editing) return replaying.value ? { ...enter, delay: 0 } : null
+  return entered.value ? null : enter
+})
+
 function onAction(click: WidgetClick): void {
   if (!props.editing) runtime.trigger(props.widget, click)
 }
@@ -37,11 +68,19 @@ function onAction(click: WidgetClick): void {
 
 <template>
   <div
+    ref="root"
     class="widget"
-    :class="{ 'is-editing': editing, 'is-clickable': !editing && widget.events?.length }"
-    :style="style"
+    :class="[
+      { 'is-editing': editing, 'is-clickable': !editing && widget.events?.length },
+      entering && `enter-${entering.effect}`,
+    ]"
+    :style="[
+      style,
+      entering ? { animationDelay: `${entering.delay}s`, animationDuration: `${entering.duration}s` } : {},
+    ]"
     :data-widget-id="widget.id"
     :data-widget-type="widget.type"
+    @animationend.self="((replaying = false), (entered = true))"
   >
     <component
       :is="definition.component"
@@ -72,6 +111,64 @@ function onAction(click: WidgetClick): void {
 /* While editing, the canvas handles the pointer; widgets only draw. */
 .widget.is-editing > :deep(*) {
   pointer-events: none;
+}
+.widget[class*='enter-'] {
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.enter-fade {
+  animation-name: enter-fade;
+}
+.enter-up {
+  animation-name: enter-up;
+}
+.enter-down {
+  animation-name: enter-down;
+}
+.enter-left {
+  animation-name: enter-left;
+}
+.enter-right {
+  animation-name: enter-right;
+}
+.enter-zoom {
+  animation-name: enter-zoom;
+}
+/* `translate` / `scale` leave the widget's own rotation (transform) alone. */
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    translate: 0 60px;
+  }
+}
+@keyframes enter-down {
+  from {
+    opacity: 0;
+    translate: 0 -60px;
+  }
+}
+@keyframes enter-left {
+  from {
+    opacity: 0;
+    translate: 80px 0;
+  }
+}
+@keyframes enter-right {
+  from {
+    opacity: 0;
+    translate: -80px 0;
+  }
+}
+@keyframes enter-zoom {
+  from {
+    opacity: 0;
+    scale: 0.82;
+  }
 }
 .widget.is-clickable {
   cursor: pointer;

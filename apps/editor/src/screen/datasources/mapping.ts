@@ -8,7 +8,7 @@ export type ApiUse = 'value' | 'chart' | 'table'
 
 export function apiUse(widgetType: string, shape: 'value' | 'rows'): ApiUse {
   if (shape === 'value') return 'value'
-  return widgetType.startsWith('chart-') ? 'chart' : 'table'
+  return widgetType.startsWith('chart-') || widgetType === 'rank' ? 'chart' : 'table'
 }
 
 const numeric = (field: ApiField | undefined) => field?.type === 'number'

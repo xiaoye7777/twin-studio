@@ -100,6 +100,8 @@ export class ScreenRuntime {
   readonly tourPlaying = ref(false)
   /** The 3D view last moved to, for highlighting the active view button. */
   readonly activeView = ref<string | null>(null)
+  /** The editor asks a widget to play its entrance again (preview of the animation). */
+  readonly replay = shallowRef<{ id: string; at: number } | null>(null)
   /** Current values of the screen's variables (filters and clicks change them). */
   readonly variables = reactive<Record<string, string>>({})
   /** Data interfaces: datasets the widgets use, loaded and refreshed here. */

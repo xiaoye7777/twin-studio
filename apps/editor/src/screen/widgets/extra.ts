@@ -1,4 +1,15 @@
-import { Activity, BellRing, CircleGauge, Cpu, Globe, Hash, Minus, ScrollText, Table } from 'lucide-vue-next'
+import {
+  Activity,
+  BellRing,
+  CircleGauge,
+  Cpu,
+  Globe,
+  Hash,
+  ListOrdered,
+  Minus,
+  ScrollText,
+  Table,
+} from 'lucide-vue-next'
 import AlarmListWidget from './extra/AlarmListWidget.vue'
 import CounterWidget from './extra/CounterWidget.vue'
 import DevicePanelWidget from './extra/DevicePanelWidget.vue'
@@ -6,6 +17,7 @@ import DividerWidget from './extra/DividerWidget.vue'
 import IframeWidget from './extra/IframeWidget.vue'
 import MarqueeWidget from './extra/MarqueeWidget.vue'
 import ProgressWidget from './extra/ProgressWidget.vue'
+import RankWidget from './extra/RankWidget.vue'
 import TableWidget from './extra/TableWidget.vue'
 import type { FieldDef, WidgetDefinition } from './types'
 
@@ -171,6 +183,59 @@ export const extraWidgets: WidgetDefinition[] = [
     },
     clickable: true,
     component: TableWidget,
+  },
+  {
+    type: 'rank',
+    name: '排行榜',
+    category: '列表',
+    icon: ListOrdered,
+    description: 'TOP N 排名与比例条，按数值从大到小',
+    size: [420, 320],
+    props: {
+      maxRows: 6,
+      unit: '',
+      decimals: 0,
+      fontSize: 16,
+      color: '#38bdf8',
+      colorTo: 'rgba(56, 189, 248, 0.15)',
+      highlight: '#fbbf24',
+      textColor: '#cbd5e1',
+      track: 'rgba(148, 163, 184, 0.14)',
+      showRank: true,
+    },
+    fields: [
+      { key: 'maxRows', label: '显示条数', type: 'number', min: 1, max: 30, step: 1 },
+      { key: 'unit', label: '单位', type: 'text', hint: '留空时使用数据的单位' },
+      { key: 'decimals', label: '小数位', type: 'number', min: 0, max: 4, step: 1 },
+      { key: 'showRank', label: '名次', type: 'switch' },
+      { key: 'fontSize', label: '字号', type: 'number', min: 8, max: 60, step: 1, unit: 'px' },
+      { key: 'color', label: '主色', type: 'color' },
+      { key: 'colorTo', label: '渐变色', type: 'color' },
+      { key: 'highlight', label: '前三名颜色', type: 'color' },
+      { key: 'textColor', label: '文字颜色', type: 'color' },
+      { key: 'track', label: '底色', type: 'color' },
+    ],
+    data: {
+      shape: 'rows',
+      sources: ['static', 'api', 'devices'],
+      default: {
+        source: 'static',
+        json: JSON.stringify(
+          [
+            { 建筑: 'B2 生产车间', 用电: 98200 },
+            { 建筑: 'A1 研发楼', 用电: 76400 },
+            { 建筑: 'C1 仓储中心', 用电: 52700 },
+            { 建筑: 'A2 办公楼', 用电: 48100 },
+            { 建筑: 'B1 数据中心', 用电: 46300 },
+            { 建筑: 'C2 员工公寓', 用电: 31200 },
+          ],
+          null,
+          2,
+        ),
+      },
+    },
+    clickable: true,
+    component: RankWidget,
   },
   {
     type: 'alarm-list',

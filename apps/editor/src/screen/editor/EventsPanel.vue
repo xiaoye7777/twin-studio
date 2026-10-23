@@ -13,7 +13,7 @@ const runtime = session.runtime
 const definition = computed(() => widgetDefinition(props.widget.type))
 const events = computed(() => props.widget.events ?? [])
 const itemHint = computed(() =>
-  ['table', 'alarm-list'].includes(props.widget.type)
+  ['table', 'alarm-list', 'rank'].includes(props.widget.type)
     ? '点击的行'
     : props.widget.type.startsWith('chart-')
       ? '点击的柱子 / 扇区 / 数据点'

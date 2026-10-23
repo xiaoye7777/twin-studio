@@ -1,4 +1,4 @@
-import { BarChart, GaugeChart, LineChart, PieChart, RadarChart } from 'echarts/charts'
+import { BarChart, FunnelChart, GaugeChart, LineChart, PieChart, RadarChart, ScatterChart } from 'echarts/charts'
 import {
   DatasetComponent,
   GridComponent,
@@ -12,10 +12,12 @@ import { CanvasRenderer } from 'echarts/renderers'
 
 echarts.use([
   BarChart,
+  FunnelChart,
   GaugeChart,
   LineChart,
   PieChart,
   RadarChart,
+  ScatterChart,
   DatasetComponent,
   GridComponent,
   LegendComponent,

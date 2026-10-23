@@ -29,6 +29,8 @@ try {
   const created = await doc()
   assert.equal(created.sceneProjectId, projectId)
   assert(created.widgets.some(w => w.type === 'scene'))
+  // The template's widgets enter one after another.
+  assert(created.widgets.every(w => w.enter && w.enter.delay >= 0))
   report.template = 'PASS'
 
   // ---------------------------------------------------------------- live data and the 3D widget
@@ -100,6 +102,17 @@ try {
   await page.keyboard.press(`${mod}+Shift+g`)
   assert.equal((await doc()).groups.length, 0)
   report.groupsAndGuides = 'PASS'
+
+  // ---------------------------------------------------------------- one-click theme (one undo step)
+  await page.keyboard.press('Escape')
+  await page.getByTestId('theme-能源绿').click()
+  const themed = await doc()
+  assert.equal(themed.page.theme, 'energy-green')
+  assert.equal(themed.page.background.color, '#03110d')
+  assert(themed.widgets.filter(w => w.type.startsWith('chart-')).every(w => w.props.palette[0] === '#34d399'))
+  await page.keyboard.press(`${mod}+z`)
+  assert.notEqual((await doc()).page.theme, 'energy-green')
+  report.theme = 'PASS'
   await page.evaluate(id => window.__screen.select([id]), pie.id)
 
   // ---------------------------------------------------------------- data binding through the panel

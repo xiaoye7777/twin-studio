@@ -8,12 +8,14 @@ import {
   AlignStartHorizontal,
   AlignStartVertical,
   AlignVerticalDistributeCenter,
+  Play,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
 import UiSection from '@/components/ui/UiSection.vue'
 import UiSlider from '@/components/ui/UiSlider.vue'
+import type { WidgetEnter } from '../model'
 import { widgetDefinition } from '../widgets'
 import DataPanel from './DataPanel.vue'
 import EventsPanel from './EventsPanel.vue'
@@ -47,6 +49,35 @@ function setProp(key: string, value: unknown, live?: boolean): void {
   const w = widget.value
   if (!w) return
   session.updateWidget(w.id, item => void (item.props[key] = value), '修改样式', live ? `${w.id}:${key}` : undefined)
+}
+
+const effects: Array<{ value: WidgetEnter['effect'] | ''; label: string }> = [
+  { value: '', label: '无' },
+  { value: 'fade', label: '淡入' },
+  { value: 'up', label: '自下而上' },
+  { value: 'down', label: '自上而下' },
+  { value: 'left', label: '从右侧滑入' },
+  { value: 'right', label: '从左侧滑入' },
+  { value: 'zoom', label: '放大浮现' },
+]
+
+function setEnter(patch: Partial<WidgetEnter> | null): void {
+  const w = widget.value
+  if (!w) return
+  session.updateWidget(
+    w.id,
+    item => {
+      if (!patch) delete item.enter
+      else item.enter = { effect: 'up', delay: 0, duration: 0.8, ...item.enter, ...patch }
+    },
+    '入场动画',
+  )
+  if (patch) replay()
+}
+
+function replay(): void {
+  const w = widget.value
+  if (w) session.runtime.replay.value = { id: w.id, at: Date.now() }
 }
 
 function setGeometry(key: 'x' | 'y' | 'w' | 'h' | 'rotation', value: number): void {
@@ -148,6 +179,50 @@ function setGeometry(key: 'x' | 'y' | 'w' | 'h' | 'rotation', value: number): vo
                 @commit="session.commit()"
               />
             </UiRow>
+          </UiSection>
+          <UiSection title="入场动画" :open="!!widget.enter">
+            <UiRow label="效果">
+              <select
+                class="s-select"
+                :value="widget.enter?.effect ?? ''"
+                data-testid="enter-effect"
+                @change="
+                  setEnter(
+                    ($event.target as HTMLSelectElement).value
+                      ? { effect: ($event.target as HTMLSelectElement).value as WidgetEnter['effect'] }
+                      : null,
+                  )
+                "
+              >
+                <option v-for="effect in effects" :key="effect.value" :value="effect.value">{{ effect.label }}</option>
+              </select>
+              <button v-if="widget.enter" class="s-icon-btn" title="播放一次" @click="replay">
+                <Play :size="13" />
+              </button>
+            </UiRow>
+            <template v-if="widget.enter">
+              <UiRow label="延迟">
+                <UiNumber
+                  :model-value="widget.enter.delay"
+                  :min="0"
+                  :max="20"
+                  :step="0.1"
+                  unit="秒"
+                  @update="setEnter({ delay: Math.round($event * 10) / 10 })"
+                />
+              </UiRow>
+              <UiRow label="时长">
+                <UiNumber
+                  :model-value="widget.enter.duration"
+                  :min="0.2"
+                  :max="5"
+                  :step="0.1"
+                  unit="秒"
+                  @update="setEnter({ duration: Math.round($event * 10) / 10 })"
+                />
+              </UiRow>
+            </template>
+            <p class="inspector__hint s-hint">大屏打开时播放；页面设置中可一键给所有组件设置依次入场。</p>
           </UiSection>
           <UiSection v-for="[group, fields] in groups" :key="group" :title="group">
             <UiRow
@@ -259,6 +334,10 @@ function setGeometry(key: 'x' | 'y' | 'w' | 'h' | 'rotation', value: number): vo
 }
 .inspector__name {
   padding: 10px 12px 4px;
+}
+.inspector__hint {
+  margin: 4px 0 0;
+  padding: 0 12px;
 }
 .tools {
   display: flex;

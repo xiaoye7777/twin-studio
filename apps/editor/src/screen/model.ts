@@ -22,6 +22,8 @@ export interface ScreenPage {
     image: string | null
   }
   scaleMode: ScreenScaleMode
+  /** The colour theme last applied (see themes.ts). */
+  theme?: string
 }
 
 /** What happens when a widget (or an item in it) is clicked. `$item` stands for the clicked item's name. */
@@ -181,6 +183,25 @@ export function contentSignature(document: ScreenDocument): string {
   // Documents in the editor never change in place, so one signature per object is enough.
   signatures.set(document, signature)
   return signature
+}
+
+/**
+ * Gives every widget an entrance, one after another from the top left; decorations come first so content
+ * lands on them, the 3D view zooms in.
+ */
+export function staggerEntrances(widgets: Widget[]): void {
+  const decor = (type: string) => type.startsWith('decor-') || type === 'divider'
+  const order = [...widgets].sort(
+    (a, b) =>
+      Number(decor(b.type)) - Number(decor(a.type)) || Math.round(a.y / 120) - Math.round(b.y / 120) || a.x - b.x,
+  )
+  order.forEach((widget, index) => {
+    widget.enter = {
+      effect: decor(widget.type) ? 'fade' : widget.type === 'scene' ? 'zoom' : 'up',
+      delay: Math.round(Math.min(index * 0.08, 2.4) * 100) / 100,
+      duration: 0.8,
+    }
+  })
 }
 
 export const pagePresets = [

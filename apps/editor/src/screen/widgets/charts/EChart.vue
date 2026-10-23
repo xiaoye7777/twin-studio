@@ -17,7 +17,12 @@ onMounted(() => {
   chart.setOption(props.option)
   shape = structure(props.option)
   runtime?.charts.add(chart)
-  chart.on('click', params => emit('select', String((params as { name?: unknown }).name ?? '')))
+  chart.on('click', params => {
+    // Scatter points carry their name as the last value.
+    const { name, data } = params as { name?: unknown; data?: unknown }
+    const item = name || (Array.isArray(data) ? data[data.length - 1] : '')
+    emit('select', String(item ?? ''))
+  })
   observer = new ResizeObserver(() => chart?.resize())
   observer.observe(element.value!)
 })
