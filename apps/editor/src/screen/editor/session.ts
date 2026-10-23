@@ -31,6 +31,7 @@ export interface Guide {
 
 export type SaveState = 'saved' | 'unsaved' | 'saving' | 'error'
 const ZOOM = { min: 0.05, max: 4 }
+const CLIPBOARD_KEY = 'screen-editor:clipboard'
 
 /**
  * One data screen open in the editor. Every change is a DocumentStore transaction (undo/redo), the canvas
@@ -68,6 +69,7 @@ export class ScreenEditorSession {
     inspectorTab: 'style' as 'style' | 'data' | 'events',
   })
   private clipboard: { widgets: Widget[]; groups: ScreenGroup[] } | null = null
+  private copiedAt = 0
   /** The rendered page in the canvas (set by the canvas), for thumbnails. */
   pageElement: HTMLElement | null = null
   private cover: string | undefined
@@ -456,12 +458,25 @@ export class ScreenEditorSession {
     this.insertCopies('创建副本', this.cloneWidgets(widgets, this.doc.value.groups ?? [], 20))
   }
 
+  /** Copies to this editor and to the browser, so the widgets can be pasted into another screen too. */
   copy(): void {
     const widgets = this.orderedSelection()
-    if (widgets.length) this.clipboard = JSON.parse(JSON.stringify({ widgets, groups: this.doc.value.groups ?? [] }))
+    if (!widgets.length) return
+    this.clipboard = JSON.parse(JSON.stringify({ widgets, groups: this.doc.value.groups ?? [] }))
+    this.copiedAt = Date.now()
+    writeSetting(CLIPBOARD_KEY, { screenId: this.doc.value.id, at: this.copiedAt, ...this.clipboard })
   }
 
   paste(): void {
+    // Something copied in another screen after the last copy here wins.
+    const shared = readSetting<{ screenId: string; at: number; widgets: Widget[]; groups: ScreenGroup[] } | null>(
+      CLIPBOARD_KEY,
+      null,
+    )
+    if (shared?.widgets?.length && shared.screenId !== this.doc.value.id && shared.at > this.copiedAt) {
+      this.clipboard = { widgets: shared.widgets, groups: shared.groups ?? [] }
+      this.copiedAt = shared.at
+    }
     const clipboard = this.clipboard
     if (!clipboard?.widgets.length) return
     const copies = this.cloneWidgets(clipboard.widgets, clipboard.groups, 20)

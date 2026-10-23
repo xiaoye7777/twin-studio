@@ -1,7 +1,10 @@
 /** Number formatting shared by figure widgets. */
 export function formatNumber(value: unknown, decimals = 0): string {
-  if (typeof value === 'number' && Number.isFinite(value))
-    return value.toLocaleString('zh-CN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    // Imported files may carry any number here; toLocaleString only takes 0–20.
+    const digits = Math.min(10, Math.max(0, Math.round(Number(decimals) || 0)))
+    return value.toLocaleString('zh-CN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  }
   if (typeof value === 'boolean') return value ? '是' : '否'
   if (value === null || value === undefined || value === '') return '—'
   return String(value)

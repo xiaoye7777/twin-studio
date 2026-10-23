@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, ref, watch } from 'vue'
+import { computed, inject, nextTick, onErrorCaptured, ref, watch } from 'vue'
 import type { Widget } from '../model'
 import { ScreenRuntimeKey } from '../runtime/ScreenRuntime'
 import { widgetDefinition, type WidgetClick } from '../widgets'
@@ -61,6 +61,18 @@ const entering = computed(() => {
   return entered.value ? null : enter
 })
 
+/** One broken widget (bad data, a bug) shows a placeholder instead of taking the whole screen down. */
+const failure = ref('')
+onErrorCaptured(error => {
+  failure.value = error instanceof Error ? error.message : String(error)
+  console.error(`[数据大屏] 组件「${props.widget.name}」出错：`, error)
+  return false
+})
+watch(
+  () => [props.widget.props, props.widget.data, data.value],
+  () => (failure.value = ''),
+)
+
 function onAction(click: WidgetClick): void {
   if (!props.editing) runtime.trigger(props.widget, click)
 }
@@ -82,9 +94,13 @@ function onAction(click: WidgetClick): void {
     :data-widget-type="widget.type"
     @animationend.self="((replaying = false), (entered = true))"
   >
+    <div v-if="failure" class="widget__failure" :title="failure">
+      <span>组件显示出错</span>
+      <small v-if="editing">{{ failure }}</small>
+    </div>
     <component
       :is="definition.component"
-      v-if="definition"
+      v-else-if="definition"
       :widget="widget"
       :data="data"
       :editing="editing"
@@ -191,6 +207,28 @@ function onAction(click: WidgetClick): void {
 }
 .widget__api.is-loading {
   background: rgba(14, 116, 144, 0.85);
+}
+.widget__failure {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  border: 1px dashed rgba(248, 113, 113, 0.6);
+  color: #fca5a5;
+  font-size: 14px;
+  text-align: center;
+}
+.widget__failure small {
+  max-width: 90%;
+  overflow: hidden;
+  font-size: 11px;
+  opacity: 0.8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .widget__missing {
   display: grid;
