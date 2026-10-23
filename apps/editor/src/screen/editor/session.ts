@@ -1,6 +1,6 @@
 import { type InjectionKey, inject, reactive, shallowRef } from 'vue'
 import { type DocumentChange, DocumentStore } from '@twin-studio/core'
-import { newScreenId, type ScreenDocument, type ScreenPage, type Widget } from '../model'
+import { newScreenId, type ScreenDocument, type ScreenGroup, type ScreenPage, type Widget } from '../model'
 import { captureScreen } from '../render/capture'
 import { ScreenRuntime } from '../runtime/ScreenRuntime'
 import { type ScreenRepository, screenRepository } from '../storage/ScreenRepository'
@@ -43,6 +43,8 @@ export class ScreenEditorSession {
     marquee: null as Rect | null,
     hovered: null as string | null,
     snap: true,
+    rulers: readSetting('screen-editor:rulers', true),
+    shortcuts: false,
     canUndo: false,
     canRedo: false,
     undoLabel: '',
@@ -53,7 +55,7 @@ export class ScreenEditorSession {
     leftTab: 'widgets' as 'widgets' | 'layers',
     inspectorTab: 'style' as 'style' | 'data' | 'events',
   })
-  private clipboard: Widget[] | null = null
+  private clipboard: { widgets: Widget[]; groups: ScreenGroup[] } | null = null
   /** The rendered page in the canvas (set by the canvas), for thumbnails. */
   pageElement: HTMLElement | null = null
   private cover: string | undefined
@@ -206,6 +208,22 @@ export class ScreenEditorSession {
     return this.selection.value.flatMap(id => this.widget(id) ?? [])
   }
 
+  /** The ids of a widget's whole group (just the widget when it is not grouped). */
+  groupOf(id: string): string[] {
+    const groupId = this.widget(id)?.groupId
+    if (!groupId) return [id]
+    return this.doc.value.widgets.filter(widget => widget.groupId === groupId).map(widget => widget.id)
+  }
+
+  /** Ids with their groups' other members added. */
+  withGroups(ids: readonly string[]): string[] {
+    return [...new Set(ids.flatMap(id => this.groupOf(id)))]
+  }
+
+  group(id: string): ScreenGroup | undefined {
+    return this.doc.value.groups?.find(item => item.id === id)
+  }
+
   // ================================================================ selection
 
   select(ids: readonly string[], mode: 'replace' | 'add' | 'toggle' = 'replace'): void {
@@ -298,42 +316,151 @@ export class ScreenEditorSession {
   removeSelected(): void {
     const ids = new Set(this.selection.value)
     if (!ids.size) return
-    this.edit(
-      `删除 ${ids.size} 个组件`,
-      draft => void (draft.widgets = draft.widgets.filter(widget => !ids.has(widget.id))),
-    )
+    this.edit(`删除 ${ids.size} 个组件`, draft => {
+      draft.widgets = draft.widgets.filter(widget => !ids.has(widget.id))
+      pruneGroups(draft)
+    })
     this.clearSelection()
   }
 
-  private cloneWidgets(widgets: readonly Widget[], offset: number): Widget[] {
-    return widgets.map(widget => ({
-      ...JSON.parse(JSON.stringify(widget)),
-      id: newScreenId('widget'),
-      x: widget.x + offset,
-      y: widget.y + offset,
-      events: widget.events?.map(event => ({ ...JSON.parse(JSON.stringify(event)), id: newScreenId('event') })),
-    }))
+  /** Copies with new ids; copied groups become new groups of the copies. */
+  private cloneWidgets(
+    widgets: readonly Widget[],
+    groups: readonly ScreenGroup[],
+    offset: number,
+  ): { widgets: Widget[]; groups: ScreenGroup[] } {
+    const groupIds = new Map<string, string>()
+    const copies = widgets.map(widget => {
+      const copy: Widget = {
+        ...JSON.parse(JSON.stringify(widget)),
+        id: newScreenId('widget'),
+        x: widget.x + offset,
+        y: widget.y + offset,
+        events: widget.events?.map(event => ({ ...JSON.parse(JSON.stringify(event)), id: newScreenId('event') })),
+      }
+      if (widget.groupId) {
+        if (!groupIds.has(widget.groupId)) groupIds.set(widget.groupId, newScreenId('group'))
+        copy.groupId = groupIds.get(widget.groupId)
+      }
+      return copy
+    })
+    // A group copied only in part does not group its copies.
+    for (const to of groupIds.values())
+      if (copies.filter(widget => widget.groupId === to).length < 2)
+        for (const widget of copies) if (widget.groupId === to) delete widget.groupId
+    const newGroups = [...groupIds]
+      .filter(([, to]) => copies.some(widget => widget.groupId === to))
+      .map(([from, to]) => ({ id: to, name: `${groups.find(item => item.id === from)?.name ?? '组合'} 副本` }))
+    return { widgets: copies, groups: newGroups }
+  }
+
+  private insertCopies(label: string, copies: { widgets: Widget[]; groups: ScreenGroup[] }): void {
+    this.edit(label, draft => {
+      draft.widgets.push(...copies.widgets)
+      if (copies.groups.length) draft.groups = [...(draft.groups ?? []), ...copies.groups]
+    })
+    this.select(copies.widgets.map(widget => widget.id))
   }
 
   duplicateSelected(): void {
     const widgets = this.orderedSelection()
     if (!widgets.length) return
-    const copies = this.cloneWidgets(widgets, 20)
-    this.edit('创建副本', draft => void draft.widgets.push(...copies))
-    this.select(copies.map(widget => widget.id))
+    this.insertCopies('创建副本', this.cloneWidgets(widgets, this.doc.value.groups ?? [], 20))
   }
 
   copy(): void {
     const widgets = this.orderedSelection()
-    if (widgets.length) this.clipboard = JSON.parse(JSON.stringify(widgets))
+    if (widgets.length) this.clipboard = JSON.parse(JSON.stringify({ widgets, groups: this.doc.value.groups ?? [] }))
   }
 
   paste(): void {
-    if (!this.clipboard?.length) return
-    const copies = this.cloneWidgets(this.clipboard, 20)
-    this.clipboard = JSON.parse(JSON.stringify(copies))
-    this.edit('粘贴', draft => void draft.widgets.push(...copies))
-    this.select(copies.map(widget => widget.id))
+    const clipboard = this.clipboard
+    if (!clipboard?.widgets.length) return
+    const copies = this.cloneWidgets(clipboard.widgets, clipboard.groups, 20)
+    // Pasting again lands further along.
+    this.clipboard = JSON.parse(
+      JSON.stringify({ widgets: copies.widgets, groups: [...clipboard.groups, ...copies.groups] }),
+    )
+    this.insertCopies('粘贴', copies)
+  }
+
+  // ================================================================ groups
+
+  /** Groups the selection (two or more widgets); they become one block in the drawing order. */
+  groupSelected(): void {
+    const widgets = this.orderedSelection()
+    if (widgets.length < 2) return
+    const id = newScreenId('group')
+    const ids = new Set(widgets.map(widget => widget.id))
+    let index = 1
+    while (this.doc.value.groups?.some(item => item.name === `组合 ${index}`)) index++
+    this.edit('组合', draft => {
+      // The block sits where the topmost member was.
+      const top = Math.max(...draft.widgets.map((widget, i) => (ids.has(widget.id) ? i : -1)))
+      const members = draft.widgets.filter(widget => ids.has(widget.id))
+      const before = draft.widgets.slice(0, top + 1).filter(widget => !ids.has(widget.id))
+      const after = draft.widgets.slice(top + 1)
+      for (const widget of members) widget.groupId = id
+      draft.widgets = [...before, ...members, ...after]
+      draft.groups = [...(draft.groups ?? []), { id, name: `组合 ${index}` }]
+      pruneGroups(draft)
+    })
+  }
+
+  /** Dissolves the groups of the selected widgets. */
+  ungroupSelected(): void {
+    const groupIds = new Set(this.selectedWidgets.flatMap(widget => (widget.groupId ? [widget.groupId] : [])))
+    if (!groupIds.size) return
+    this.edit('取消组合', draft => {
+      for (const widget of draft.widgets) if (widget.groupId && groupIds.has(widget.groupId)) delete widget.groupId
+      pruneGroups(draft)
+    })
+  }
+
+  renameGroup(id: string, name: string): void {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    this.edit('重命名组合', draft => {
+      const group = draft.groups?.find(item => item.id === id)
+      if (group) group.name = trimmed
+    })
+  }
+
+  // ================================================================ ruler guides
+
+  addGuide(axis: 'x' | 'y', at: number): number {
+    const value = Math.round(at)
+    let index = -1
+    this.edit('添加参考线', draft => {
+      draft.guides ??= { x: [], y: [] }
+      index = draft.guides[axis].push(value) - 1
+    })
+    return index
+  }
+
+  /** Dragging a guide; the drag is one undo step. */
+  moveGuide(axis: 'x' | 'y', index: number, at: number): void {
+    this.edit(
+      '移动参考线',
+      draft => {
+        if (draft.guides && index < draft.guides[axis].length) draft.guides[axis][index] = Math.round(at)
+      },
+      `guide:${axis}:${index}`,
+    )
+  }
+
+  removeGuide(axis: 'x' | 'y', index: number): void {
+    this.edit('删除参考线', draft => void draft.guides?.[axis].splice(index, 1))
+  }
+
+  clearGuides(): void {
+    if (!this.doc.value.guides?.x.length && !this.doc.value.guides?.y.length) return
+    this.edit('清除参考线', draft => void (draft.guides = { x: [], y: [] }))
+  }
+
+  toggleRulers(): void {
+    this.ui.rulers = !this.ui.rulers
+    writeSetting('screen-editor:rulers', this.ui.rulers)
   }
 
   /** Selected widgets in drawing order. */
@@ -495,6 +622,33 @@ export function screenChannel(): BroadcastChannel | null {
   if (channel === undefined)
     channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('twin-studio-screens')
   return channel
+}
+
+/** Groups with fewer than two members dissolve; group entries without members go away. */
+function pruneGroups(draft: ScreenDocument): void {
+  const counts = new Map<string, number>()
+  for (const widget of draft.widgets)
+    if (widget.groupId) counts.set(widget.groupId, (counts.get(widget.groupId) ?? 0) + 1)
+  for (const widget of draft.widgets) if (widget.groupId && (counts.get(widget.groupId) ?? 0) < 2) delete widget.groupId
+  if (draft.groups) draft.groups = draft.groups.filter(group => (counts.get(group.id) ?? 0) >= 2)
+}
+
+/** Editor preferences kept in this browser (rulers on or off…). */
+function readSetting<T>(key: string, fallback: T): T {
+  try {
+    const value = localStorage.getItem(key)
+    return value === null ? fallback : (JSON.parse(value) as T)
+  } catch {
+    return fallback
+  }
+}
+
+function writeSetting(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Private windows may refuse storage; the preference just is not remembered.
+  }
 }
 
 export function boundsOf(rects: readonly Rect[]): Rect {

@@ -76,6 +76,32 @@ try {
   assert.deepEqual([undone.x, undone.y, undone.w, undone.h], [pie.x, pie.y, pie.w, pie.h])
   report.canvasEditing = 'PASS'
 
+  // ---------------------------------------------------------------- groups and ruler guides
+  await page.evaluate(() => {
+    const s = window.__screen
+    s.select(s.doc.value.widgets.filter(w => ['光伏总功率', '风电总功率'].includes(w.name)).map(w => w.id))
+  })
+  await page.keyboard.press(`${mod}+g`)
+  assert.equal((await doc()).groups.length, 1)
+  await page.keyboard.press('Escape')
+  // Clicking one member selects the group.
+  await page.getByTestId('hit-光伏总功率').click()
+  assert.equal(await page.evaluate(() => window.__screen.selection.value.length), 2)
+  await page.getByTestId('tab-layers').click()
+  await page.getByTestId('layer-group-组合 1').waitFor()
+  await page.getByTestId('tab-widgets').click()
+  // A guide pulled down from the top ruler.
+  const ruler = await page.getByTestId('ruler-x').boundingBox()
+  await page.mouse.move(ruler.x + 400, ruler.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(ruler.x + 400, ruler.y + 220, { steps: 6 })
+  await page.mouse.up()
+  assert.equal((await doc()).guides.y.length, 1)
+  await page.keyboard.press(`${mod}+Shift+g`)
+  assert.equal((await doc()).groups.length, 0)
+  report.groupsAndGuides = 'PASS'
+  await page.evaluate(id => window.__screen.select([id]), pie.id)
+
   // ---------------------------------------------------------------- data binding through the panel
   await page.getByTestId('inspector-data').click()
   await page.getByTestId('data-source').selectOption('devices')

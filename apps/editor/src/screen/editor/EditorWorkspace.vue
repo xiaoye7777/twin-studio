@@ -6,6 +6,7 @@ import Inspector from './Inspector.vue'
 import LayersPanel from './LayersPanel.vue'
 import ScreenCanvas from './ScreenCanvas.vue'
 import { type ScreenEditorSession, ScreenSessionKey } from './session'
+import ShortcutsDialog from './ShortcutsDialog.vue'
 import WidgetLibrary from './WidgetLibrary.vue'
 
 const props = defineProps<{ session: ScreenEditorSession }>()
@@ -42,6 +43,7 @@ const ui = props.session.ui
     <ScreenCanvas />
     <Inspector />
   </div>
+  <ShortcutsDialog v-model="ui.shortcuts" />
 </template>
 
 <style scoped>

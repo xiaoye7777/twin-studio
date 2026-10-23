@@ -61,6 +61,8 @@ function onKeyDown(event: KeyboardEvent): void {
   if (mod && key === 'v') return run(() => s.paste())
   if (mod && key === 'd') return run(() => s.duplicateSelected())
   if (mod && key === 'a') return run(() => s.selectAll())
+  if (mod && key === 'g' && event.shiftKey) return run(() => s.ungroupSelected())
+  if (mod && key === 'g') return run(() => s.groupSelected())
   if (mod && key === '0') return run(() => s.fit())
   if (mod && (key === '=' || key === '+')) return run(() => s.zoomTo(s.ui.zoom * 1.2))
   if (mod && key === '-') return run(() => s.zoomTo(s.ui.zoom / 1.2))
@@ -72,6 +74,8 @@ function onKeyDown(event: KeyboardEvent): void {
   if (key === 'arrowdown') return run(() => s.nudge(0, step))
   if (key === 'delete' || key === 'backspace') return run(() => s.removeSelected())
   if (key === 'escape') return run(() => s.clearSelection())
+  if (key === 'r' && event.shiftKey) return run(() => s.toggleRulers())
+  if (event.key === '?') return run(() => (s.ui.shortcuts = !s.ui.shortcuts))
   if (key === ']') return run(() => s.arrange('forward'))
   if (key === '[') return run(() => s.arrange('backward'))
 }

@@ -106,6 +106,23 @@ export interface Widget {
   props: Record<string, unknown>
   data?: DataBinding
   events?: WidgetEvent[]
+  /** Widgets of one group are selected, moved and arranged together. */
+  groupId?: string
+  /** Played when the screen opens (preview and big screen). */
+  enter?: WidgetEnter
+}
+
+export interface WidgetEnter {
+  effect: 'fade' | 'up' | 'down' | 'left' | 'right' | 'zoom'
+  /** Seconds after the screen opens. */
+  delay: number
+  /** Seconds. */
+  duration: number
+}
+
+export interface ScreenGroup {
+  id: string
+  name: string
 }
 
 export interface ScreenDocument {
@@ -121,6 +138,9 @@ export interface ScreenDocument {
   widgets: Widget[]
   /** Shared values for filters and linked widgets. */
   variables?: ScreenVariable[]
+  groups?: ScreenGroup[]
+  /** Ruler guides of the editor, in page pixels. */
+  guides?: { x: number[]; y: number[] }
   /** A JPEG of the page for the screen list, refreshed by the editor (not part of the edit history). */
   cover?: string
 }

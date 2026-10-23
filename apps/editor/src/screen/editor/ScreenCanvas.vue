@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { Widget } from '../model'
 import ScreenPage from '../render/ScreenPage.vue'
 import { WIDGET_DRAG_MIME } from './dnd'
@@ -9,6 +9,10 @@ type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 type Drag =
   | { kind: 'move'; origin: { x: number; y: number }; start: Map<string, Rect>; moved: boolean }
   | { kind: 'resize'; origin: { x: number; y: number }; id: string; handle: Handle; start: Rect }
+  /** Several widgets (a group or a selection) scale together inside their bounding box. */
+  | { kind: 'resize-many'; origin: { x: number; y: number }; handle: Handle; start: Rect; rects: Map<string, Rect> }
+  /** A ruler guide: an existing one (index) or a new one pulled out of a ruler (index -1). */
+  | { kind: 'guide'; axis: 'x' | 'y'; index: number }
   | { kind: 'marquee'; origin: { x: number; y: number }; additive: boolean }
   | { kind: 'pan'; origin: { x: number; y: number }; panX: number; panY: number }
 
@@ -32,6 +36,14 @@ const stageStyle = computed(() => ({
 const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 const single = computed(() => (session.selectedWidgets.length === 1 ? session.selectedWidgets[0]! : null))
 const selectionBox = computed(() => (session.selectedWidgets.length > 1 ? boundsOf(session.selectedWidgets) : null))
+const canResizeMany = computed(() => !!selectionBox.value && session.selectedWidgets.every(widget => !widget.locked))
+/** The selection is exactly one group: its name is shown on the box. */
+const selectedGroup = computed(() => {
+  const widgets = session.selectedWidgets
+  const groupId = widgets[0]?.groupId
+  if (!groupId || widgets.length < 2 || widgets.some(widget => widget.groupId !== groupId)) return null
+  return session.group(groupId) ?? null
+})
 
 // ---------------------------------------------------------------- coordinates
 
@@ -75,8 +87,8 @@ function onKey(event: KeyboardEvent): void {
 
 /** Edges and centres of other widgets and of the page that a moving rectangle snaps to. */
 function snapTargets(exclude: ReadonlySet<string>): { xs: number[]; ys: number[] } {
-  const xs = [0, page.value.width / 2, page.value.width]
-  const ys = [0, page.value.height / 2, page.value.height]
+  const xs = [0, page.value.width / 2, page.value.width, ...(doc.value.guides?.x ?? [])]
+  const ys = [0, page.value.height / 2, page.value.height, ...(doc.value.guides?.y ?? [])]
   for (const widget of doc.value.widgets) {
     if (exclude.has(widget.id) || widget.hidden) continue
     xs.push(widget.x, widget.x + widget.w / 2, widget.x + widget.w)
@@ -114,8 +126,10 @@ function onWidgetDown(event: PointerEvent, widget: Widget): void {
   if (event.button !== 0) return
   event.stopPropagation()
   const additive = event.shiftKey || event.metaKey || event.ctrlKey
-  if (additive) return session.select([widget.id], 'toggle')
-  if (!selected.value.has(widget.id)) session.select([widget.id])
+  // A grouped widget brings its group (double-click picks it alone).
+  const ids = session.groupOf(widget.id)
+  if (additive) return session.select(ids, 'toggle')
+  if (!selected.value.has(widget.id)) session.select(ids)
   const start = new Map(
     session.selectedWidgets
       .filter(item => !item.locked)
@@ -127,8 +141,21 @@ function onWidgetDown(event: PointerEvent, widget: Widget): void {
 }
 
 function onHandleDown(event: PointerEvent, handle: Handle): void {
+  if (event.button !== 0) return
+  const box = selectionBox.value
+  if (box) {
+    event.stopPropagation()
+    drag = {
+      kind: 'resize-many',
+      origin: { x: event.clientX, y: event.clientY },
+      handle,
+      start: box,
+      rects: new Map(session.selectedWidgets.map(item => [item.id, { x: item.x, y: item.y, w: item.w, h: item.h }])),
+    }
+    return capture(event)
+  }
   const widget = single.value
-  if (!widget || event.button !== 0) return
+  if (!widget) return
   event.stopPropagation()
   drag = {
     kind: 'resize',
@@ -163,6 +190,7 @@ function capture(event: PointerEvent): void {
 
 function onMove(event: PointerEvent): void {
   if (!drag) return
+  if (drag.kind === 'guide') return moveGuide(event, drag)
   const dx = event.clientX - drag.origin.x
   const dy = event.clientY - drag.origin.y
   if (drag.kind === 'pan') {
@@ -206,6 +234,7 @@ function onMove(event: PointerEvent): void {
   }
   // Resize: the dragged edges follow the pointer (and snap); Shift keeps the proportions.
   const { start, handle } = drag
+  const resizing = new Set(drag.kind === 'resize' ? [drag.id] : drag.rects.keys())
   let left = start.x
   let top = start.y
   let right = start.x + start.w
@@ -218,7 +247,7 @@ function onMove(event: PointerEvent): void {
   if (handle.includes('s')) bottom += py
   const guides: Guide[] = []
   if (ui.snap && !event.altKey) {
-    const targets = snapTargets(new Set([drag.id]))
+    const targets = snapTargets(resizing)
     if (handle.includes('w') || handle.includes('e')) {
       const edge = handle.includes('w') ? left : right
       const snap = snapAxis([edge], targets.xs)
@@ -234,7 +263,8 @@ function onMove(event: PointerEvent): void {
       if (snap.at !== null) guides.push({ axis: 'y', at: snap.at, from: 0, to: page.value.width })
     }
   }
-  if (event.shiftKey && handle.length === 2) {
+  // Groups keep their proportions from the corners, so their contents do not distort.
+  if ((event.shiftKey || drag.kind === 'resize-many') && handle.length === 2) {
     const ratio = start.w / start.h
     const width = right - left
     const height = width / ratio
@@ -251,6 +281,20 @@ function onMove(event: PointerEvent): void {
     else bottom = top + min
   }
   ui.guides = guides
+  if (drag.kind === 'resize-many') {
+    const sx = (right - left) / start.w
+    const sy = (bottom - top) / start.h
+    const rects = new Map<string, Rect>()
+    for (const [id, rect] of drag.rects)
+      rects.set(id, {
+        x: Math.round(left + (rect.x - start.x) * sx),
+        y: Math.round(top + (rect.y - start.y) * sy),
+        w: Math.max(8, Math.round(rect.w * sx)),
+        h: Math.max(8, Math.round(rect.h * sy)),
+      })
+    session.setRects(rects, '调整大小', `resize:${[...drag.rects.keys()].join(',')}`)
+    return
+  }
   session.setRects(
     new Map([
       [drag.id, { x: Math.round(left), y: Math.round(top), w: Math.round(right - left), h: Math.round(bottom - top) }],
@@ -266,7 +310,8 @@ function onUp(event: PointerEvent): void {
   drag = null
   panning.value = false
   ui.guides = []
-  if (ended.kind === 'move' || ended.kind === 'resize') session.commit()
+  if (ended.kind === 'move' || ended.kind === 'resize' || ended.kind === 'resize-many') session.commit()
+  if (ended.kind === 'guide') endGuide(event, ended)
   if (ended.kind === 'marquee' && ui.marquee) {
     const box = ui.marquee
     const a = toPage(
@@ -277,7 +322,7 @@ function onUp(event: PointerEvent): void {
     const hits = doc.value.widgets
       .filter(w => !w.locked && !w.hidden && w.x < b.x && w.x + w.w > a.x && w.y < b.y && w.y + w.h > a.y)
       .map(w => w.id)
-    session.select(hits, ended.additive ? 'add' : 'replace')
+    session.select(session.withGroups(hits), ended.additive ? 'add' : 'replace')
   }
   ui.marquee = null
   viewport.value?.releasePointerCapture(event.pointerId)
@@ -296,6 +341,131 @@ function onWheel(event: WheelEvent): void {
     ui.panY -= event.deltaY
   }
 }
+
+// ---------------------------------------------------------------- rulers and guides
+
+const RULER = 20
+const rulerX = ref<HTMLCanvasElement>()
+const rulerY = ref<HTMLCanvasElement>()
+/** A guide being pulled out of a ruler (not in the document until released on the canvas). */
+const pending = ref<{ axis: 'x' | 'y'; at: number } | null>(null)
+const guideLines = computed(() => [
+  ...(doc.value.guides?.x ?? []).map((at, index) => ({ axis: 'x' as const, at, index })),
+  ...(doc.value.guides?.y ?? []).map((at, index) => ({ axis: 'y' as const, at, index })),
+])
+const guideOffset = (axis: 'x' | 'y', at: number) => (axis === 'x' ? ui.panX + at * ui.zoom : ui.panY + at * ui.zoom)
+
+function startGuide(event: PointerEvent, axis: 'x' | 'y', index = -1): void {
+  if (event.button !== 0) return
+  event.stopPropagation()
+  menu.open = false
+  drag = { kind: 'guide', axis, index }
+  if (index < 0) pending.value = { axis, at: pagePoint(event)[axis] }
+  capture(event)
+}
+
+function pagePoint(event: PointerEvent): { x: number; y: number } {
+  const point = toPage(event.clientX, event.clientY)
+  return { x: Math.round(point.x), y: Math.round(point.y) }
+}
+
+function moveGuide(event: PointerEvent, current: Extract<Drag, { kind: 'guide' }>): void {
+  const at = pagePoint(event)[current.axis]
+  if (current.index < 0) pending.value = { axis: current.axis, at }
+  else session.moveGuide(current.axis, current.index, at)
+}
+
+/** Released over the ruler: the guide goes away (or is never made). */
+function endGuide(event: PointerEvent, ended: Extract<Drag, { kind: 'guide' }>): void {
+  const rect = viewport.value!.getBoundingClientRect()
+  const onRuler = ended.axis === 'x' ? event.clientX - rect.left < RULER + 4 : event.clientY - rect.top < RULER + 4
+  if (ended.index < 0) {
+    if (pending.value && !onRuler) session.addGuide(ended.axis, pending.value.at)
+    pending.value = null
+  } else if (onRuler) {
+    session.commit()
+    session.removeGuide(ended.axis, ended.index)
+  } else session.commit()
+}
+
+/** Ticks every 1/2/5 × 10ⁿ page pixels, labelled where they are at least ~70 screen pixels apart. */
+function drawRuler(canvas: HTMLCanvasElement | undefined, axis: 'x' | 'y'): void {
+  if (!canvas) return
+  const length = axis === 'x' ? ui.viewport.width : ui.viewport.height
+  if (!length) return
+  const ratio = window.devicePixelRatio || 1
+  const width = axis === 'x' ? length : RULER
+  const height = axis === 'x' ? RULER : length
+  canvas.width = Math.round(width * ratio)
+  canvas.height = Math.round(height * ratio)
+  canvas.style.width = `${width}px`
+  canvas.style.height = `${height}px`
+  const g = canvas.getContext('2d')
+  if (!g) return
+  g.setTransform(ratio, 0, 0, ratio, 0, 0)
+  g.fillStyle = '#17181b'
+  g.fillRect(0, 0, width, height)
+  const pan = axis === 'x' ? ui.panX : ui.panY
+  const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
+  const major = steps.find(step => step * ui.zoom >= 70) ?? 5000
+  const minor = major / (String(major).startsWith('5') ? 5 : 10)
+  // The selection's extent, so positions read off the ruler.
+  const box = selectionBox.value ?? (single.value ? { ...single.value } : null)
+  if (box) {
+    const from = pan + (axis === 'x' ? box.x : box.y) * ui.zoom
+    const size = (axis === 'x' ? box.w : box.h) * ui.zoom
+    g.fillStyle = 'rgba(232, 137, 74, 0.22)'
+    if (axis === 'x') g.fillRect(from, 0, size, height)
+    else g.fillRect(0, from, width, size)
+  }
+  g.strokeStyle = '#4a4b50'
+  g.fillStyle = '#8a8780'
+  g.font = '10px ui-monospace, monospace'
+  g.lineWidth = 1
+  g.beginPath()
+  const first = Math.floor(-pan / ui.zoom / minor) * minor
+  const last = (length - pan) / ui.zoom
+  for (let value = first; value <= last; value += minor) {
+    const at = Math.round(pan + value * ui.zoom) + 0.5
+    const isMajor = Math.abs(value / major - Math.round(value / major)) < 1e-6
+    const tick = isMajor ? RULER : RULER / 4
+    if (axis === 'x') {
+      g.moveTo(at, RULER - tick)
+      g.lineTo(at, RULER)
+      if (isMajor) g.fillText(String(Math.round(value)), at + 3, 10)
+    } else {
+      g.moveTo(RULER - tick, at)
+      g.lineTo(RULER, at)
+      if (isMajor) {
+        g.save()
+        g.translate(10, at + 3)
+        g.rotate(-Math.PI / 2)
+        g.fillText(String(Math.round(value)), 0, 0)
+        g.restore()
+      }
+    }
+  }
+  g.stroke()
+  g.fillStyle = '#26272b'
+  if (axis === 'x') g.fillRect(0, RULER - 1, width, 1)
+  else g.fillRect(RULER - 1, 0, 1, height)
+}
+
+let rulerFrame = 0
+function redrawRulers(): void {
+  if (rulerFrame || !ui.rulers) return
+  rulerFrame = requestAnimationFrame(() => {
+    rulerFrame = 0
+    drawRuler(rulerX.value, 'x')
+    drawRuler(rulerY.value, 'y')
+  })
+}
+watch(
+  () => [ui.rulers, ui.zoom, ui.panX, ui.panY, ui.viewport.width, ui.viewport.height, selectionBox.value, single.value],
+  redrawRulers,
+  { flush: 'post' },
+)
+onMounted(redrawRulers)
 
 // ---------------------------------------------------------------- drop & menu
 
@@ -329,7 +499,10 @@ const menuItems = computed(() => {
   const ids = widgets.map(widget => widget.id)
   const locked = widgets.every(widget => widget.locked)
   const hidden = widgets.every(widget => widget.hidden)
+  const grouped = widgets.some(widget => widget.groupId)
   return [
+    ...(widgets.length > 1 ? [{ label: '组合', key: '⌘G', run: () => session.groupSelected() }] : []),
+    ...(grouped ? [{ label: '取消组合', key: '⇧⌘G', run: () => session.ungroupSelected() }] : []),
     { label: '置于顶层', key: '', run: () => session.arrange('front') },
     { label: '上移一层', key: ']', run: () => session.arrange('forward') },
     { label: '下移一层', key: '[', run: () => session.arrange('backward') },
@@ -371,6 +544,7 @@ const menuItems = computed(() => {
         :style="{ left: `${widget.x}px`, top: `${widget.y}px`, width: `${widget.w}px`, height: `${widget.h}px` }"
         :data-testid="`hit-${widget.name}`"
         @pointerdown="onWidgetDown($event, widget)"
+        @dblclick.stop="widget.groupId && session.select([widget.id])"
         @pointerenter="ui.hovered = widget.id"
         @pointerleave="ui.hovered === widget.id && (ui.hovered = null)"
         @contextmenu.stop="onContextMenu($event, widget)"
@@ -386,13 +560,26 @@ const menuItems = computed(() => {
       <div
         v-if="selectionBox"
         class="selection-box"
+        :class="{ 'is-group': selectedGroup }"
         :style="{
           left: `${selectionBox.x}px`,
           top: `${selectionBox.y}px`,
           width: `${selectionBox.w}px`,
           height: `${selectionBox.h}px`,
         }"
-      />
+      >
+        <span v-if="selectedGroup" class="selection-box__name">{{ selectedGroup.name }}</span>
+        <template v-if="canResizeMany">
+          <span
+            v-for="handle in handles"
+            :key="handle"
+            class="handle"
+            :class="`is-${handle}`"
+            :data-testid="`group-handle-${handle}`"
+            @pointerdown="onHandleDown($event, handle)"
+          />
+        </template>
+      </div>
       <template v-if="single && !single.locked">
         <div
           class="frame"
@@ -422,6 +609,48 @@ const menuItems = computed(() => {
         "
       />
     </div>
+    <!-- Ruler guides span the whole canvas, in screen pixels. -->
+    <template v-if="ui.rulers">
+      <div
+        v-for="line in guideLines"
+        :key="`${line.axis}${line.index}`"
+        class="ruler-guide"
+        :class="`is-${line.axis}`"
+        :style="
+          line.axis === 'x' ? { left: `${guideOffset('x', line.at)}px` } : { top: `${guideOffset('y', line.at)}px` }
+        "
+        :data-testid="`guide-${line.axis}-${line.at}`"
+        :title="`${line.at} px（拖回标尺删除）`"
+        @pointerdown="startGuide($event, line.axis, line.index)"
+      />
+      <div
+        v-if="pending"
+        class="ruler-guide is-pending"
+        :class="`is-${pending.axis}`"
+        :style="
+          pending.axis === 'x'
+            ? { left: `${guideOffset('x', pending.at)}px` }
+            : { top: `${guideOffset('y', pending.at)}px` }
+        "
+      >
+        <span>{{ pending.at }}</span>
+      </div>
+      <canvas
+        ref="rulerX"
+        class="ruler is-x"
+        data-testid="ruler-x"
+        title="按住拖出参考线"
+        @pointerdown="startGuide($event, 'y')"
+      />
+      <canvas
+        ref="rulerY"
+        class="ruler is-y"
+        data-testid="ruler-y"
+        title="按住拖出参考线"
+        @pointerdown="startGuide($event, 'x')"
+      />
+      <button class="ruler-corner" title="清除全部参考线" @pointerdown.stop @click="session.clearGuides()" />
+    </template>
     <div
       v-if="ui.marquee"
       class="marquee"
@@ -498,6 +727,94 @@ const menuItems = computed(() => {
   position: absolute;
   outline: calc(1px / var(--zoom)) dashed var(--s-accent);
   pointer-events: none;
+}
+.selection-box.is-group {
+  outline-style: solid;
+}
+.selection-box__name {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: calc(4px / var(--zoom));
+  padding: 0 calc(6px / var(--zoom));
+  border-radius: calc(3px / var(--zoom));
+  background: var(--s-accent);
+  color: #1b130c;
+  font:
+    600 calc(11px / var(--zoom)) / 1.6 Inter,
+    sans-serif;
+  white-space: nowrap;
+}
+.ruler {
+  position: absolute;
+  z-index: 6;
+  display: block;
+}
+.ruler.is-x {
+  top: 0;
+  left: 0;
+  cursor: s-resize;
+}
+.ruler.is-y {
+  top: 0;
+  left: 0;
+  cursor: e-resize;
+}
+.ruler-corner {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #26272b;
+  border-bottom: 1px solid #26272b;
+  background: #17181b;
+  cursor: pointer;
+}
+.ruler-corner:hover {
+  background: var(--s-hover);
+}
+.ruler-guide {
+  position: absolute;
+  z-index: 5;
+}
+.ruler-guide.is-x {
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  margin-left: -3px;
+  background: linear-gradient(90deg, transparent 3px, #22d3ee 3px, #22d3ee 4px, transparent 4px);
+  cursor: ew-resize;
+}
+.ruler-guide.is-y {
+  right: 0;
+  left: 0;
+  height: 7px;
+  margin-top: -3px;
+  background: linear-gradient(180deg, transparent 3px, #22d3ee 3px, #22d3ee 4px, transparent 4px);
+  cursor: ns-resize;
+}
+.ruler-guide.is-pending {
+  pointer-events: none;
+}
+.ruler-guide span {
+  position: absolute;
+  top: 24px;
+  left: 8px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: #0e7490;
+  color: #fff;
+  font:
+    10.5px/1.6 ui-monospace,
+    monospace;
+}
+.ruler-guide.is-y span {
+  top: 6px;
+  left: 24px;
 }
 .frame {
   position: absolute;

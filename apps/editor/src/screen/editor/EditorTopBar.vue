@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { ArrowLeft, Magnet, Maximize, MonitorPlay, Redo2, Undo2, ZoomIn, ZoomOut } from 'lucide-vue-next'
+import {
+  ArrowLeft,
+  Keyboard,
+  Magnet,
+  Maximize,
+  MonitorPlay,
+  Redo2,
+  Ruler,
+  Undo2,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useScreenSession } from './session'
@@ -56,6 +67,16 @@ async function preview(): Promise<void> {
       >
         <Magnet :size="15" />
       </button>
+      <button
+        class="s-icon-btn"
+        :class="{ 'is-active': ui.rulers }"
+        title="标尺与参考线（⇧R）：从标尺拖出参考线"
+        data-testid="toggle-rulers"
+        @click="session.toggleRulers()"
+      >
+        <Ruler :size="15" />
+      </button>
+      <button class="s-icon-btn" title="快捷键（?）" @click="ui.shortcuts = true"><Keyboard :size="15" /></button>
     </div>
     <button class="s-btn s-btn--primary" data-testid="screen-preview-open" @click="preview">
       <MonitorPlay :size="14" />预览
