@@ -26,6 +26,7 @@ export const useScreenStore = defineStore('screens', () => {
       name: `${document.name} 副本`,
       createdAt: now,
       updatedAt: now,
+      published: undefined,
     }
     await save(copy)
     return copy

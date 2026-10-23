@@ -397,6 +397,25 @@ html.dark .el-dialog__footer {
   padding-top: 12px;
 }
 
+html.dark .el-drawer {
+  --el-drawer-bg-color: #1e1f22;
+  border-left: 1px solid #3d3e42;
+  box-shadow: -16px 0 48px rgb(0 0 0 / 0.45);
+}
+
+html.dark .el-drawer__header {
+  margin-bottom: 0;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #2f3033;
+  color: #e8e6e1;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html.dark .el-drawer__body {
+  padding: 14px 16px;
+}
+
 html.dark .el-message-box {
   --el-messagebox-border-radius: 8px;
   border: 1px solid #3d3e42;

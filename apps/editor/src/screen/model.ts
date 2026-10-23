@@ -143,6 +143,44 @@ export interface ScreenDocument {
   guides?: { x: number[]; y: number[] }
   /** A JPEG of the page for the screen list, refreshed by the editor (not part of the edit history). */
   cover?: string
+  /** The version shown on the big screen (放映); edits after it stay a draft until published again. */
+  published?: { versionId: string; at: string; signature: string }
+}
+
+/** A saved state of a screen: published, saved by hand, or kept automatically after an editing session. */
+export interface ScreenVersion {
+  id: string
+  screenId: string
+  kind: 'publish' | 'manual' | 'auto'
+  label: string
+  createdAt: string
+  document: ScreenDocument
+}
+
+const signatures = new WeakMap<ScreenDocument, string>()
+
+/** What a screen shows, without bookkeeping (covers, dates), to tell whether it changed. */
+export function contentSignature(document: ScreenDocument): string {
+  const known = signatures.get(document)
+  if (known) return known
+  const text = JSON.stringify([
+    document.name,
+    document.page,
+    document.sceneProjectId,
+    document.widgets,
+    document.variables ?? [],
+    document.groups ?? [],
+  ])
+  // FNV-1a: short and stable; collisions only risk a missed "modified" badge.
+  let hash = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  const signature = `${text.length.toString(36)}-${(hash >>> 0).toString(36)}`
+  // Documents in the editor never change in place, so one signature per object is enough.
+  signatures.set(document, signature)
+  return signature
 }
 
 export const pagePresets = [

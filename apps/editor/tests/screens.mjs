@@ -114,13 +114,35 @@ try {
   await page.getByTestId('data-preview').locator('table').waitFor()
   report.dataBinding = 'PASS'
 
+  // ---------------------------------------------------------------- publishing and versions
+  await page.getByTestId('screen-publish').click()
+  await page.getByTestId('publish-note').fill('首版')
+  await page.getByTestId('publish-confirm').click()
+  await page.getByTestId('publish-link').waitFor()
+  await page.keyboard.press('Escape')
+  const publishedCount = (await doc()).widgets.length
+  // A change after publishing stays a draft.
+  await page.evaluate(() => window.__screen.addWidget('title', { x: 960, y: 500 }))
+  await page.getByTestId('open-versions').click()
+  await page.getByTestId('version-首版').waitFor()
+  await page.keyboard.press('Escape')
+  report.publish = 'PASS'
+
   // ---------------------------------------------------------------- list card and preview
   const screenId = (await doc()).id
   // Leaving through the editor saves the screen with a picture of the page for its card.
   await page.locator('.topbar .s-icon-btn').first().click()
   await page.waitForURL(/\/screens$/)
-  await page.getByTestId('screen-card-运营大屏测试').locator('img.card__image').waitFor({ timeout: 15000 })
+  const card = page.getByTestId('screen-card-运营大屏测试')
+  await card.locator('img.card__image').waitFor({ timeout: 15000 })
   report.cardThumbnail = 'PASS'
+  assert.equal((await card.getByTestId('screen-status').textContent()).trim(), '有修改未发布')
+  // The big screen shows the published version, not the draft.
+  await page.goto(`${base}/screens/${screenId}/play`)
+  await page.waitForSelector('[data-widget-type="scene"]')
+  assert.equal(await page.locator('.preview__stage .widget').count(), publishedCount)
+  assert.equal(await page.getByTestId('preview-notice').count(), 0)
+  report.bigScreenShowsPublished = 'PASS'
   await page.goto(`${base}/screens/${screenId}/preview`)
   await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]', { timeout: 60000 })
   await page.waitForFunction(() => document.querySelectorAll('.table__body .table__row').length > 0, null, {

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import {
   ArrowLeft,
+  History,
   Keyboard,
   Magnet,
   Maximize,
   MonitorPlay,
   Redo2,
+  Rocket,
   Ruler,
   Undo2,
   ZoomIn,
@@ -78,13 +80,35 @@ async function preview(): Promise<void> {
       </button>
       <button class="s-icon-btn" title="快捷键（?）" @click="ui.shortcuts = true"><Keyboard :size="15" /></button>
     </div>
-    <button class="s-btn s-btn--primary" data-testid="screen-preview-open" @click="preview">
-      <MonitorPlay :size="14" />预览
+    <button class="s-icon-btn" title="历史版本" data-testid="open-versions" @click="ui.versions = true">
+      <History :size="15" />
+    </button>
+    <button class="s-btn" data-testid="screen-preview-open" @click="preview"><MonitorPlay :size="14" />预览</button>
+    <button
+      class="s-btn s-btn--primary topbar__publish"
+      :title="session.published.value ? (session.unpublished ? '有修改未发布' : '已发布最新内容') : '尚未发布'"
+      data-testid="screen-publish"
+      @click="ui.publishing = true"
+    >
+      <Rocket :size="14" />发布<i v-if="session.unpublished" />
     </button>
   </header>
 </template>
 
 <style scoped>
+.topbar__publish {
+  position: relative;
+}
+.topbar__publish i {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--s-panel);
+  border-radius: 50%;
+  background: var(--s-warn);
+}
 .topbar {
   display: flex;
   height: 46px;

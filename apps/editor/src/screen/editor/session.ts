@@ -1,6 +1,14 @@
 import { type InjectionKey, inject, reactive, shallowRef } from 'vue'
 import { type DocumentChange, DocumentStore } from '@twin-studio/core'
-import { newScreenId, type ScreenDocument, type ScreenGroup, type ScreenPage, type Widget } from '../model'
+import {
+  contentSignature,
+  newScreenId,
+  type ScreenDocument,
+  type ScreenGroup,
+  type ScreenPage,
+  type ScreenVersion,
+  type Widget,
+} from '../model'
 import { captureScreen } from '../render/capture'
 import { ScreenRuntime } from '../runtime/ScreenRuntime'
 import { type ScreenRepository, screenRepository } from '../storage/ScreenRepository'
@@ -45,6 +53,10 @@ export class ScreenEditorSession {
     snap: true,
     rulers: readSetting('screen-editor:rulers', true),
     shortcuts: false,
+    versions: false,
+    publishing: false,
+    /** Bumped when versions change, so the history list reloads. */
+    versionsRevision: 0,
     canUndo: false,
     canRedo: false,
     undoLabel: '',
@@ -59,6 +71,10 @@ export class ScreenEditorSession {
   /** The rendered page in the canvas (set by the canvas), for thumbnails. */
   pageElement: HTMLElement | null = null
   private cover: string | undefined
+  /** What the big screen shows; kept outside the edit history like the cover. */
+  readonly published = shallowRef<ScreenDocument['published']>(undefined)
+  /** Something was edited in this session: leaving keeps an automatic version. */
+  private edited = false
   private coverAt = 0
   private capturing: Promise<void> | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -72,6 +88,7 @@ export class ScreenEditorSession {
     private readonly repository: ScreenRepository = screenRepository,
   ) {
     this.cover = document.cover
+    this.published.value = document.published
     this.store = new DocumentStore(document, 200)
     this.doc = shallowRef(this.store.document)
     this.runtime.setDocument(this.store.document)
@@ -109,7 +126,10 @@ export class ScreenEditorSession {
     const ids = new Set(change.document.widgets.map(widget => widget.id))
     if (this.selection.value.some(id => !ids.has(id)))
       this.selection.value = this.selection.value.filter(id => ids.has(id))
-    if (change.origin !== 'reset') this.scheduleSave()
+    if (change.origin !== 'reset') {
+      this.edited = true
+      this.scheduleSave()
+    }
   }
 
   private scheduleSave(): void {
@@ -133,7 +153,12 @@ export class ScreenEditorSession {
     const current = this.store.document
     this.ui.saveState = 'saving'
     try {
-      await this.repository.save({ ...current, cover: this.cover, updatedAt: new Date().toISOString() })
+      await this.repository.save({
+        ...current,
+        cover: this.cover,
+        published: this.published.value,
+        updatedAt: new Date().toISOString(),
+      })
       // Open previews of this screen reload it.
       screenChannel()?.postMessage({ type: 'saved', id: current.id })
       if (this.store.document === current) this.store.markSaved()
@@ -164,7 +189,12 @@ export class ScreenEditorSession {
           const image = await captureScreen(element, this.store.document, this.runtime.viewers, this.runtime.charts)
           if (image && !this.disposed) {
             this.cover = image
-            await this.repository.save({ ...this.store.document, cover: image, updatedAt: new Date().toISOString() })
+            await this.repository.save({
+              ...this.store.document,
+              cover: image,
+              published: this.published.value,
+              updatedAt: new Date().toISOString(),
+            })
           } else if (image) this.cover = image
         } catch {
           // A thumbnail is a convenience; the screen itself is saved either way.
@@ -185,10 +215,68 @@ export class ScreenEditorSession {
     if (element && !this.cover) setTimeout(() => !this.disposed && !this.cover && void this.refreshCover(), 6000)
   }
 
-  /** Before leaving the editor: save, with a fresh thumbnail. */
+  /** Before leaving the editor: save, with a fresh thumbnail, and keep this session's work as a version. */
   async leave(): Promise<void> {
     await this.refreshCover(true)
     await this.save()
+    if (this.edited) await this.saveVersion('编辑后自动保存', 'auto')
+  }
+
+  // ================================================================ versions and publishing
+
+  /** Keeps the current state as a version. */
+  async saveVersion(label: string, kind: ScreenVersion['kind'] = 'manual'): Promise<ScreenVersion> {
+    const document: ScreenDocument = JSON.parse(
+      JSON.stringify({ ...this.store.document, cover: this.cover, published: undefined }),
+    )
+    const version: ScreenVersion = {
+      id: newScreenId('version'),
+      screenId: document.id,
+      kind,
+      label: label.trim() || (kind === 'publish' ? '发布' : '手动保存'),
+      createdAt: new Date().toISOString(),
+      document,
+    }
+    await this.repository.saveVersion(version)
+    if (kind !== 'auto') this.edited = false
+    this.ui.versionsRevision++
+    return version
+  }
+
+  /** Makes the current state what the big screen (放映) shows. */
+  async publish(note: string): Promise<ScreenVersion> {
+    await this.save()
+    const version = await this.saveVersion(note, 'publish')
+    this.published.value = {
+      versionId: version.id,
+      at: version.createdAt,
+      signature: contentSignature(this.store.document),
+    }
+    await this.save()
+    screenChannel()?.postMessage({ type: 'published', id: this.store.document.id })
+    return version
+  }
+
+  /** Edits made since the last publish. */
+  get unpublished(): boolean {
+    const published = this.published.value
+    return !published || published.signature !== contentSignature(this.doc.value)
+  }
+
+  /** Brings back a version (one undo step); the state before is kept as a version first. */
+  async restore(version: ScreenVersion): Promise<void> {
+    await this.saveVersion('恢复前自动保存', 'auto')
+    const source = version.document
+    this.edit('恢复历史版本', draft => {
+      draft.name = source.name
+      draft.page = JSON.parse(JSON.stringify(source.page))
+      draft.sceneProjectId = source.sceneProjectId
+      draft.widgets = JSON.parse(JSON.stringify(source.widgets))
+      draft.variables = JSON.parse(JSON.stringify(source.variables ?? []))
+      draft.groups = JSON.parse(JSON.stringify(source.groups ?? []))
+      draft.guides = JSON.parse(JSON.stringify(source.guides ?? { x: [], y: [] }))
+    })
+    this.clearSelection()
   }
 
   dispose(): void {

@@ -2,6 +2,7 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Copy,
+  Eye,
   FileUp,
   LayoutDashboard,
   MonitorPlay,
@@ -18,7 +19,7 @@ import CreateScreenDialog from '@/screen/components/CreateScreenDialog.vue'
 import ScreenThumbnail from '@/screen/components/ScreenThumbnail.vue'
 import { isConnection, isDataset, shareableConnection } from '@/screen/datasources/model'
 import { useDataSourceStore } from '@/screen/datasources/store'
-import { isScreenDocument, newScreenId, type ScreenDocument } from '@/screen/model'
+import { contentSignature, isScreenDocument, newScreenId, type ScreenDocument } from '@/screen/model'
 import { useScreenStore } from '@/screen/storage/screens'
 
 const router = useRouter()
@@ -41,7 +42,19 @@ function edit(screen: ScreenDocument): void {
 }
 
 function preview(screen: ScreenDocument): void {
+  menu.value = ''
   window.open(router.resolve({ name: 'screen-preview', params: { screenId: screen.id } }).href, '_blank')
+}
+
+/** The big screen: the published version (the draft until there is one). */
+function play(screen: ScreenDocument): void {
+  window.open(router.resolve({ name: 'screen-play', params: { screenId: screen.id } }).href, '_blank')
+}
+
+function status(screen: ScreenDocument): { label: string; tone: string } {
+  if (!screen.published) return { label: '未发布', tone: 'draft' }
+  if (screen.published.signature !== contentSignature(screen)) return { label: '有修改未发布', tone: 'changed' }
+  return { label: '已发布', tone: 'live' }
 }
 
 async function rename(screen: ScreenDocument): Promise<void> {
@@ -120,7 +133,7 @@ async function importScreen(event: Event): Promise<void> {
           datasets: (interfaces.datasets ?? []).filter(isDataset),
         })
       : 0
-    await screens.save({ ...screen, id: newScreenId(), createdAt: now, updatedAt: now })
+    await screens.save({ ...screen, id: newScreenId(), createdAt: now, updatedAt: now, published: undefined })
     ElMessage.success(
       added
         ? `已导入「${value.name}」及 ${added} 个数据接口（如需认证，请在「数据接口」中填写 Token）`
@@ -163,13 +176,18 @@ async function importScreen(event: Event): Promise<void> {
         </button>
         <div class="card__body">
           <div class="card__text">
-            <h3 :title="screen.name">{{ screen.name }}</h3>
+            <h3 :title="screen.name">
+              {{ screen.name }}
+              <span class="card__status" :class="`is-${status(screen).tone}`" data-testid="screen-status">{{
+                status(screen).label
+              }}</span>
+            </h3>
             <p>
               {{ screen.page.width }}×{{ screen.page.height }} · {{ sceneName(screen) }} ·
               {{ updated(screen.updatedAt) }}
             </p>
           </div>
-          <button class="s-icon-btn" title="预览" data-testid="screen-preview" @click="preview(screen)">
+          <button class="s-icon-btn" title="放映（已发布的版本）" data-testid="screen-preview" @click="play(screen)">
             <MonitorPlay :size="15" />
           </button>
           <div class="card__more">
@@ -177,6 +195,7 @@ async function importScreen(event: Event): Promise<void> {
               <MoreHorizontal :size="15" />
             </button>
             <div v-if="menu === screen.id" class="card__menu s-float">
+              <button @click="preview(screen)"><Eye :size="13" />预览草稿</button>
               <button @click="rename(screen)"><Type :size="13" />重命名</button>
               <button @click="duplicate(screen)"><Copy :size="13" />创建副本</button>
               <button @click="exportScreen(screen)"><FileUp :size="13" />导出 JSON</button>
@@ -297,6 +316,26 @@ async function importScreen(event: Event): Promise<void> {
   font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.card__status {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 500;
+  vertical-align: 1px;
+}
+.card__status.is-draft {
+  background: var(--s-raised);
+  color: var(--s-fg-3);
+}
+.card__status.is-changed {
+  background: rgb(226 180 86 / 0.14);
+  color: var(--s-warn);
+}
+.card__status.is-live {
+  background: rgb(116 192 142 / 0.14);
+  color: var(--s-ok);
 }
 .card__more {
   position: relative;

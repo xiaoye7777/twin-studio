@@ -11,8 +11,12 @@ import '@/screen/widgets'
 const route = useRoute()
 const router = useRouter()
 const screenId = String(route.params.screenId)
+/** play: the published version (the big screen); version: one saved version; draft: the latest edits. */
+const mode = route.name === 'screen-play' ? 'play' : route.query.version ? 'version' : 'draft'
 const screen = shallowRef<ScreenDocument | null>(null)
 const error = ref('')
+/** A line at the top saying what is shown, when it is not what one would expect. */
+const notice = ref('')
 const runtime = new ScreenRuntime(false)
 provide(ScreenRuntimeKey, runtime)
 if (import.meta.env.DEV) (window as unknown as { __screenRuntime?: ScreenRuntime }).__screenRuntime = runtime
@@ -48,10 +52,29 @@ const fitting = computed(() => {
   }
 })
 
+/** The document this page shows, by mode. */
+async function source(): Promise<ScreenDocument | null> {
+  if (mode === 'version') {
+    const version = await screenRepository.getVersion(String(route.query.version))
+    if (version) {
+      const time = new Date(version.createdAt).toLocaleString('zh-CN', { hour12: false })
+      notice.value = `历史版本预览：${version.label} · ${time}`
+    }
+    return version?.document ?? null
+  }
+  const draft = await screenRepository.get(screenId)
+  if (mode === 'play' && draft) {
+    const version = draft.published ? await screenRepository.getVersion(draft.published.versionId) : null
+    notice.value = version ? '' : '这个大屏还没有发布，显示的是草稿'
+    if (version) return version.document
+  }
+  return draft
+}
+
 async function load(): Promise<void> {
-  const document = await screenRepository.get(screenId)
+  const document = await source()
   if (!document) {
-    error.value = '找不到这个数据大屏，可能已被删除'
+    error.value = mode === 'version' ? '找不到这个版本，可能已被删除' : '找不到这个数据大屏，可能已被删除'
     return
   }
   // Charts render sharp at the scale they are shown at.
@@ -83,10 +106,12 @@ onMounted(async () => {
   window.addEventListener('pointermove', wake)
   document.addEventListener('fullscreenchange', onFullscreen)
   wake()
-  // Follow the editor: each save in another tab reloads this preview.
+  // Follow the editor: the draft preview reloads on each save, the big screen on each publish.
   channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('twin-studio-screens')
   channel?.addEventListener('message', event => {
-    if ((event.data as { id?: string }).id === screenId) void load()
+    const message = event.data as { type?: string; id?: string }
+    if (message.id !== screenId || mode === 'version') return
+    if (mode === 'draft' ? message.type === 'saved' : message.type === 'published') void load()
   })
 })
 
@@ -115,6 +140,7 @@ onBeforeUnmount(() => {
       <ScreenPage :screen="screen" :editing="false" />
     </div>
     <p v-else-if="error" class="preview__error">{{ error }}</p>
+    <p v-if="notice" class="preview__notice" data-testid="preview-notice">{{ notice }}</p>
     <div class="preview__chrome" :class="{ 'is-hidden': !chrome }">
       <button title="编辑" @click="router.push({ name: 'screen-editor', params: { screenId } })">
         <PenLine :size="16" />
@@ -140,6 +166,20 @@ onBeforeUnmount(() => {
   top: 0;
   left: 0;
   transform-origin: 0 0;
+}
+.preview__notice {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  margin: 0;
+  padding: 4px 14px;
+  border: 1px solid rgb(226 180 86 / 0.45);
+  border-radius: 14px;
+  background: rgb(20 16 8 / 0.82);
+  color: #f2cf86;
+  font-size: 12.5px;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 .preview__error {
   margin: 40vh auto 0;

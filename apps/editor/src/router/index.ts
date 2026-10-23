@@ -57,6 +57,12 @@ const router = createRouter({
       meta: { title: '大屏编辑器' },
     },
     {
+      path: '/screens/:screenId/play',
+      name: 'screen-play',
+      component: () => import('@/views/screen/ScreenPreview.vue'),
+      meta: { title: '大屏放映' },
+    },
+    {
       path: '/screens/:screenId/preview',
       name: 'screen-preview',
       component: () => import('@/views/screen/ScreenPreview.vue'),
