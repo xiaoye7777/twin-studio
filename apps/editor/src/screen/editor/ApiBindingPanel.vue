@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, ExternalLink, Link2, RefreshCw, Search, Unlink2 } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
@@ -47,6 +47,16 @@ function update(patch: Partial<ApiBinding>, label = '修改接口数据'): void 
 
 const picking = ref(false)
 const query = ref('')
+const pickerElement = ref<HTMLElement>()
+/** A click anywhere else closes the list. */
+function closeOutside(event: PointerEvent): void {
+  if (!pickerElement.value?.contains(event.target as Node)) picking.value = false
+}
+watch(picking, open => {
+  if (open) document.addEventListener('pointerdown', closeOutside, true)
+  else document.removeEventListener('pointerdown', closeOutside, true)
+})
+onBeforeUnmount(() => document.removeEventListener('pointerdown', closeOutside, true))
 const choices = computed(() => {
   const words = query.value.trim().toLowerCase()
   const groups = new Map<string, ApiDataset[]>()
@@ -134,7 +144,7 @@ const statusText = computed(() => {
 <template>
   <div class="api" data-testid="api-binding">
     <UiSection title="接口">
-      <div class="picker">
+      <div ref="pickerElement" class="picker" @keydown.esc.stop="picking = false">
         <button class="picker__current" data-testid="api-dataset" @click="picking = !picking">
           <template v-if="dataset">
             <strong>{{ dataset.name }}</strong>
