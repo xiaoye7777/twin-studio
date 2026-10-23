@@ -113,13 +113,14 @@ try {
     ['editor', 'apps/editor/tests/studio.mjs', { TEST_BASE_URL: editor }],
     ['demo', 'apps/editor/tests/zero-carbon-demo.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
     ['screens', 'apps/editor/tests/screens.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
+    ['interfaces', 'apps/editor/tests/data-api.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
     [
       'dashboard',
       'apps/dashboard-demo/tests/project-data-source.mjs',
       { EDITOR_URL: editor, TEST_BASE_URL: dashboard, TWIN_DATA_PORT: String(dataPort) },
     ],
   ].filter(([name]) => !args.only || args.only === name)
-  if (!suites.length) throw new Error(`unknown suite "${args.only}" (editor | demo | screens | dashboard)`)
+  if (!suites.length) throw new Error(`unknown suite "${args.only}" (editor | demo | screens | interfaces | dashboard)`)
 
   const results = []
   for (const [name, file, env] of suites)

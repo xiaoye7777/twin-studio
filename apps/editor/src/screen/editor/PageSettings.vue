@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { Plus, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import UiColor from '@/components/ui/UiColor.vue'
 import UiNumber from '@/components/ui/UiNumber.vue'
 import UiRow from '@/components/ui/UiRow.vue'
 import UiSection from '@/components/ui/UiSection.vue'
 import { useProjectStore } from '@/stores/project'
-import { pagePresets, type ScreenScaleMode } from '../model'
+import { builtinVariables, pagePresets, type ScreenDocument, type ScreenScaleMode } from '../model'
 import FieldEditor from './FieldEditor.vue'
 import { useScreenSession } from './session'
 
@@ -23,6 +24,66 @@ const scaleModes: Array<{ value: ScreenScaleMode; label: string; hint: string }>
   { value: 'height', label: '高度铺满', hint: '上下铺满，宽度方向居中' },
   { value: 'stretch', label: '拉伸铺满', hint: '铺满屏幕，比例不同时拉伸变形' },
 ]
+
+// ---------------------------------------------------------------- variables
+
+const variables = computed(() => doc.value.variables ?? [])
+
+function addVariable(): void {
+  let index = variables.value.length + 1
+  while (variables.value.some(item => item.name === `变量${index}`)) index++
+  session.updatePage(
+    (_, d) => void (d.variables = [...(d.variables ?? []), { name: `变量${index}`, value: '' }]),
+    '添加变量',
+  )
+}
+
+/** Every place a variable is referred to by name: interface parameters and click actions. */
+function eachReference(d: ScreenDocument, visit: (holder: { variable?: string }) => void): void {
+  for (const widget of d.widgets) {
+    for (const param of Object.values(widget.data?.api?.params ?? {})) visit(param)
+    for (const event of widget.events ?? []) if (event.action.type === 'set-variable') visit(event.action)
+    if (typeof widget.props.variable === 'string') visit(widget.props as { variable?: string })
+  }
+}
+
+function renameVariable(name: string, next: string): void {
+  const trimmed = next.trim()
+  if (!trimmed || trimmed === name || trimmed.startsWith('@') || variables.value.some(item => item.name === trimmed))
+    return
+  session.updatePage((_, d) => {
+    const variable = d.variables?.find(item => item.name === name)
+    if (variable) variable.name = trimmed
+    eachReference(d, holder => {
+      if (holder.variable === name) holder.variable = trimmed
+    })
+  }, '重命名变量')
+}
+
+function setVariableValue(name: string, value: string): void {
+  session.updatePage((_, d) => {
+    const variable = d.variables?.find(item => item.name === name)
+    if (variable) variable.value = value
+  }, '变量初始值')
+}
+
+function removeVariable(name: string): void {
+  session.updatePage((_, d) => {
+    d.variables = (d.variables ?? []).filter(item => item.name !== name)
+    // Parameters that followed it keep working with their own value.
+    for (const widget of d.widgets)
+      for (const param of Object.values(widget.data?.api?.params ?? {}))
+        if (param.variable === name) delete param.variable
+  }, '删除变量')
+}
+
+const usage = (name: string) => {
+  let count = 0
+  eachReference(doc.value, holder => {
+    if (holder.variable === name) count++
+  })
+  return count
+}
 
 function setPreset(id: string): void {
   const item = pagePresets.find(entry => entry.id === id)
@@ -118,6 +179,42 @@ function setPreset(id: string): void {
         />
       </UiRow>
     </UiSection>
+    <UiSection title="大屏变量" :count="variables.length">
+      <template #actions>
+        <button class="s-icon-btn" title="添加变量" data-testid="add-variable" @click="addVariable">
+          <Plus :size="13" />
+        </button>
+      </template>
+      <div
+        v-for="variable in variables"
+        :key="variable.name"
+        class="variable"
+        :data-testid="`variable-${variable.name}`"
+      >
+        <input
+          class="s-input"
+          :value="variable.name"
+          title="变量名"
+          @change="renameVariable(variable.name, ($event.target as HTMLInputElement).value)"
+        />
+        <input
+          class="s-input"
+          :value="variable.value"
+          placeholder="初始值"
+          title="大屏打开时的值"
+          @change="setVariableValue(variable.name, ($event.target as HTMLInputElement).value)"
+        />
+        <span class="variable__usage" :title="`${usage(variable.name)} 处使用`">{{ usage(variable.name) }}</span>
+        <button class="s-icon-btn" title="删除变量" @click="removeVariable(variable.name)">
+          <Trash2 :size="13" />
+        </button>
+      </div>
+      <p class="hint s-hint">
+        变量把组件串起来：筛选器和点击动作改变变量，参数跟随变量的接口组件自动重新请求。另有内置变量：{{
+          builtinVariables.map(item => item.label).join('、')
+        }}。
+      </p>
+    </UiSection>
     <UiSection title="三维场景">
       <UiRow label="关联场景" hint="大屏读取该场景中设备的实时数据，三维视图组件显示该场景">
         <select
@@ -145,5 +242,17 @@ function setPreset(id: string): void {
 .hint {
   margin: 4px 0 0;
   padding: 0 12px;
+}
+.variable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 18px 26px;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 12px;
+}
+.variable__usage {
+  color: var(--s-fg-3);
+  font-size: 11px;
+  text-align: center;
 }
 </style>

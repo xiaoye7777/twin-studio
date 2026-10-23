@@ -16,12 +16,15 @@ import { useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/project'
 import CreateScreenDialog from '@/screen/components/CreateScreenDialog.vue'
 import ScreenThumbnail from '@/screen/components/ScreenThumbnail.vue'
+import { isConnection, isDataset, shareableConnection } from '@/screen/datasources/model'
+import { useDataSourceStore } from '@/screen/datasources/store'
 import { isScreenDocument, newScreenId, type ScreenDocument } from '@/screen/model'
 import { useScreenStore } from '@/screen/storage/screens'
 
 const router = useRouter()
 const screens = useScreenStore()
 const projects = useProjectStore()
+const sources = useDataSourceStore()
 const creating = ref(false)
 const menu = ref('')
 const importInput = ref<HTMLInputElement>()
@@ -78,9 +81,21 @@ async function remove(screen: ScreenDocument): Promise<void> {
   await screens.remove(screen.id)
 }
 
-function exportScreen(screen: ScreenDocument): void {
+/** The screen file carries the interfaces its widgets use (without passwords or tokens). */
+async function exportScreen(screen: ScreenDocument): Promise<void> {
   menu.value = ''
-  const blob = new Blob([JSON.stringify(screen, null, 2)], { type: 'application/json' })
+  await sources.load()
+  const ids = new Set(
+    screen.widgets.flatMap(widget =>
+      widget.data?.source === 'api' && widget.data.api ? [widget.data.api.datasetId] : [],
+    ),
+  )
+  const datasets = sources.datasets.filter(item => ids.has(item.id))
+  const connections = sources.connections
+    .filter(item => datasets.some(dataset => dataset.connectionId === item.id))
+    .map(shareableConnection)
+  const file = datasets.length ? { ...screen, interfaces: { connections, datasets } } : screen
+  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
   link.download = `${screen.name}.screen.json`
@@ -96,8 +111,21 @@ async function importScreen(event: Event): Promise<void> {
     const value: unknown = JSON.parse(await file.text())
     if (!isScreenDocument(value)) throw new Error('不是有效的数据大屏文件')
     const now = new Date().toISOString()
-    await screens.save({ ...value, id: newScreenId(), createdAt: now, updatedAt: now })
-    ElMessage.success(`已导入「${value.name}」`)
+    const { interfaces, ...screen } = value as ScreenDocument & {
+      interfaces?: { connections?: unknown[]; datasets?: unknown[] }
+    }
+    const added = interfaces
+      ? await sources.merge({
+          connections: (interfaces.connections ?? []).filter(isConnection),
+          datasets: (interfaces.datasets ?? []).filter(isDataset),
+        })
+      : 0
+    await screens.save({ ...screen, id: newScreenId(), createdAt: now, updatedAt: now })
+    ElMessage.success(
+      added
+        ? `已导入「${value.name}」及 ${added} 个数据接口（如需认证，请在「数据接口」中填写 Token）`
+        : `已导入「${value.name}」`,
+    )
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '导入失败')
   }

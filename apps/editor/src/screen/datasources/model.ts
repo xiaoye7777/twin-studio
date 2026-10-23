@@ -201,5 +201,9 @@ export function shareableConnection(connection: ApiConnection): ApiConnection {
       : connection.auth.type === 'header'
         ? { type: 'header', name: connection.auth.name, value: '' }
         : connection.auth
-  return { ...connection, auth }
+  // Shared headers named like secrets (X-Token, Api-Key …) lose their values too.
+  const headers = connection.headers.map(header =>
+    /auth|token|key|secret|cookie|session|password/i.test(header.key) ? { ...header, value: '' } : header,
+  )
+  return { ...connection, auth, headers }
 }

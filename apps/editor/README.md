@@ -1,6 +1,6 @@
 # Twin Studio 编辑器
 
-搭建零碳园区三维场景，绑定设备数据、配置告警与交互、编排导览，导出给数据大屏。导航栏「数据大屏」是拖拽式大屏编辑器，可直接放入三维场景并与之联动，见 [docs/data-screens.md](docs/data-screens.md)。
+搭建零碳园区三维场景，绑定设备数据、配置告警与交互、编排导览，导出给数据大屏。导航栏「数据大屏」是拖拽式大屏编辑器，可直接放入三维场景并与之联动，见 [docs/data-screens.md](docs/data-screens.md)；组件读取业务后端 HTTP 接口的配置方式（导航栏「数据接口」）见 [docs/data-api.md](docs/data-api.md)。
 
 ```bash
 pnpm dev:editor      # 在仓库根目录运行

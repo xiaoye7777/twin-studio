@@ -34,6 +34,7 @@ import { useScreenStore } from '@/screen/storage/screens'
 
 const store = useDataSourceStore()
 const screens = useScreenStore()
+if (import.meta.env.DEV) (window as unknown as { __dataSources?: typeof store }).__dataSources = store
 const route = useRoute()
 const router = useRouter()
 
