@@ -17,7 +17,9 @@ const itemHint = computed(() =>
     ? '点击的行'
     : props.widget.type.startsWith('chart-')
       ? '点击的柱子 / 扇区 / 数据点'
-      : '点击的按钮',
+      : props.widget.type.startsWith('filter-')
+        ? '选中的选项'
+        : '点击的按钮',
 )
 
 const actionTypes: Array<{ value: ScreenAction['type']; label: string }> = [

@@ -1,8 +1,18 @@
 import type { Component } from 'vue'
 import type { DataBinding, DataSourceKind, Widget } from '../model'
 
-export type WidgetCategory = '图表' | '指标' | '文字' | '列表' | '媒体' | '装饰' | '三维' | '控件'
-export const widgetCategories: WidgetCategory[] = ['三维', '图表', '指标', '文字', '列表', '控件', '媒体', '装饰']
+export type WidgetCategory = '图表' | '指标' | '文字' | '列表' | '媒体' | '装饰' | '三维' | '控件' | '筛选'
+export const widgetCategories: WidgetCategory[] = [
+  '三维',
+  '图表',
+  '指标',
+  '文字',
+  '列表',
+  '筛选',
+  '控件',
+  '媒体',
+  '装饰',
+]
 
 export type FieldType = 'text' | 'textarea' | 'number' | 'slider' | 'color' | 'select' | 'switch' | 'image' | 'palette'
 
@@ -19,7 +29,7 @@ export interface FieldDef {
   unit?: string
   hint?: string
   /** Options read from the linked scene instead of `options`. */
-  optionsFrom?: 'bookmarks' | 'tours' | 'layers' | 'devices'
+  optionsFrom?: 'bookmarks' | 'tours' | 'layers' | 'devices' | 'variables'
   /** Show only when this returns true for the current props. */
   visible?: (props: Record<string, unknown>) => boolean
 }

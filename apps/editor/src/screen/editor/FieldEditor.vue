@@ -19,6 +19,11 @@ const runtime = inject(ScreenRuntimeKey, null)
 const options = computed(() => {
   const from = props.field.optionsFrom
   if (!from || !runtime) return props.field.options ?? []
+  if (from === 'variables')
+    return [
+      { value: '', label: '（不设置）' },
+      ...(runtime.document.value?.variables ?? []).map(item => ({ value: item.name, label: item.name })),
+    ]
   const list =
     from === 'devices'
       ? runtime.devices.value.map(device => ({ id: device.id, name: device.name }))
