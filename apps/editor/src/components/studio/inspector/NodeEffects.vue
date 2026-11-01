@@ -23,11 +23,11 @@ import { useSession } from '@/studio/context'
 const props = defineProps<{ nodes: SceneNodeV2[] }>()
 const session = useSession()
 const node = computed(() => (props.nodes.length === 1 ? props.nodes[0]! : null))
-const effects = computed(() => (node.value ? session.effectsFor(node.value.id) : []))
-const rules = computed(() => (node.value ? session.rulesFor(node.value.id) : []))
+const effects = computed(() => (node.value ? session.effects.effectsFor(node.value.id) : []))
+const rules = computed(() => (node.value ? session.effects.rulesFor(node.value.id) : []))
 const binding = computed(() => {
   void session.doc.value
-  return node.value ? session.bindingFor(node.value.id) : undefined
+  return node.value ? session.devices.bindingFor(node.value.id) : undefined
 })
 const expanded = ref<string | null>(null)
 const picking = ref(false)
@@ -46,9 +46,9 @@ const ruleStatus = computed(() => {
 function add(kind: EffectKind): void {
   const n = node.value
   if (!n) return
-  session.addEffect(n.id, kind)
+  session.effects.addEffect(n.id, kind)
   picking.value = false
-  expanded.value = session.effectsFor(n.id).at(-1)?.id ?? null
+  expanded.value = session.effects.effectsFor(n.id).at(-1)?.id ?? null
 }
 
 function set<K extends keyof EffectInstance['parameters']>(
@@ -56,13 +56,17 @@ function set<K extends keyof EffectInstance['parameters']>(
   key: K,
   value: EffectInstance['parameters'][K],
 ): void {
-  session.updateEffect(effect.id, target => void (target.parameters[key] = value), `effect:${effect.id}:${String(key)}`)
+  session.effects.updateEffect(
+    effect.id,
+    target => void (target.parameters[key] = value),
+    `effect:${effect.id}:${String(key)}`,
+  )
 }
 
 function toggleVariable(effect: EffectInstance, key: string): void {
   const current = effect.parameters.variables ?? []
   const next = current.includes(key) ? current.filter(item => item !== key) : [...current, key]
-  session.updateEffect(effect.id, target => void (target.parameters.variables = next.length ? next : undefined))
+  session.effects.updateEffect(effect.id, target => void (target.parameters.variables = next.length ? next : undefined))
 }
 
 function setCondition(
@@ -84,7 +88,7 @@ function setCondition(
   } else if (variable.dataType === 'boolean') {
     condition = { dataType: 'boolean', operator: operator === '!=' ? '!=' : '==', value: rawValue === 'true' }
   } else condition = { dataType: 'string', operator: operator === '!=' ? '!=' : '==', value: rawValue }
-  session.updateRule(rule.id, target => {
+  session.effects.updateRule(rule.id, target => {
     target.variableKey = variable.key
     target.condition = condition
   })
@@ -92,7 +96,7 @@ function setCondition(
 
 function setTemplate(rule: VisualRule, templateId: string): void {
   const template = templates.find(item => item.id === templateId)
-  if (template) session.updateRule(rule.id, target => void (target.template = structuredClone(template)))
+  if (template) session.effects.updateRule(rule.id, target => void (target.template = structuredClone(template)))
 }
 
 const operators = ['>', '>=', '<', '<=', '==', '!='] as const
@@ -132,7 +136,7 @@ const operators = ['>', '>=', '<', '<=', '==', '!='] as const
           <span class="fx__swatch" :style="{ background: effect.parameters.color }" />
           <span class="fx__name">{{ effectDefinition(effect.kind).name }}</span>
           <span class="fx__desc">{{ effectDefinition(effect.kind).category }}</span>
-          <button class="s-icon-btn" title="删除特效" @click.stop="session.removeEffect(effect.id)">
+          <button class="s-icon-btn" title="删除特效" @click.stop="session.effects.removeEffect(effect.id)">
             <Trash2 :size="12" />
           </button>
           <ChevronDown class="fx__chevron" :size="13" />
@@ -199,7 +203,7 @@ const operators = ['>', '>=', '<', '<=', '==', '!='] as const
               <UiText
                 :model-value="effect.parameters.text"
                 :placeholder="effect.kind === 'data-label' ? '默认为设备名称' : ''"
-                @commit="session.updateEffect(effect.id, target => void (target.parameters.text = $event))"
+                @commit="session.effects.updateEffect(effect.id, target => void (target.parameters.text = $event))"
               />
             </UiRow>
             <UiRow v-else-if="field === 'variables'" label="显示变量" stack>
@@ -222,7 +226,12 @@ const operators = ['>', '>=', '<', '<=', '==', '!='] as const
 
     <UiSection title="告警规则" :count="rules.length">
       <template #actions>
-        <button class="s-btn s-btn--sm" :disabled="!binding" data-testid="add-rule" @click="session.addRule(node.id)">
+        <button
+          class="s-btn s-btn--sm"
+          :disabled="!binding"
+          data-testid="add-rule"
+          @click="session.effects.addRule(node.id)"
+        >
           <Plus :size="12" />添加
         </button>
       </template>
@@ -237,9 +246,9 @@ const operators = ['>', '>=', '<', '<=', '==', '!='] as const
           <UiSwitch
             class="rule__switch"
             :model-value="rule.enabled"
-            @update:model-value="session.updateRule(rule.id, target => void (target.enabled = $event))"
+            @update:model-value="session.effects.updateRule(rule.id, target => void (target.enabled = $event))"
           />
-          <button class="s-icon-btn" title="删除规则" @click="session.removeRule(rule.id)">
+          <button class="s-icon-btn" title="删除规则" @click="session.effects.removeRule(rule.id)">
             <Trash2 :size="12" />
           </button>
         </header>

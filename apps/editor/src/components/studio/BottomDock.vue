@@ -25,17 +25,17 @@ const playing = computed(() => session.ui.tour.playing && session.ui.tour.tourId
 
 async function captureStep(): Promise<void> {
   if (!tour.value) newTour(false)
-  const bookmarkId = await session.addBookmark(`导览视角 ${doc.value.bookmarks.length + 1}`)
-  if (tour.value) session.addTourStep(tour.value.id, { bookmarkId })
+  const bookmarkId = await session.views.addBookmark(`导览视角 ${doc.value.bookmarks.length + 1}`)
+  if (tour.value) session.views.addTourStep(tour.value.id, { bookmarkId })
 }
 
 function newTour(fromBookmarks: boolean): void {
-  tourId.value = session.addTour(fromBookmarks)
+  tourId.value = session.views.addTour(fromBookmarks)
 }
 
 function updateStep(step: TourStep, recipe: (step: TourStep) => void, key?: string): void {
   if (!tour.value) return
-  session.updateTour(
+  session.views.updateTour(
     tour.value.id,
     target => {
       const found = target.steps.find(item => item.id === step.id)
@@ -47,12 +47,15 @@ function updateStep(step: TourStep, recipe: (step: TourStep) => void, key?: stri
 
 function removeStep(step: TourStep): void {
   if (tour.value)
-    session.updateTour(tour.value.id, target => void (target.steps = target.steps.filter(item => item.id !== step.id)))
+    session.views.updateTour(
+      tour.value.id,
+      target => void (target.steps = target.steps.filter(item => item.id !== step.id)),
+    )
 }
 
 function moveStep(step: TourStep, delta: number): void {
   if (!tour.value) return
-  session.updateTour(tour.value.id, target => {
+  session.views.updateTour(tour.value.id, target => {
     const index = target.steps.findIndex(item => item.id === step.id)
     const next = index + delta
     if (index < 0 || next < 0 || next >= target.steps.length) return
@@ -80,7 +83,12 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
       <div class="dock__views">
         <div class="dock__label">视角</div>
         <div class="views">
-          <button class="view view--add" title="保存当前视角" data-testid="add-bookmark" @click="session.addBookmark()">
+          <button
+            class="view view--add"
+            title="保存当前视角"
+            data-testid="add-bookmark"
+            @click="session.views.addBookmark()"
+          >
             <Camera :size="16" /><span>保存当前视角</span>
           </button>
           <div
@@ -88,7 +96,7 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
             :key="bookmark.id"
             class="view"
             :data-testid="`bookmark-${bookmark.name}`"
-            @click="session.flyToBookmark(bookmark.id)"
+            @click="session.views.flyToBookmark(bookmark.id)"
           >
             <img
               v-if="bookmark.thumbnail || session.thumbnails[bookmark.id]"
@@ -104,17 +112,22 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
                 autofocus
                 @click.stop
                 @blur="
-                  (session.renameBookmark(bookmark.id, ($event.target as HTMLInputElement).value), (renaming = null))
+                  (session.views.renameBookmark(bookmark.id, ($event.target as HTMLInputElement).value),
+                  (renaming = null))
                 "
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
               />
               <span v-else>{{ bookmark.name }}</span>
             </div>
             <div class="view__actions">
-              <button class="view__action" title="用当前镜头更新" @click.stop="session.updateBookmarkView(bookmark.id)">
+              <button
+                class="view__action"
+                title="用当前镜头更新"
+                @click.stop="session.views.updateBookmarkView(bookmark.id)"
+              >
                 <RefreshCw :size="11" />
               </button>
-              <button class="view__action" title="删除视角" @click.stop="session.removeBookmark(bookmark.id)">
+              <button class="view__action" title="删除视角" @click.stop="session.views.removeBookmark(bookmark.id)">
                 <X :size="11" />
               </button>
             </div>
@@ -134,13 +147,13 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
             <UiText
               class="tour-bar__name"
               :model-value="tour.name"
-              @commit="session.updateTour(tour.id, t => void (t.name = $event.trim() || t.name))"
+              @commit="session.views.updateTour(tour.id, t => void (t.name = $event.trim() || t.name))"
             />
             <button
               class="s-icon-btn"
               :class="{ 'is-active': tour.loop }"
               :title="tour.loop ? '循环播放（点击关闭）' : '单次播放（点击开启循环）'"
-              @click="session.updateTour(tour.id, t => void (t.loop = !t.loop))"
+              @click="session.views.updateTour(tour.id, t => void (t.loop = !t.loop))"
             >
               <Repeat :size="14" />
             </button>
@@ -150,12 +163,12 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
               class="s-btn s-btn--sm"
               :disabled="!tour.steps.length"
               data-testid="play-tour"
-              @click="session.playTour(tour.id)"
+              @click="session.views.playTour(tour.id)"
             >
               <Play :size="11" />播放
             </button>
-            <button v-else class="s-btn s-btn--sm" @click="session.stopTour()"><Square :size="10" />停止</button>
-            <button class="s-icon-btn" title="删除导览" @click="session.removeTour(tour.id)">
+            <button v-else class="s-btn s-btn--sm" @click="session.views.stopTour()"><Square :size="10" />停止</button>
+            <button class="s-icon-btn" title="删除导览" @click="session.views.removeTour(tour.id)">
               <Trash2 :size="13" />
             </button>
           </template>
@@ -202,7 +215,7 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
               class="step__thumb"
               :src="bookmarkOf(step.bookmarkId)?.thumbnail || session.thumbnails[step.bookmarkId]"
               alt=""
-              @click="session.playTour(tour!.id, index)"
+              @click="session.views.playTour(tour!.id, index)"
             />
             <UiText
               class="step__caption"

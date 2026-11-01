@@ -47,14 +47,20 @@ function runBind(): void {
   // Bind in the order objects appear in the scene tree, so numbering follows the layout.
   const order = new Map(session.doc.value.nodes.map((node, index) => [node.id, index]))
   const ids = [...session.selection.value].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
-  const count = session.batchBind(ids, template, bind.prefix.trim(), bind.start, bind.name.trim() || template.name)
+  const count = session.devices.batchBind(
+    ids,
+    template,
+    bind.prefix.trim(),
+    bind.start,
+    bind.name.trim() || template.name,
+  )
   ElMessage.success(`已绑定 ${count} 台${template.name}`)
   shell.dialog = null
 }
 
 const array = reactive({ count: 4, x: 5, y: 0, z: 0 })
 function runArray(): void {
-  session.arrayDuplicate(Math.max(1, Math.round(array.count)), [array.x, array.y, array.z])
+  session.nodes.arrayDuplicate(Math.max(1, Math.round(array.count)), [array.x, array.y, array.z])
   shell.dialog = null
 }
 

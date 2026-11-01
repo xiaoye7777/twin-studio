@@ -23,14 +23,14 @@ const parts = computed(() => {
 })
 const numericVariables = computed(() => {
   void session.doc.value
-  return (session.bindingFor(props.node.id)?.variables ?? []).filter(variable => variable.dataType === 'number')
+  return (session.devices.bindingFor(props.node.id)?.variables ?? []).filter(variable => variable.dataType === 'number')
 })
 const animation = computed(() => props.node.model.animation)
 const motions = computed(() => props.node.model.motions ?? [])
 const clipValue = computed(() => (animation.value === undefined ? '__default' : (animation.value.clip ?? '__none')))
 
 function update(recipe: (model: ModelNodeV2['model']) => void, key?: string): void {
-  session.updateNode(
+  session.nodes.updateNode(
     props.node.id,
     node => node.kind === 'model' && recipe(node.model),
     '动画设置',

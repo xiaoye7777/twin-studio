@@ -16,7 +16,7 @@ const shell = useShell()
 const nodes = computed(() => session.selection.value.flatMap(id => session.node(id) ?? []))
 const title = computed(() => {
   const part = session.part.value
-  if (part) return `部件 · ${session.partName(part.nodeId, part.assetNodeId)}`
+  if (part) return `部件 · ${session.modelParts.partName(part.nodeId, part.assetNodeId)}`
   if (!nodes.value.length) return '场景'
   if (nodes.value.length > 1) return `已选 ${nodes.value.length} 个对象`
   return nodeKindLabels[nodes.value[0]!.kind] ?? '对象'

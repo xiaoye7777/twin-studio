@@ -4,7 +4,7 @@ import type { EditorSession } from './EditorSession'
 
 /** Saves the selection to the component library, asking for a name. */
 export async function saveSelectionAsComponent(session: EditorSession): Promise<void> {
-  const component = await session.componentFromSelection()
+  const component = await session.create.componentFromSelection()
   if (!component) return
   let name: string
   try {

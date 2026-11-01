@@ -21,15 +21,15 @@ const deg = (rad: number) => (rad * 180) / Math.PI
 const rad = (value: number) => (value * Math.PI) / 180
 
 const model = computed(() => session.node(props.part.nodeId))
-const name = computed(() => session.partName(props.part.nodeId, props.part.assetNodeId))
-const override = computed(() => session.partOverride(props.part.nodeId, props.part.assetNodeId))
-const transform = computed(() => session.partTransform(props.part.nodeId, props.part.assetNodeId))
+const name = computed(() => session.modelParts.partName(props.part.nodeId, props.part.assetNodeId))
+const override = computed(() => session.modelParts.partOverride(props.part.nodeId, props.part.assetNodeId))
+const transform = computed(() => session.modelParts.partTransform(props.part.nodeId, props.part.assetNodeId))
 const visible = computed(() => override.value?.visible !== false)
 
 function setTransform(kind: 'position' | 'rotation' | 'scale', axis: number, value: number): void {
   const current = transform.value
   if (!current) return
-  session.updatePart(
+  session.modelParts.updatePart(
     props.part.nodeId,
     props.part.assetNodeId,
     item => {
@@ -44,7 +44,7 @@ function setTransform(kind: 'position' | 'rotation' | 'scale', axis: number, val
 
 function rename(value: string): void {
   const trimmed = value.trim()
-  session.updatePart(
+  session.modelParts.updatePart(
     props.part.nodeId,
     props.part.assetNodeId,
     item => void (item.name = trimmed || undefined),
@@ -78,7 +78,12 @@ function rename(value: string): void {
           class="s-icon-btn"
           title="恢复导入时的位置"
           @click="
-            session.updatePart(part.nodeId, part.assetNodeId, item => void (item.transform = undefined), '重置部件变换')
+            session.modelParts.updatePart(
+              part.nodeId,
+              part.assetNodeId,
+              item => void (item.transform = undefined),
+              '重置部件变换',
+            )
           "
         >
           <RotateCcw :size="13" />
@@ -132,7 +137,7 @@ function rename(value: string): void {
         <UiSwitch
           :model-value="visible"
           data-testid="part-visible"
-          @update:model-value="session.setPartVisible(part.nodeId, part.assetNodeId, $event)"
+          @update:model-value="session.modelParts.setPartVisible(part.nodeId, part.assetNodeId, $event)"
         />
       </UiRow>
       <div class="props__buttons">
@@ -140,14 +145,14 @@ function rename(value: string): void {
           class="s-btn"
           :disabled="!override"
           title="名称、位置、显示和材质恢复为模型文件中的样子"
-          @click="session.resetPart(part.nodeId, part.assetNodeId)"
+          @click="session.modelParts.resetPart(part.nodeId, part.assetNodeId)"
         >
           <Undo2 :size="13" />恢复部件
         </button>
         <button
           class="s-btn s-btn--danger"
           data-testid="part-delete"
-          @click="session.deleteParts(part.nodeId, [part.assetNodeId])"
+          @click="session.modelParts.deleteParts(part.nodeId, [part.assetNodeId])"
         >
           <Trash2 :size="13" />删除部件
         </button>

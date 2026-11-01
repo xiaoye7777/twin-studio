@@ -35,33 +35,28 @@ SceneEditor.vue                       打开项目：读场景 → 创建 Editor
 | `sceneAnalysis.ts` | 性能报告：面数、贴图、建议 |
 | `studio.css` | 编辑器通用控件样式（`s-btn`、`s-input`…），颜色来自 `theme/tokens.css` |
 
-## EditorSession 的分区
+## EditorSession 与功能模块
 
-`EditorSession.ts` 很长，但按功能分成了连续的区块（文件里以 `// ====` 分隔）。找功能时直接搜区块名：
+`EditorSession.ts` 只放核心，其余功能按主题分在 `session/` 下，通过字段访问：
 
-| 区块 | 内容 |
-| --- | --- |
-| lifecycle | 打开项目：创建引擎、SceneSync、数据运行时、特效 / 规则 / 交互运行时；关闭时释放 |
-| document plumbing | `edit()`：所有修改的入口；文档变化后同步到三维、更新撤销状态、安排自动保存 |
-| persistence / versions | 保存（含封面截图）、历史版本 |
-| selection | 选择、悬停、聚焦、全选、选父级 |
-| pointer (edit mode) | 视口里的鼠标：点选、框选、拖动手柄、绘制、测量、右键菜单 |
-| model parts | 进入模型编辑部件：覆盖材质 / 显隐 / 位置，恢复部件 |
-| creating nodes | 添加基本体、模型、组件、标签、灯光、路径、区域、分组 |
-| editing nodes | 改属性、变换、复制粘贴、阵列、组合、删除、对齐、放到地面 |
-| scene settings | 环境、画质 |
-| data | 设备绑定、批量绑定、**数据源（推送 / 定时请求 / 静态数据）**、实时值显示 |
-| effects, rules, interactions | 特效、告警规则、点击交互 |
-| views and tours | 视角（书签）、导览编辑与播放 |
-| preview mode | 编辑 / 预览切换 |
+| 访问方式 | 文件 | 内容 |
+| --- | --- | --- |
+| `session.*` | `EditorSession.ts` | 生命周期、`edit()` 与撤销重做、保存、历史版本、截图、选择、场景设置、预览模式 |
+| `session.pointer` | `session/ViewportPointer.ts` | 视口里的鼠标：点选（分组逐层进入）、Shift 框选、双击进部件、悬停描边、右键菜单 |
+| `session.modelParts` | `session/ModelParts.ts` | 模型部件的覆盖：改名、位置、显隐、材质、删除、恢复；替换模型文件 |
+| `session.tools` | `session/DrawingTools.ts` | 绘制（路径 / 区域 / 标签 / 灯光）与测量（距离 / 面积） |
+| `session.create` | `session/NodeCreation.ts` | 添加模型、基本体、分组、组件；把绘制结果变成节点 |
+| `session.nodes` | `session/NodeEditing.ts` | 改属性、显隐锁定、删除、复制粘贴、组合、层级、对齐分布、落地、阵列、方向键微调 |
+| `session.devices` | `session/DeviceData.ts` | 设备绑定、批量绑定、数据源（推送 / 定时请求 / 静态数据）、实时值显示 |
+| `session.effects` | `session/NodeEffects.ts` | 特效、告警规则、点击交互 |
+| `session.views` | `session/ViewsAndTours.ts` | 视角（书签）、导览编辑、放映设置；播放由 `session.tours`（core 的 TourPlayer）负责 |
+
+每个模块都是 `constructor(private readonly session: EditorSession)` 的普通类，通过 `this.session` 使用核心
+（`edit`、`select`、`doc`、`engine`、`sync`……）和其他模块。新增功能时放进对应主题的模块；主题都不合适就新建一个模块，
+在 `EditorSession` 里加一个字段。
 
 一条修改从界面到画面的路径（以「改颜色」为例）：
-`NodeProperties.vue` 调 `session.updateNode(id, recipe)` → `edit()` → `DocumentStore.transaction` → 文档变化回调 →
-`SceneSync.update()` 只更新这一个节点的材质。撤销时 DocumentStore 应用反向补丁，走同样的回调。
+`NodeProperties.vue` 调 `session.nodes.updateNode(id, recipe)` → `session.edit()` → `DocumentStore.transaction` →
+文档变化回调 → `SceneSync.update()` 只更新这一个节点的材质。撤销时 DocumentStore 应用反向补丁，走同样的回调。
 
-## 后续拆分计划（尚未进行）
-
-`EditorSession` 可以按上表拆成几个「功能模块」类（如 `NodeCommands`、`DataSources`、`Tours`、`ViewportPointer`），
-session 只保留文档、选择和 `edit()`，各模块通过构造参数拿到它们。拆分会改动大量面板里的调用（`session.xxx()` →
-`session.nodes.xxx()`）和 e2e 测试中的 `window.__studio.xxx()`，建议单独做一次，并在每拆一个模块后跑全部测试。
-`pointer (edit mode)` 一块最独立，适合先拆。
+调试：开发环境下浏览器控制台里的 `window.__studio` 就是当前 session，例如 `__studio.nodes.dropToGround()`。

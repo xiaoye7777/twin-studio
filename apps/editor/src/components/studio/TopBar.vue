@@ -57,7 +57,7 @@ async function openDashboardPreview(): Promise<void> {
 }
 
 function addPrimitive(shape: PrimitiveShape): void {
-  session.addPrimitive(shape)
+  session.create.addPrimitive(shape)
 }
 
 const fileMenu = computed<MenuItem[]>(() => [
@@ -75,15 +75,15 @@ const editMenu = computed<MenuItem[]>(() => {
     { label: `撤销 ${ui.undoLabel}`.trim(), shortcut: `${mod}Z`, disabled: !ui.canUndo, action: () => session.undo() },
     { label: `重做 ${ui.redoLabel}`.trim(), shortcut: `${mod}⇧Z`, disabled: !ui.canRedo, action: () => session.redo() },
     { divider: true },
-    { label: '复制', shortcut: `${mod}C`, disabled: !any, action: () => session.copySelection() },
-    { label: '粘贴', shortcut: `${mod}V`, action: () => session.paste() },
-    { label: '创建副本', shortcut: `${mod}D`, disabled: !any, action: () => session.duplicateSelection() },
+    { label: '复制', shortcut: `${mod}C`, disabled: !any, action: () => session.nodes.copySelection() },
+    { label: '粘贴', shortcut: `${mod}V`, action: () => session.nodes.paste() },
+    { label: '创建副本', shortcut: `${mod}D`, disabled: !any, action: () => session.nodes.duplicateSelection() },
     { label: '阵列复制…', disabled: !any, action: () => (shell.dialog = 'array') },
-    { label: '删除', shortcut: 'Del', disabled: !any, action: () => session.deleteSelection() },
+    { label: '删除', shortcut: 'Del', disabled: !any, action: () => session.nodes.deleteSelection() },
     { divider: true },
-    { label: '组合', shortcut: `${mod}G`, disabled: !any, action: () => void session.groupSelection() },
-    { label: '取消组合', shortcut: `${mod}⇧G`, disabled: !any, action: () => session.ungroupSelection() },
-    { label: '放到地面', shortcut: 'End', disabled: !any, action: () => session.dropToGround() },
+    { label: '组合', shortcut: `${mod}G`, disabled: !any, action: () => void session.nodes.groupSelection() },
+    { label: '取消组合', shortcut: `${mod}⇧G`, disabled: !any, action: () => session.nodes.ungroupSelection() },
+    { label: '放到地面', shortcut: 'End', disabled: !any, action: () => session.nodes.dropToGround() },
     { label: '全选', shortcut: `${mod}A`, action: () => session.selectAll() },
     { divider: true },
     { label: '保存为组件…', disabled: !any, action: () => void saveSelectionAsComponent(session) },
@@ -104,11 +104,11 @@ const addMenu = computed<MenuItem[]>(() => [
   { label: '球体', action: () => addPrimitive('sphere') },
   { label: '圆锥', action: () => addPrimitive('cone') },
   { divider: true },
-  { label: '能流线（绘制）', action: () => session.startDrawing('path') },
-  { label: '区域（绘制）', action: () => session.startDrawing('area') },
-  { label: '文字标签', action: () => session.startDrawing('label') },
-  { label: '灯光', action: () => session.startDrawing('light') },
-  { label: '空分组', action: () => void session.addGroup() },
+  { label: '能流线（绘制）', action: () => session.tools.startDrawing('path') },
+  { label: '区域（绘制）', action: () => session.tools.startDrawing('area') },
+  { label: '文字标签', action: () => session.tools.startDrawing('label') },
+  { label: '灯光', action: () => session.tools.startDrawing('light') },
+  { label: '空分组', action: () => void session.create.addGroup() },
 ])
 
 const qualityOptions: Array<[QualitySetting, string]> = [
@@ -138,7 +138,7 @@ const viewMenu = computed<MenuItem[]>(() => {
     { label: '顶视图', shortcut: '7', action: () => void session.viewFrom('top') },
     { label: '前视图', shortcut: '1', action: () => void session.viewFrom('front') },
     { label: '右视图', shortcut: '3', action: () => void session.viewFrom('right') },
-    { label: '设当前视角为初始视角', action: () => session.setOpeningView() },
+    { label: '设当前视角为初始视角', action: () => session.views.setOpeningView() },
     { divider: true },
     ...qualityOptions.map(([value, label]) => ({
       label,

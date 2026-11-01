@@ -20,13 +20,13 @@ import { useSession } from '@/studio/context'
 const props = defineProps<{ nodes: SceneNodeV2[] }>()
 const session = useSession()
 const node = computed(() => (props.nodes.length === 1 ? props.nodes[0]! : null))
-const items = computed(() => (node.value ? session.interactionsFor(node.value.id) : []))
+const items = computed(() => (node.value ? session.effects.interactionsFor(node.value.id) : []))
 const doc = computed(() => session.doc.value)
 /** Actions that act on an object and so may point at another one. */
 const targetable = new Set(['select', 'focus', 'show', 'hide', 'toggle', 'highlight'])
 
 function setTrigger(item: SceneInteraction, trigger: SceneInteraction['trigger']): void {
-  session.updateInteraction(item.id, target => {
+  session.effects.updateInteraction(item.id, target => {
     target.trigger = trigger
     // Temporary highlight only makes sense while hovering.
     if (target.action.type === 'highlight' && trigger !== 'hover-enter') target.action = { type: 'focus' }
@@ -42,7 +42,7 @@ function setAction(item: SceneInteraction, type: InteractionAction['type']): voi
         : type === 'play-tour'
           ? { type, tourId: doc.value.tours[0]?.id ?? 'none' }
           : ({ type } as InteractionAction)
-  session.updateInteraction(item.id, target => {
+  session.effects.updateInteraction(item.id, target => {
     target.action = action
     if (type === 'highlight') target.trigger = 'hover-enter'
   })
@@ -50,7 +50,7 @@ function setAction(item: SceneInteraction, type: InteractionAction['type']): voi
 
 function setTarget(item: SceneInteraction, nodeId: string): void {
   const targetNode = session.node(nodeId)
-  session.updateInteraction(item.id, target => {
+  session.effects.updateInteraction(item.id, target => {
     if (!('target' in target.action)) return
     if (!targetNode || nodeId === node.value?.id) delete (target.action as { target?: unknown }).target
     else (target.action as { target?: unknown }).target = targetForNode(targetNode)
@@ -67,7 +67,7 @@ function actionTargetId(item: SceneInteraction): string {
   <div v-if="node" data-testid="node-interactions">
     <UiSection title="交互" :count="items.length">
       <template #actions>
-        <button class="s-btn s-btn--sm" data-testid="add-interaction" @click="session.addInteraction(node.id)">
+        <button class="s-btn s-btn--sm" data-testid="add-interaction" @click="session.effects.addInteraction(node.id)">
           <Plus :size="12" />添加
         </button>
       </template>
@@ -99,9 +99,9 @@ function actionTargetId(item: SceneInteraction): string {
           </select>
           <UiSwitch
             :model-value="item.enabled"
-            @update:model-value="session.updateInteraction(item.id, t => void (t.enabled = $event))"
+            @update:model-value="session.effects.updateInteraction(item.id, t => void (t.enabled = $event))"
           />
-          <button class="s-icon-btn" title="删除" @click="session.removeInteraction(item.id)">
+          <button class="s-icon-btn" title="删除" @click="session.effects.removeInteraction(item.id)">
             <Trash2 :size="12" />
           </button>
         </div>
@@ -111,7 +111,7 @@ function actionTargetId(item: SceneInteraction): string {
             :model-value="item.action.eventName"
             mono
             @commit="
-              session.updateInteraction(
+              session.effects.updateInteraction(
                 item.id,
                 t =>
                   t.action.type === 'emit-event' &&
@@ -127,7 +127,7 @@ function actionTargetId(item: SceneInteraction): string {
             class="s-select"
             :value="item.action.bookmarkId"
             @change="
-              session.updateInteraction(
+              session.effects.updateInteraction(
                 item.id,
                 t =>
                   t.action.type === 'fly-to-bookmark' &&
@@ -147,7 +147,7 @@ function actionTargetId(item: SceneInteraction): string {
             class="s-select"
             :value="item.action.tourId"
             @change="
-              session.updateInteraction(
+              session.effects.updateInteraction(
                 item.id,
                 t => t.action.type === 'play-tour' && (t.action.tourId = ($event.target as HTMLSelectElement).value),
               )

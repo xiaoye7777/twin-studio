@@ -29,7 +29,7 @@ const node = computed(() => {
   return selected.length === 1 && selected[0]!.kind === 'model' ? selected[0]! : null
 })
 const currentAssetId = computed(() => (node.value?.kind === 'model' ? node.value.model.assetId : ''))
-const sameAsset = computed(() => (currentAssetId.value ? session.nodesUsingAsset(currentAssetId.value) : []))
+const sameAsset = computed(() => (currentAssetId.value ? session.modelParts.nodesUsingAsset(currentAssetId.value) : []))
 const builtinFiles = new Set(builtinModels.map(model => model.file))
 // Library entries: built-ins by key, imported models by asset id.
 const options = computed(() => [
@@ -92,7 +92,7 @@ async function confirm(): Promise<void> {
   try {
     const assetId = await resolveAssetId(state.choice)
     const ids = state.scope === 'all' ? sameAsset.value.map(item => item.id) : [current.id]
-    session.replaceModel(ids, assetId)
+    session.modelParts.replaceModel(ids, assetId)
     await session.sync.settled()
     // Part edits and part bindings follow the part ids; report the ones the new file does not have.
     const missing = new Set<string>()

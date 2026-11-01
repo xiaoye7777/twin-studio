@@ -19,22 +19,26 @@ const sections = computed<Item[][]>(() => {
   const part = session.part.value
   const nodes = session.selectedNodes
   const paste: Item[] = session.ui.hasClipboard
-    ? [{ label: '粘贴到这里', shortcut: `${mod}V`, action: () => session.paste(point.value) }]
+    ? [{ label: '粘贴到这里', shortcut: `${mod}V`, action: () => session.nodes.paste(point.value) }]
     : []
   if (part) {
-    const hidden = session.partOverride(part.nodeId, part.assetNodeId)?.visible === false
+    const hidden = session.modelParts.partOverride(part.nodeId, part.assetNodeId)?.visible === false
     return [
       [
         { label: '聚焦部件', shortcut: 'F', action: () => void session.focusSelection() },
-        { label: hidden ? '显示部件' : '隐藏部件', shortcut: 'H', action: () => session.toggleVisibilityOfSelection() },
+        {
+          label: hidden ? '显示部件' : '隐藏部件',
+          shortcut: 'H',
+          action: () => session.nodes.toggleVisibilityOfSelection(),
+        },
         { label: '绑定设备…', action: () => (shell.nodeTab = 'data') },
         { label: '添加特效…', action: () => (shell.nodeTab = 'effects') },
       ],
       [
-        { label: '恢复部件', action: () => session.resetPart(part.nodeId, part.assetNodeId) },
+        { label: '恢复部件', action: () => session.modelParts.resetPart(part.nodeId, part.assetNodeId) },
         { label: '回到整个模型', shortcut: 'Esc', action: () => session.selectParent() },
       ],
-      [{ label: '删除部件', shortcut: 'Del', action: () => session.deleteSelection(), danger: true }],
+      [{ label: '删除部件', shortcut: 'Del', action: () => session.nodes.deleteSelection(), danger: true }],
     ]
   }
   if (nodes.length) {
@@ -42,30 +46,30 @@ const sections = computed<Item[][]>(() => {
     return [
       [
         { label: '聚焦', shortcut: 'F', action: () => void session.focusSelection() },
-        { label: '复制', shortcut: `${mod}C`, action: () => session.copySelection() },
+        { label: '复制', shortcut: `${mod}C`, action: () => session.nodes.copySelection() },
         ...paste,
-        { label: '创建副本', shortcut: `${mod}D`, action: () => session.duplicateSelection() },
+        { label: '创建副本', shortcut: `${mod}D`, action: () => session.nodes.duplicateSelection() },
         { label: '阵列复制…', action: () => (shell.dialog = 'array') },
       ],
       [
-        { label: '组合', shortcut: `${mod}G`, action: () => void session.groupSelection() },
+        { label: '组合', shortcut: `${mod}G`, action: () => void session.nodes.groupSelection() },
         ...(nodes.some(node => node.kind === 'group')
-          ? [{ label: '取消组合', shortcut: `${mod}⇧G`, action: () => session.ungroupSelection() }]
+          ? [{ label: '取消组合', shortcut: `${mod}⇧G`, action: () => session.nodes.ungroupSelection() }]
           : []),
         {
           label: nodes.every(node => node.visible) ? '隐藏' : '显示',
           shortcut: 'H',
-          action: () => session.toggleVisibilityOfSelection(),
+          action: () => session.nodes.toggleVisibilityOfSelection(),
         },
         {
           label: nodes.every(node => node.locked) ? '解锁' : '锁定',
           action: () =>
-            session.setLocked(
+            session.nodes.setLocked(
               nodes.map(node => node.id),
               !nodes.every(node => node.locked),
             ),
         },
-        { label: '放到地面', shortcut: 'End', action: () => session.dropToGround() },
+        { label: '放到地面', shortcut: 'End', action: () => session.nodes.dropToGround() },
       ],
       [
         ...(one?.kind === 'model' ? [{ label: '替换模型…', action: () => (shell.dialog = 'replace-model') }] : []),
@@ -76,19 +80,19 @@ const sections = computed<Item[][]>(() => {
         ...(one ? [{ label: '添加特效…', action: () => (shell.nodeTab = 'effects') }] : []),
         { label: '保存为组件…', action: () => void saveSelectionAsComponent(session) },
       ],
-      [{ label: '删除', shortcut: 'Del', action: () => session.deleteSelection(), danger: true }],
+      [{ label: '删除', shortcut: 'Del', action: () => session.nodes.deleteSelection(), danger: true }],
     ]
   }
   return [
     [
       ...paste,
-      { label: '在这里添加立方体', action: () => void session.addPrimitive('box', point.value) },
-      { label: '在这里添加地块', action: () => void session.addPrimitive('plane', point.value) },
+      { label: '在这里添加立方体', action: () => void session.create.addPrimitive('box', point.value) },
+      { label: '在这里添加地块', action: () => void session.create.addPrimitive('plane', point.value) },
     ],
     [
-      { label: '保存当前视角', action: () => void session.addBookmark() },
-      { label: '设为初始视角', action: () => session.setOpeningView() },
-      { label: '测量距离', shortcut: 'M', action: () => session.startMeasure('distance') },
+      { label: '保存当前视角', action: () => void session.views.addBookmark() },
+      { label: '设为初始视角', action: () => session.views.setOpeningView() },
+      { label: '测量距离', shortcut: 'M', action: () => session.tools.startMeasure('distance') },
     ],
     [{ label: '全选', shortcut: `${mod}A`, action: () => session.selectAll() }],
   ]
@@ -103,6 +107,6 @@ const sections = computed<Item[][]>(() => {
     :y="menu.y"
     :sections="sections"
     testid="viewport-menu"
-    @close="session.closeContextMenu()"
+    @close="session.pointer.closeContextMenu()"
   />
 </template>

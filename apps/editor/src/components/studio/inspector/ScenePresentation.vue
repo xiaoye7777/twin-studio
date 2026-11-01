@@ -16,14 +16,14 @@ const justSet = ref(false)
 
 const limits = computed(() => presentation.value.cameraLimits)
 function setLimits(patch: Partial<CameraLimits>, key?: string): void {
-  session.updatePresentation(
+  session.views.updatePresentation(
     p => void (p.cameraLimits = { ...(p.cameraLimits ?? createDefaultCameraLimits()), ...patch }),
     key && `camera-limits:${key}`,
   )
 }
 
 function setOpeningView(): void {
-  session.setOpeningView()
+  session.views.setOpeningView()
   justSet.value = true
   setTimeout(() => (justSet.value = false), 1600)
 }
@@ -54,7 +54,7 @@ function setOpeningView(): void {
           :value="presentation.autoplayTourId ?? ''"
           data-testid="autoplay-tour"
           @change="
-            session.updatePresentation(
+            session.views.updatePresentation(
               p => void (p.autoplayTourId = ($event.target as HTMLSelectElement).value || null),
             )
           "
@@ -71,14 +71,14 @@ function setOpeningView(): void {
           :step="5"
           :precision="0"
           unit="秒"
-          @update="session.updatePresentation(p => void (p.idleSeconds = $event))"
+          @update="session.views.updatePresentation(p => void (p.idleSeconds = $event))"
           @commit="session.commit()"
         />
       </UiRow>
       <UiRow label="空闲环绕" hint="没有自动导览时，空闲后镜头缓慢环绕">
         <UiSwitch
           :model-value="presentation.autoRotate"
-          @update:model-value="session.updatePresentation(p => void (p.autoRotate = $event))"
+          @update:model-value="session.views.updatePresentation(p => void (p.autoRotate = $event))"
         />
       </UiRow>
       <p class="pres__note s-hint">

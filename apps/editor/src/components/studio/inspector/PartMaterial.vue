@@ -12,7 +12,9 @@ import { useSession } from '@/studio/context'
 const props = defineProps<{ nodeId: string; assetNodeId: string; title: string }>()
 const session = useSession()
 
-const look = computed<PartMaterial>(() => session.partOverride(props.nodeId, props.assetNodeId)?.material ?? {})
+const look = computed<PartMaterial>(
+  () => session.modelParts.partOverride(props.nodeId, props.assetNodeId)?.material ?? {},
+)
 // What the model file has, shown until a value is overridden. Re-read once the model has (re)loaded.
 const base = computed(() => {
   void session.ui.syncRevision
@@ -36,7 +38,7 @@ const presets: Array<{ label: string; title: string; look: PartMaterial }> = [
 ]
 
 function set(patch: Partial<PartMaterial>, key?: string, label = '修改材质'): void {
-  session.updatePart(
+  session.modelParts.updatePart(
     props.nodeId,
     props.assetNodeId,
     override => {
@@ -51,11 +53,21 @@ function set(patch: Partial<PartMaterial>, key?: string, label = '修改材质')
 }
 
 function applyPreset(preset: PartMaterial): void {
-  session.updatePart(props.nodeId, props.assetNodeId, override => void (override.material = { ...preset }), '材质预设')
+  session.modelParts.updatePart(
+    props.nodeId,
+    props.assetNodeId,
+    override => void (override.material = { ...preset }),
+    '材质预设',
+  )
 }
 
 function clear(): void {
-  session.updatePart(props.nodeId, props.assetNodeId, override => void (override.material = undefined), '恢复材质')
+  session.modelParts.updatePart(
+    props.nodeId,
+    props.assetNodeId,
+    override => void (override.material = undefined),
+    '恢复材质',
+  )
 }
 </script>
 

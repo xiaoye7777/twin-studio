@@ -31,25 +31,25 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
       action()
     }
     if (s.ui.draw) {
-      if (key === 'escape') return run(() => s.cancelDrawing())
-      if (key === 'enter') return run(() => s.finishDrawingNow())
-      if (key === 'backspace' || key === 'delete') return run(() => s.undoDrawPoint())
+      if (key === 'escape') return run(() => s.tools.cancelDrawing())
+      if (key === 'enter') return run(() => s.tools.finishDrawingNow())
+      if (key === 'backspace' || key === 'delete') return run(() => s.tools.undoDrawPoint())
     }
     if (s.ui.measure.mode) {
-      if (key === 'escape') return run(() => s.stopMeasure())
-      if (key === 'enter') return run(() => s.finishMeasure())
-      if (key === 'backspace' || key === 'delete') return run(() => s.undoMeasurePoint())
+      if (key === 'escape') return run(() => s.tools.stopMeasure())
+      if (key === 'enter') return run(() => s.tools.finishMeasure())
+      if (key === 'backspace' || key === 'delete') return run(() => s.tools.undoMeasurePoint())
     }
     if (mod && key === 'z' && event.shiftKey) return run(() => s.redo())
     if (mod && key === 'z') return run(() => s.undo())
     if (mod && key === 'y') return run(() => s.redo())
     if (mod && key === 's') return run(() => void s.save(true))
-    if (mod && key === 'd') return run(() => s.duplicateSelection())
-    if (mod && key === 'c') return run(() => s.copySelection())
-    if (mod && key === 'v') return run(() => s.paste())
+    if (mod && key === 'd') return run(() => s.nodes.duplicateSelection())
+    if (mod && key === 'c') return run(() => s.nodes.copySelection())
+    if (mod && key === 'v') return run(() => s.nodes.paste())
     if (mod && key === 'a') return run(() => s.selectAll())
-    if (mod && key === 'g' && event.shiftKey) return run(() => s.ungroupSelection())
-    if (mod && key === 'g') return run(() => void s.groupSelection())
+    if (mod && key === 'g' && event.shiftKey) return run(() => s.nodes.ungroupSelection())
+    if (mod && key === 'g') return run(() => void s.nodes.groupSelection())
     if (mod) return
     const arrows: Record<string, 'up' | 'down' | 'left' | 'right'> = {
       arrowup: 'up',
@@ -57,9 +57,9 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
       arrowleft: 'left',
       arrowright: 'right',
     }
-    if (arrows[key]) return run(() => s.nudge(arrows[key]!, event.shiftKey))
+    if (arrows[key]) return run(() => s.nodes.nudge(arrows[key]!, event.shiftKey))
     if (key === 'pageup' || key === 'pagedown')
-      return run(() => s.nudge(key === 'pageup' ? 'raise' : 'lower', event.shiftKey))
+      return run(() => s.nodes.nudge(key === 'pageup' ? 'raise' : 'lower', event.shiftKey))
     switch (key) {
       case 'q':
         return run(() => s.setTool('select'))
@@ -72,18 +72,18 @@ export function useStudioShortcuts(session: ShallowRef<EditorSession | null>, sh
       case 'f':
         return run(() => void s.focusSelection())
       case 'h':
-        return run(() => s.toggleVisibilityOfSelection())
+        return run(() => s.nodes.toggleVisibilityOfSelection())
       case 'delete':
       case 'backspace':
-        return run(() => s.deleteSelection())
+        return run(() => s.nodes.deleteSelection())
       case 'escape':
         return run(() => s.selectParent())
       case 'end':
-        return run(() => s.dropToGround())
+        return run(() => s.nodes.dropToGround())
       case 'p':
         return run(() => s.enterPreview())
       case 'm':
-        return run(() => (s.ui.measure.mode ? s.stopMeasure() : s.startMeasure('distance')))
+        return run(() => (s.ui.measure.mode ? s.tools.stopMeasure() : s.tools.startMeasure('distance')))
       case '7':
         return run(() => void s.viewFrom('top'))
       case '1':

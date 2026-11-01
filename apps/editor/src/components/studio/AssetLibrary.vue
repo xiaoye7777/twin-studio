@@ -39,7 +39,7 @@ const myComponents = computed(() =>
 )
 
 function addComponent(item: SceneComponentRecord): void {
-  session.addComponent(item.data)
+  session.create.addComponent(item.data)
 }
 
 async function removeComponent(item: SceneComponentRecord): Promise<void> {
@@ -123,7 +123,7 @@ async function addBuiltin(model: BuiltinModel): Promise<void> {
   try {
     const record = await importBuiltinModel(model, repository)
     void assetStore.refresh()
-    await session.addModel(record.id)
+    await session.create.addModel(record.id)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '模型加载失败')
   }
@@ -131,7 +131,7 @@ async function addBuiltin(model: BuiltinModel): Promise<void> {
 
 async function addAsset(assetId: string): Promise<void> {
   try {
-    await session.addModel(assetId)
+    await session.create.addModel(assetId)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '模型加载失败')
   }
@@ -272,7 +272,7 @@ function sizeLabel(bytes: number): string {
           :title="`${item.label} — 拖入视口或单击放置`"
           :data-testid="`primitive-${item.shape}`"
           @dragstart="writePrimitiveDragPayload($event.dataTransfer!, item.shape)"
-          @click="session.addPrimitive(item.shape)"
+          @click="session.create.addPrimitive(item.shape)"
         >
           <component :is="item.icon" :size="16" />
           <span>{{ item.label }}</span>
@@ -282,7 +282,7 @@ function sizeLabel(bytes: number): string {
 
     <UiSection title="绘制与标注">
       <div class="library__list">
-        <button v-for="item in drawing" :key="item.kind" class="tool" @click="session.startDrawing(item.kind)">
+        <button v-for="item in drawing" :key="item.kind" class="tool" @click="session.tools.startDrawing(item.kind)">
           <component :is="item.icon" :size="16" class="tool__icon" />
           <span class="tool__text">
             <strong>{{ item.label }}</strong>

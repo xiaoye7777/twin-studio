@@ -29,16 +29,16 @@ const session = useSession()
 const twin = session.twin
 
 type Choice = ActiveDataSourceConfig['type'] | 'none'
-const choice = computed<Choice>(() => session.activeSource?.type ?? 'none')
+const choice = computed<Choice>(() => session.devices.activeSource?.type ?? 'none')
 const choices: Array<{ value: Choice; label: string; title: string }> = [
   { value: 'none', label: '不启用', title: '没有数据源，不显示数值' },
   { value: 'websocket', label: '推送', title: 'WebSocket 网关实时推送' },
   { value: 'http', label: '定时请求', title: '每隔几秒请求一个 HTTP 接口' },
   { value: 'static', label: '静态数据', title: '手填固定数值，用于调试和演示' },
 ]
-const ws = computed(() => session.dataSourceOf('websocket'))
-const http = computed(() => session.dataSourceOf('http'))
-const fixed = computed(() => session.dataSourceOf('static'))
+const ws = computed(() => session.devices.dataSourceOf('websocket'))
+const http = computed(() => session.devices.dataSourceOf('http'))
+const fixed = computed(() => session.devices.dataSourceOf('static'))
 
 // ---------------------------------------------------------------- 状态
 
@@ -67,7 +67,7 @@ const statusClass = computed(() =>
 const wsError = ref('')
 function setWsUrl(url: string): void {
   wsError.value = isSafeRealtimeUrl(url.trim()) ? '' : '请输入 ws:// 或 wss:// 地址'
-  if (!wsError.value) session.updateDataSource('websocket', { url: url.trim() })
+  if (!wsError.value) session.devices.updateDataSource('websocket', { url: url.trim() })
 }
 
 // ---------------------------------------------------------------- 定时请求
@@ -75,7 +75,7 @@ function setWsUrl(url: string): void {
 const httpError = ref('')
 function setHttpUrl(url: string): void {
   httpError.value = isSafeHttpUrl(url.trim()) ? '' : '请输入 http(s):// 地址或以 / 开头的同域路径，不能包含账号密码'
-  if (!httpError.value) session.updateDataSource('http', { url: url.trim() })
+  if (!httpError.value) session.devices.updateDataSource('http', { url: url.trim() })
 }
 
 /** 试请求一次，告诉用户返回里认出了几台已绑定的设备。 */
@@ -113,7 +113,7 @@ async function testHttp(): Promise<void> {
 // ---------------------------------------------------------------- 静态数据
 
 function captureLive(): void {
-  const count = session.captureStaticValues()
+  const count = session.devices.captureStaticValues()
   if (count) ElMessage.success(`已记下 ${count} 个当前数值`)
   else ElMessage.info('现在没有收到任何数值：先用「推送」或「定时请求」连上数据')
 }
@@ -141,7 +141,7 @@ const devices = computed(() => {
           :model-value="choice"
           :options="choices"
           data-testid="datasource-type"
-          @update:model-value="session.useDataSource($event === 'none' ? null : $event)"
+          @update:model-value="session.devices.useDataSource($event === 'none' ? null : $event)"
         />
       </UiRow>
 
@@ -164,7 +164,9 @@ const devices = computed(() => {
             class="s-select data__method"
             :value="http.method"
             @change="
-              session.updateDataSource('http', { method: ($event.target as HTMLSelectElement).value as 'GET' | 'POST' })
+              session.devices.updateDataSource('http', {
+                method: ($event.target as HTMLSelectElement).value as 'GET' | 'POST',
+              })
             "
           >
             <option>GET</option>
@@ -181,7 +183,7 @@ const devices = computed(() => {
             max="3600"
             :value="http.interval"
             @change="
-              session.updateDataSource('http', {
+              session.devices.updateDataSource('http', {
                 interval: Math.min(
                   3600,
                   Math.max(1, Math.round(Number(($event.target as HTMLInputElement).value) || 5)),
@@ -196,7 +198,7 @@ const devices = computed(() => {
             :model-value="http.resultPath"
             mono
             placeholder="（整个返回值）"
-            @commit="session.updateDataSource('http', { resultPath: $event.trim() })"
+            @commit="session.devices.updateDataSource('http', { resultPath: $event.trim() })"
           />
         </UiRow>
         <UiRow v-if="http.method === 'POST'" label="请求体" stack>
@@ -205,13 +207,13 @@ const devices = computed(() => {
             rows="3"
             :value="http.body ?? ''"
             placeholder="留空：自动发送本场景需要的设备清单"
-            @change="session.updateDataSource('http', { body: ($event.target as HTMLTextAreaElement).value })"
+            @change="session.devices.updateDataSource('http', { body: ($event.target as HTMLTextAreaElement).value })"
           />
         </UiRow>
         <UiRow label="带登录态" hint="请求时带上浏览器中该站点的 Cookie（后端需允许带凭据的跨域）">
           <UiSwitch
             :model-value="http.withCredentials"
-            @update:model-value="session.updateDataSource('http', { withCredentials: $event })"
+            @update:model-value="session.devices.updateDataSource('http', { withCredentials: $event })"
           />
         </UiRow>
         <div class="data__actions">
@@ -273,7 +275,7 @@ const devices = computed(() => {
               :data-type="variable.dataType"
               :value="staticValue(item.binding.device.id, variable.key)"
               :testid="`static-${item.binding.device.id}-${variable.key}`"
-              @commit="session.setStaticValue(item.binding.device.id, variable.key, $event)"
+              @commit="session.devices.setStaticValue(item.binding.device.id, variable.key, $event)"
             />
             <small>{{ variable.unit }}</small>
           </label>

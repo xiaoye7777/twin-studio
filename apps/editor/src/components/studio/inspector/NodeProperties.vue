@@ -47,7 +47,7 @@ const rad = (value: number) => (value * Math.PI) / 180
 function setTransform(part: 'position' | 'rotation' | 'scale', axis: number, value: number): void {
   const n = node.value
   if (!n) return
-  session.updateNode(
+  session.nodes.updateNode(
     n.id,
     target => {
       target.transform[part][axis] = part === 'rotation' ? rad(value) : value
@@ -65,7 +65,7 @@ function patch<K extends SceneNodeV2['kind']>(
 ): void {
   const n = node.value
   if (!n || n.kind !== kind) return
-  session.updateNode(
+  session.nodes.updateNode(
     n.id,
     target => recipe(target as Extract<SceneNodeV2, { kind: K }>),
     '修改属性',
@@ -113,7 +113,7 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
         :model-value="node.name"
         placeholder="名称"
         data-testid="node-name"
-        @commit="session.rename(node.id, $event)"
+        @commit="session.nodes.rename(node.id, $event)"
       />
       <span class="s-badge">{{ nodeKindLabels[node.kind] }}</span>
     </div>
@@ -125,7 +125,7 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
           class="s-icon-btn"
           title="重置变换"
           @click="
-            session.updateNode(
+            session.nodes.updateNode(
               node.id,
               n => void (n.transform = { position: n.transform.position, rotation: [0, 0, 0], scale: [1, 1, 1] }),
               '重置变换',
@@ -181,36 +181,36 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
     <!-- Multi-selection tools -->
     <UiSection v-if="nodes.length > 1" title="对齐与分布">
       <div class="props__tools">
-        <button class="s-icon-btn" title="左对齐（X 最小）" @click="session.align(0, 'min')">
+        <button class="s-icon-btn" title="左对齐（X 最小）" @click="session.nodes.align(0, 'min')">
           <AlignStartVertical :size="15" />
         </button>
-        <button class="s-icon-btn" title="X 居中" @click="session.align(0, 'center')">
+        <button class="s-icon-btn" title="X 居中" @click="session.nodes.align(0, 'center')">
           <AlignCenterVertical :size="15" />
         </button>
-        <button class="s-icon-btn" title="右对齐（X 最大）" @click="session.align(0, 'max')">
+        <button class="s-icon-btn" title="右对齐（X 最大）" @click="session.nodes.align(0, 'max')">
           <AlignEndVertical :size="15" />
         </button>
         <span class="props__tools-sep" />
-        <button class="s-icon-btn" title="前对齐（Z 最小）" @click="session.align(2, 'min')">
+        <button class="s-icon-btn" title="前对齐（Z 最小）" @click="session.nodes.align(2, 'min')">
           <AlignStartHorizontal :size="15" />
         </button>
-        <button class="s-icon-btn" title="Z 居中" @click="session.align(2, 'center')">
+        <button class="s-icon-btn" title="Z 居中" @click="session.nodes.align(2, 'center')">
           <AlignCenterHorizontal :size="15" />
         </button>
-        <button class="s-icon-btn" title="后对齐（Z 最大）" @click="session.align(2, 'max')">
+        <button class="s-icon-btn" title="后对齐（Z 最大）" @click="session.nodes.align(2, 'max')">
           <AlignEndHorizontal :size="15" />
         </button>
         <span class="props__tools-sep" />
-        <button class="s-icon-btn" title="沿 X 均匀分布" @click="session.distribute(0)">
+        <button class="s-icon-btn" title="沿 X 均匀分布" @click="session.nodes.distribute(0)">
           <AlignHorizontalDistributeCenter :size="15" />
         </button>
-        <button class="s-icon-btn" title="沿 Z 均匀分布" @click="session.distribute(2)">
+        <button class="s-icon-btn" title="沿 Z 均匀分布" @click="session.nodes.distribute(2)">
           <AlignVerticalDistributeCenter :size="15" />
         </button>
       </div>
       <div class="props__buttons">
-        <button class="s-btn" @click="session.dropToGround()"><ArrowDownToLine :size="13" />放到地面</button>
-        <button class="s-btn" @click="session.groupSelection()"><Group :size="13" />组合</button>
+        <button class="s-btn" @click="session.nodes.dropToGround()"><ArrowDownToLine :size="13" />放到地面</button>
+        <button class="s-btn" @click="session.nodes.groupSelection()"><Group :size="13" />组合</button>
         <button class="s-btn" @click="shell.dialog = 'array'"><Copy :size="13" />阵列</button>
       </div>
       <p class="props__note s-hint">批量绑定设备：切换到「数据」页签。</p>
@@ -219,13 +219,19 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
     <!-- Display -->
     <UiSection title="显示">
       <UiRow label="可见">
-        <UiSwitch :model-value="allVisible" @update:model-value="session.setVisible(session.selection.value, $event)" />
+        <UiSwitch
+          :model-value="allVisible"
+          @update:model-value="session.nodes.setVisible(session.selection.value, $event)"
+        />
       </UiRow>
       <UiRow label="锁定" hint="锁定后无法在视口中选中或移动">
-        <UiSwitch :model-value="allLocked" @update:model-value="session.setLocked(session.selection.value, $event)" />
+        <UiSwitch
+          :model-value="allLocked"
+          @update:model-value="session.nodes.setLocked(session.selection.value, $event)"
+        />
       </UiRow>
       <div v-if="node" class="props__buttons">
-        <button class="s-btn" @click="session.dropToGround()"><ArrowDownToLine :size="13" />放到地面</button>
+        <button class="s-btn" @click="session.nodes.dropToGround()"><ArrowDownToLine :size="13" />放到地面</button>
         <button class="s-btn" @click="shell.dialog = 'array'"><Copy :size="13" />阵列复制</button>
       </div>
     </UiSection>
@@ -251,7 +257,7 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
         >
         <p class="props__note s-hint">再次单击模型（或双击）选中其中的部件，可单独绑定设备、改材质、隐藏。</p>
         <div v-if="modelEdits.overrides || modelEdits.deleted" class="props__buttons">
-          <button v-if="modelEdits.deleted" class="s-btn" @click="session.restoreDeletedParts(node.id)">
+          <button v-if="modelEdits.deleted" class="s-btn" @click="session.modelParts.restoreDeletedParts(node.id)">
             <RotateCcw :size="13" />恢复删除的部件
           </button>
           <button
@@ -622,7 +628,7 @@ const allLocked = computed(() => props.nodes.every(item => item.locked))
         >
         <p class="props__note s-hint">分组可作为图层：在导览步骤或交互中整体显示 / 隐藏，大屏也可通过 SDK 控制显隐。</p>
         <div class="props__buttons">
-          <button class="s-btn" @click="session.ungroupSelection()">取消组合</button>
+          <button class="s-btn" @click="session.nodes.ungroupSelection()">取消组合</button>
         </div>
       </UiSection>
     </template>

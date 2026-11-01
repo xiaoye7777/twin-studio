@@ -48,7 +48,9 @@ try {
     { timeout: 20000 },
   )
   // ESS-003 overheats for 6 of every 12 simulator ticks; its alarm rules then fire.
-  await page.waitForFunction(() => window.__studio.rules.getDiagnostics().activeRules >= 1, null, { timeout: 30000 })
+  await page.waitForFunction(() => window.__studio.ruleRuntime.getDiagnostics().activeRules >= 1, null, {
+    timeout: 30000,
+  })
   report.liveDataAndAlarms = 'PASS'
 
   // Turbine blades spin, and faster when the live rotor speed says so.
@@ -107,7 +109,7 @@ try {
   // The sample limits the camera on the big screen; the editor itself stays free.
   const previewRange = await studio(page, () => window.__studio.engine.rig.controls.maxDistance)
   assert(previewRange > 20 && previewRange < 1000, `preview max distance ${previewRange}`)
-  await studio(page, () => window.__studio.playTour(window.__studio.doc.value.tours[0].id))
+  await studio(page, () => window.__studio.views.playTour(window.__studio.doc.value.tours[0].id))
   await page.waitForSelector('[data-testid="tour-bar"]')
   assert((await page.getByTestId('tour-bar').textContent()).includes('零碳智慧园区'))
   await studio(page, () => window.__studio.tours.next())
@@ -162,7 +164,7 @@ try {
     const meter = twin.bindings.find(binding => binding.device.id === 'EM-001')
     return twin.dataSourceType === 'static' && twin.getRuntimeValue(meter.id, 'power')?.value === 321
   })
-  assert.equal((await studio(page, () => window.__studio.activeSource.values))['EM-001'].power, 321)
+  assert.equal((await studio(page, () => window.__studio.devices.activeSource.values))['EM-001'].power, 321)
   report.staticData = 'PASS'
 
   assert.deepEqual(errors, [])

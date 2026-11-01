@@ -16,20 +16,20 @@ const shell = useShell()
 const node = computed(() => (props.nodes.length === 1 ? props.nodes[0]! : null))
 const binding = computed(() => {
   void session.doc.value
-  return node.value ? session.bindingFor(node.value.id) : undefined
+  return node.value ? session.devices.bindingFor(node.value.id) : undefined
 })
 const templateId = ref(deviceTemplates[0]!.id)
 const connected = computed(() => session.twin.dataSourceStatus === 'connected')
 /** 静态数据时，变量的值可以直接在这里改。 */
-const editable = computed(() => session.activeSource?.type === 'static')
+const editable = computed(() => session.devices.activeSource?.type === 'static')
 const sourceLabel = computed(() => {
   if (editable.value) return '静态数据（可直接修改数值）'
-  if (!session.activeSource) return '场景未启用数据源'
+  if (!session.devices.activeSource) return '场景未启用数据源'
   return connected.value ? '数据接收中' : '数据源未连接'
 })
 const staticValue = (key: string) =>
-  binding.value ? session.dataSourceOf('static')?.values[binding.value.device.id]?.[key] : undefined
-const boundCount = computed(() => props.nodes.filter(item => session.bindingFor(item.id)).length)
+  binding.value ? session.devices.dataSourceOf('static')?.values[binding.value.device.id]?.[key] : undefined
+const boundCount = computed(() => props.nodes.filter(item => session.devices.bindingFor(item.id)).length)
 
 function bind(): void {
   const n = node.value
@@ -38,7 +38,7 @@ function bind(): void {
   const used = new Set(session.doc.value.bindings.map(item => item.device.id))
   let index = 1
   while (used.has(deviceIdFor(template.prefix, index))) index++
-  session.setBinding(n.id, {
+  session.devices.setBinding(n.id, {
     device: { id: deviceIdFor(template.prefix, index), name: n.name, type: template.type },
     variables: deviceVariables(template),
   })
@@ -50,7 +50,7 @@ function updateDevice(field: 'id' | 'name' | 'type', value: string): void {
   if (!n || !current) return
   const trimmed = value.trim()
   if (field === 'id' && !trimmed) return
-  session.setBinding(n.id, { device: { ...current.device, [field]: trimmed }, variables: current.variables })
+  session.devices.setBinding(n.id, { device: { ...current.device, [field]: trimmed }, variables: current.variables })
 }
 
 function updateVariable(index: number, patch: Partial<TwinVariableDefinition>): void {
@@ -58,7 +58,7 @@ function updateVariable(index: number, patch: Partial<TwinVariableDefinition>): 
   const current = binding.value
   if (!n || !current) return
   const variables = current.variables.map((variable, at) => (at === index ? { ...variable, ...patch } : variable))
-  session.setBinding(n.id, { device: current.device, variables })
+  session.devices.setBinding(n.id, { device: current.device, variables })
 }
 
 function addVariable(): void {
@@ -66,7 +66,7 @@ function addVariable(): void {
   const current = binding.value
   if (!n || !current) return
   const key = `value${current.variables.length + 1}`
-  session.setBinding(n.id, {
+  session.devices.setBinding(n.id, {
     device: current.device,
     variables: [...current.variables, { id: `var_${crypto.randomUUID()}`, key, name: '新变量', dataType: 'number' }],
   })
@@ -76,7 +76,10 @@ function removeVariable(index: number): void {
   const n = node.value
   const current = binding.value
   if (!n || !current) return
-  session.setBinding(n.id, { device: current.device, variables: current.variables.filter((_, at) => at !== index) })
+  session.devices.setBinding(n.id, {
+    device: current.device,
+    variables: current.variables.filter((_, at) => at !== index),
+  })
 }
 </script>
 
@@ -122,7 +125,7 @@ function removeVariable(index: number): void {
     <template v-else-if="node && binding">
       <UiSection title="设备">
         <template #actions>
-          <button class="s-icon-btn" title="解除绑定" @click="session.removeBinding(node.id)">
+          <button class="s-icon-btn" title="解除绑定" @click="session.devices.removeBinding(node.id)">
             <Unlink :size="13" />
           </button>
         </template>
@@ -178,10 +181,10 @@ function removeVariable(index: number): void {
               :data-type="variable.dataType"
               :value="staticValue(variable.key)"
               :testid="`node-static-${variable.key}`"
-              @commit="session.setStaticValue(binding.device.id, variable.key, $event)"
+              @commit="session.devices.setStaticValue(binding.device.id, variable.key, $event)"
             />
             <span v-else class="vars__value s-mono" :class="{ 'is-live': connected }">{{
-              session.liveValue(binding.id, variable.key)
+              session.devices.liveValue(binding.id, variable.key)
             }}</span>
             <button class="s-icon-btn" title="删除变量" @click="removeVariable(index)"><Trash2 :size="12" /></button>
           </div>

@@ -226,7 +226,7 @@ async function startRename(node: SceneNodeV2): Promise<void> {
 function finishRename(node: SceneNodeV2): void {
   if (shell.renaming !== node.id) return
   shell.renaming = null
-  session.rename(node.id, renameText.value)
+  session.nodes.rename(node.id, renameText.value)
 }
 
 // ---------------------------------------------------------------- drag to reparent / reorder
@@ -252,14 +252,14 @@ function onDrop(event: DragEvent, row: NodeRow): void {
   const zone = drag.zone
   resetDrag()
   if (!ids.length || ids.includes(row.node.id)) return
-  if (zone === 'into') session.reparent(ids, row.node.id)
-  else if (zone === 'before') session.reparent(ids, row.node.parentId, row.node.id)
+  if (zone === 'into') session.nodes.reparent(ids, row.node.id)
+  else if (zone === 'before') session.nodes.reparent(ids, row.node.parentId, row.node.id)
   else {
     const siblings = session.doc.value.nodes.filter(
       node => node.parentId === row.node.parentId && !ids.includes(node.id),
     )
     const next = siblings[siblings.findIndex(node => node.id === row.node.id) + 1]
-    session.reparent(ids, row.node.parentId, next?.id)
+    session.nodes.reparent(ids, row.node.parentId, next?.id)
   }
 }
 
@@ -268,7 +268,7 @@ function onDropRoot(event: DragEvent): void {
   event.preventDefault()
   const ids = drag.ids
   resetDrag()
-  session.reparent(ids, null)
+  session.nodes.reparent(ids, null)
 }
 
 function resetDrag(): void {
@@ -288,22 +288,28 @@ function openMenu(event: MouseEvent, row: NodeRow | null): void {
 const menuSections = computed<MenuSections>(() => {
   const part = session.part.value
   if (part) {
-    const hidden = session.partOverride(part.nodeId, part.assetNodeId)?.visible === false
+    const hidden = session.modelParts.partOverride(part.nodeId, part.assetNodeId)?.visible === false
     return [
       [
         { label: '聚焦', action: () => void session.focusSelection() },
         {
           label: hidden ? '显示' : '隐藏',
-          action: () => session.setPartVisible(part.nodeId, part.assetNodeId, hidden),
+          action: () => session.modelParts.setPartVisible(part.nodeId, part.assetNodeId, hidden),
         },
-        { label: '恢复部件', action: () => session.resetPart(part.nodeId, part.assetNodeId) },
+        { label: '恢复部件', action: () => session.modelParts.resetPart(part.nodeId, part.assetNodeId) },
         { label: '回到模型', action: () => session.selectParent() },
       ],
-      [{ label: '删除部件', action: () => session.deleteParts(part.nodeId, [part.assetNodeId]), danger: true }],
+      [
+        {
+          label: '删除部件',
+          action: () => session.modelParts.deleteParts(part.nodeId, [part.assetNodeId]),
+          danger: true,
+        },
+      ],
     ]
   }
   const nodes = session.selectedNodes
-  const newGroup = [{ label: '新建分组', action: () => void session.addGroup() }]
+  const newGroup = [{ label: '新建分组', action: () => void session.create.addGroup() }]
   if (!nodes.length) return [newGroup]
   const one = nodes.length === 1 ? nodes[0]! : null
   const ids = nodes.map(node => node.id)
@@ -312,25 +318,25 @@ const menuSections = computed<MenuSections>(() => {
     [
       ...(one ? [{ label: '重命名', action: () => void startRename(one) }] : []),
       { label: '聚焦', action: () => void session.focusSelection() },
-      { label: '创建副本', action: () => session.duplicateSelection() },
+      { label: '创建副本', action: () => session.nodes.duplicateSelection() },
     ],
     [
-      { label: '组合', action: () => void session.groupSelection() },
+      { label: '组合', action: () => void session.nodes.groupSelection() },
       ...(nodes.some(node => node.kind === 'group')
-        ? [{ label: '取消组合', action: () => session.ungroupSelection() }]
+        ? [{ label: '取消组合', action: () => session.nodes.ungroupSelection() }]
         : []),
-      { label: '移到最外层', action: () => session.reparent(ids, null) },
+      { label: '移到最外层', action: () => session.nodes.reparent(ids, null) },
       ...newGroup,
     ],
     [
       {
         label: nodes.every(node => node.visible) ? '隐藏' : '显示',
-        action: () => session.toggleVisibilityOfSelection(),
+        action: () => session.nodes.toggleVisibilityOfSelection(),
       },
-      { label: allLocked ? '解锁' : '锁定', action: () => session.setLocked(ids, !allLocked) },
+      { label: allLocked ? '解锁' : '锁定', action: () => session.nodes.setLocked(ids, !allLocked) },
       { label: '保存为组件…', action: () => void saveSelectionAsComponent(session) },
     ],
-    [{ label: '删除', action: () => session.deleteSelection(), danger: true }],
+    [{ label: '删除', action: () => session.nodes.deleteSelection(), danger: true }],
   ]
 })
 </script>
@@ -359,8 +365,8 @@ const menuSections = computed<MenuSections>(() => {
           @click="session.selectPart(row.nodeId, row.part.id)"
           @dblclick="(session.selectPart(row.nodeId, row.part.id), session.focusSelection())"
           @contextmenu.stop.prevent="openPartMenu($event, row)"
-          @mouseenter="session.hoverPart({ nodeId: row.nodeId, assetNodeId: row.part.id })"
-          @mouseleave="session.hoverPart(null)"
+          @mouseenter="session.modelParts.hoverPart({ nodeId: row.nodeId, assetNodeId: row.part.id })"
+          @mouseleave="session.modelParts.hoverPart(null)"
         >
           <button
             class="tree__chevron"
@@ -378,17 +384,17 @@ const menuSections = computed<MenuSections>(() => {
           </span>
           <button
             class="tree__toggle"
-            :class="{ 'is-on': session.partOverride(row.nodeId, row.part.id)?.visible === false }"
-            :title="session.partOverride(row.nodeId, row.part.id)?.visible === false ? '显示' : '隐藏'"
+            :class="{ 'is-on': session.modelParts.partOverride(row.nodeId, row.part.id)?.visible === false }"
+            :title="session.modelParts.partOverride(row.nodeId, row.part.id)?.visible === false ? '显示' : '隐藏'"
             @click.stop="
-              session.setPartVisible(
+              session.modelParts.setPartVisible(
                 row.nodeId,
                 row.part.id,
-                session.partOverride(row.nodeId, row.part.id)?.visible === false,
+                session.modelParts.partOverride(row.nodeId, row.part.id)?.visible === false,
               )
             "
           >
-            <EyeOff v-if="session.partOverride(row.nodeId, row.part.id)?.visible === false" :size="12" /><Eye
+            <EyeOff v-if="session.modelParts.partOverride(row.nodeId, row.part.id)?.visible === false" :size="12" /><Eye
               v-else
               :size="12"
             />
@@ -412,8 +418,8 @@ const menuSections = computed<MenuSections>(() => {
           @click="click($event, row)"
           @dblclick="startRename(row.node)"
           @contextmenu.stop="openMenu($event, row)"
-          @mouseenter="session.setHovered(row.node.id)"
-          @mouseleave="session.setHovered(null)"
+          @mouseenter="session.pointer.setHovered(row.node.id)"
+          @mouseleave="session.pointer.setHovered(null)"
           @dragstart="onDragStart($event, row)"
           @dragover="onDragOver($event, row)"
           @dragleave="drag.over === row.node.id && (drag.over = '')"
@@ -454,7 +460,7 @@ const menuSections = computed<MenuSections>(() => {
             class="tree__toggle"
             :class="{ 'is-on': row.node.locked }"
             :title="row.node.locked ? '解锁' : '锁定'"
-            @click.stop="session.setLocked([row.node.id], !row.node.locked)"
+            @click.stop="session.nodes.setLocked([row.node.id], !row.node.locked)"
           >
             <Lock v-if="row.node.locked" :size="12" /><Unlock v-else :size="12" />
           </button>
@@ -462,7 +468,7 @@ const menuSections = computed<MenuSections>(() => {
             class="tree__toggle"
             :class="{ 'is-on': !row.node.visible }"
             :title="row.node.visible ? '隐藏' : '显示'"
-            @click.stop="session.setVisible([row.node.id], !row.node.visible)"
+            @click.stop="session.nodes.setVisible([row.node.id], !row.node.visible)"
           >
             <EyeOff v-if="!row.node.visible" :size="12" /><Eye v-else :size="12" />
           </button>

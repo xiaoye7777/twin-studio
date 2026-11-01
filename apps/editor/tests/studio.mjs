@@ -171,7 +171,7 @@ try {
   await page.getByTestId('add-interaction').click()
   await page.waitForFunction(() => window.__studio.doc.value.interactions.length === 1)
   await settled(page)
-  assert((await studio(page, () => window.__studio.effects.getDiagnostics().helpers)) >= 1)
+  assert((await studio(page, () => window.__studio.effectRuntime.getDiagnostics().helpers)) >= 1)
   report.dataEffectsRulesInteractions = 'PASS'
 
   // ---------------------------------------------------------------- look, views and tours
@@ -189,7 +189,7 @@ try {
   await page.waitForFunction(() => window.__studio.doc.value.tours[0]?.steps.length === 1)
   await page.getByTestId('play-tour').click()
   await page.waitForSelector('[data-testid="tour-bar"]')
-  await studio(page, () => window.__studio.stopTour())
+  await studio(page, () => window.__studio.views.stopTour())
   await page.waitForSelector('[data-testid="tour-bar"]', { state: 'detached' })
   report.lookViewsTours = 'PASS'
 
@@ -319,7 +319,7 @@ try {
   await studio(
     page,
     id =>
-      window.__studio.setBinding(id, {
+      window.__studio.devices.setBinding(id, {
         device: { id: 'WT-BLADE', name: '叶片' },
         variables: [{ id: 'v', key: 'vibration', name: '振动', dataType: 'number' }],
       }),
@@ -438,7 +438,7 @@ try {
     id => {
       const s = window.__studio
       s.select([id])
-      s.setBinding(id, {
+      s.devices.setBinding(id, {
         device: { id: 'WT-001', name: '风机 01' },
         variables: [{ id: 'v', key: 'rotorSpeed', name: '转速', dataType: 'number' }],
       })

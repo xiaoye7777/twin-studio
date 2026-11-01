@@ -106,18 +106,18 @@ async function onDrop(event: DragEvent): Promise<void> {
   const point = s.engine.pointAt(event.clientX, event.clientY)
   busy.value = true
   try {
-    if (payload.type === 'asset') await s.addModel(payload.assetId, point)
+    if (payload.type === 'asset') await s.create.addModel(payload.assetId, point)
     else if (payload.type === 'builtin') {
       const model = getBuiltinModel(payload.modelKey)
       if (!model) throw new Error('内置模型不存在')
       const record = await importBuiltinModel(model, new IndexedDbAssetRepository())
       void assetStore.refresh()
-      await s.addModel(record.id, point)
+      await s.create.addModel(record.id, point)
     } else if (payload.type === 'component') {
       const component = await useComponentStore().get(payload.componentId)
       if (!component) throw new Error('组件不存在')
-      s.addComponent(component.data, point)
-    } else s.addPrimitive(payload.presetId as PrimitiveShape, point)
+      s.create.addComponent(component.data, point)
+    } else s.create.addPrimitive(payload.presetId as PrimitiveShape, point)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '放置失败')
   } finally {
@@ -170,7 +170,7 @@ async function onDrop(event: DragEvent): Promise<void> {
           :class="{ 'is-active': ui.draw === tool.id }"
           :title="tool.label"
           :data-testid="`draw-${tool.id}`"
-          @click="ui.draw === tool.id ? session.cancelDrawing() : session.startDrawing(tool.id)"
+          @click="ui.draw === tool.id ? session.tools.cancelDrawing() : session.tools.startDrawing(tool.id)"
         >
           <component :is="tool.icon" :size="15" />
         </button>
@@ -179,7 +179,7 @@ async function onDrop(event: DragEvent): Promise<void> {
           :class="{ 'is-active': !!ui.measure.mode }"
           title="测量距离与面积（M）"
           data-testid="tool-measure"
-          @click="ui.measure.mode ? session.stopMeasure() : session.startMeasure('distance')"
+          @click="ui.measure.mode ? session.tools.stopMeasure() : session.tools.startMeasure('distance')"
         >
           <Ruler :size="15" />
         </button>
@@ -242,12 +242,12 @@ async function onDrop(event: DragEvent): Promise<void> {
             class="viewport__measure-mode"
             :class="{ 'is-active': measure.mode === mode }"
             :data-testid="`measure-${mode}`"
-            @click="session.startMeasure(mode)"
+            @click="session.tools.startMeasure(mode)"
           >
             {{ mode === 'distance' ? '距离' : '面积' }}
           </button>
-          <button class="s-icon-btn" title="清除" @click="session.clearMeasure()">清除</button>
-          <button class="s-icon-btn" title="退出测量（Esc）" @click="session.stopMeasure()">✕</button>
+          <button class="s-icon-btn" title="清除" @click="session.tools.clearMeasure()">清除</button>
+          <button class="s-icon-btn" title="退出测量（Esc）" @click="session.tools.stopMeasure()">✕</button>
         </div>
         <dl class="viewport__measure-values" data-testid="measure-values">
           <template v-if="measure.mode === 'area'">
@@ -288,7 +288,7 @@ async function onDrop(event: DragEvent): Promise<void> {
             <Play v-if="ui.tour.paused" :size="14" /><Pause v-else :size="14" />
           </button>
           <button class="s-icon-btn" title="下一步" @click="session.tours.next()"><SkipForward :size="14" /></button>
-          <button class="s-icon-btn" title="停止" @click="session.stopTour()"><Square :size="13" /></button>
+          <button class="s-icon-btn" title="停止" @click="session.views.stopTour()"><Square :size="13" /></button>
         </div>
       </div>
 
@@ -298,8 +298,8 @@ async function onDrop(event: DragEvent): Promise<void> {
         <strong>从这里开始搭建场景</strong>
         <span>从左侧「资源」拖入模型，或用左侧工具绘制能流线与区域</span>
         <div class="viewport__empty-actions">
-          <button class="s-btn" @click="session.addPrimitive('plane')"><Grid3x3 :size="13" />添加地块</button>
-          <button class="s-btn" @click="session.startDrawing('area')"><SquareDashed :size="13" />绘制区域</button>
+          <button class="s-btn" @click="session.create.addPrimitive('plane')"><Grid3x3 :size="13" />添加地块</button>
+          <button class="s-btn" @click="session.tools.startDrawing('area')"><SquareDashed :size="13" />绘制区域</button>
           <button class="s-btn" @click="session.applyPreset('night')">科技夜景氛围</button>
         </div>
       </div>
