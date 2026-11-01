@@ -128,7 +128,7 @@ async function remove(item: SceneSnapshotMeta): Promise<void> {
 }
 .note {
   margin: 8px 0 12px;
-  color: #a9a6a0;
+  color: var(--s-fg-2);
   font-size: 11.5px;
   line-height: 1.6;
 }

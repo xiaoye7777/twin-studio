@@ -219,8 +219,8 @@ async function remove(id: string, name: string): Promise<void> {
   display: grid;
   aspect-ratio: 4 / 3;
   place-items: center;
-  background: radial-gradient(circle at 50% 40%, #2c2e33, #17191c 75%);
-  color: #4c4e54;
+  background: radial-gradient(circle at 50% 40%, var(--s-raised), var(--s-panel-2) 75%);
+  color: var(--s-fg-4);
 }
 .asset__thumb img {
   width: 100%;

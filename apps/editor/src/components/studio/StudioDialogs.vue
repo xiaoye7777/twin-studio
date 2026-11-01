@@ -163,12 +163,12 @@ const shortcuts: Array<[string, string]> = [
   gap: 10px 12px;
 }
 .form label {
-  color: #a9a6a0;
+  color: var(--s-fg-2);
   font-size: 12px;
 }
 .preview {
   margin: 14px 0 0;
-  color: #a9a6a0;
+  color: var(--s-fg-2);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -179,7 +179,7 @@ const shortcuts: Array<[string, string]> = [
   font-size: 12px;
 }
 .keys__key {
-  color: #f4ab78;
+  color: var(--s-accent-2);
   font-family: 'SF Mono', ui-monospace, Menlo, monospace;
   font-size: 11px;
   white-space: nowrap;

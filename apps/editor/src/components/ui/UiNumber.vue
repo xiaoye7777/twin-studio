@@ -109,7 +109,7 @@ function onPointerDown(event: PointerEvent): void {
   transition: border-color 120ms ease;
 }
 .ui-number:hover {
-  border-color: #45464c;
+  border-color: var(--s-line-strong);
 }
 .ui-number:focus-within {
   border-color: var(--s-accent-line);

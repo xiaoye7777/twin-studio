@@ -245,7 +245,7 @@ try {
   await page.goto(`${base}/screens`)
   const card = page.getByTestId('screen-card-接口大屏')
   await card.locator('button[title="更多"]').click()
-  const [download] = await Promise.all([page.waitForEvent('download'), card.getByText('导出 JSON').click()])
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('menu-导出 JSON').click()])
   const file = JSON.parse(await readFile(await download.path(), 'utf8'))
   assert(file.interfaces.datasets.length >= 4)
   assert(

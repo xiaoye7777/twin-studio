@@ -324,7 +324,7 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  background: #222;
+  background: var(--s-canvas);
 }
 .view__name {
   overflow: hidden;
@@ -360,7 +360,7 @@ const totalSeconds = computed(() => tour.value?.steps.reduce((sum, step) => sum 
   padding: 0;
   border: 0;
   border-radius: 3px;
-  background: rgb(14 15 17 / 0.75);
+  background: var(--s-float);
   color: var(--s-fg-2);
   font-size: 12px;
   cursor: pointer;

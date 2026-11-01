@@ -247,7 +247,7 @@ function onDrop(): void {
 }
 .row__icon {
   flex-shrink: 0;
-  color: #7dd3fc;
+  color: var(--s-accent);
 }
 .row.is-group .row__icon {
   color: var(--s-accent-2);

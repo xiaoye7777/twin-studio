@@ -173,7 +173,7 @@ async function confirm(): Promise<void> {
 <style scoped>
 .intro {
   margin: 0 0 12px;
-  color: #a9a6a0;
+  color: var(--s-fg-2);
   font-size: 12px;
   line-height: 1.6;
 }

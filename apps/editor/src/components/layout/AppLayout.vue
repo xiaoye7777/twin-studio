@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Boxes, FolderKanban, LayoutDashboard, Plug } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
+import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import '@/studio/studio.css'
 
 const route = useRoute()
@@ -28,6 +29,7 @@ const nav = [
       >
         <component :is="item.icon" :size="16" />{{ item.label }}
       </RouterLink>
+      <div class="home__theme"><ThemeSwitcher align="start" label /></div>
       <div class="home__version">
         <span>编辑器 v2 · 场景格式 v2</span>
         <span>Viewer SDK 0.5.0</span>
@@ -79,8 +81,8 @@ const nav = [
   height: 30px;
   place-items: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, #f2a66c, #d9703a);
-  color: #1b130c;
+  background: linear-gradient(135deg, var(--s-accent-2), var(--s-accent));
+  color: var(--s-on-accent);
   font-size: 15px;
   font-weight: 800;
 }
@@ -114,11 +116,14 @@ const nav = [
   background: var(--s-accent-soft);
   color: var(--s-accent-2);
 }
+.home__theme {
+  margin-top: auto;
+  padding: 0 4px 8px;
+}
 .home__version {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: auto;
   padding: 10px;
   border-radius: 6px;
   background: var(--s-panel-2);

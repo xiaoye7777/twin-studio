@@ -15,6 +15,7 @@ import {
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import { useScreenSession } from './session'
 
 const session = useScreenSession()
@@ -80,6 +81,7 @@ async function preview(): Promise<void> {
       </button>
       <button class="s-icon-btn" title="快捷键（?）" @click="ui.shortcuts = true"><Keyboard :size="15" /></button>
     </div>
+    <ThemeSwitcher />
     <button class="s-icon-btn" title="历史版本" data-testid="open-versions" @click="ui.versions = true">
       <History :size="15" />
     </button>
@@ -122,8 +124,8 @@ async function preview(): Promise<void> {
 .topbar__mark {
   padding: 2px 7px;
   border-radius: 4px;
-  background: rgb(56 189 248 / 0.15);
-  color: #7dd3fc;
+  background: var(--s-accent-soft);
+  color: var(--s-accent-2);
   font-size: 11px;
   font-weight: 600;
 }

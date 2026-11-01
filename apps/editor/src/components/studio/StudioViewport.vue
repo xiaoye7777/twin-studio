@@ -322,14 +322,14 @@ async function onDrop(event: DragEvent): Promise<void> {
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  background: #16181b;
+  background: var(--s-canvas);
 }
 .viewport.is-dropping::after {
   position: absolute;
   inset: 8px;
   border: 1.5px dashed var(--s-accent-line);
   border-radius: 10px;
-  background: rgb(232 137 74 / 0.06);
+  background: color-mix(in srgb, var(--s-accent) 6%, transparent);
   pointer-events: none;
   content: '';
 }
@@ -372,9 +372,9 @@ async function onDrop(event: DragEvent): Promise<void> {
   cursor: pointer;
 }
 .viewport__measure-mode.is-active {
-  border-color: #5ec8ff;
-  background: rgb(94 200 255 / 0.12);
-  color: #bfe9ff;
+  border-color: var(--s-data);
+  background: color-mix(in srgb, var(--s-data) 12%, transparent);
+  color: var(--s-data);
 }
 .viewport__measure-values {
   display: grid;
@@ -408,7 +408,7 @@ async function onDrop(event: DragEvent): Promise<void> {
   z-index: 5;
   border: 1px solid var(--s-accent);
   border-radius: 2px;
-  background: rgb(232 137 74 / 0.1);
+  background: color-mix(in srgb, var(--s-accent) 10%, transparent);
   pointer-events: none;
 }
 .viewport__tools {
@@ -468,13 +468,13 @@ async function onDrop(event: DragEvent): Promise<void> {
   border: 0;
   border-radius: 5px;
   cursor: pointer;
-  background: rgb(14 15 17 / 0.55);
+  background: var(--s-float);
   color: var(--s-fg-2);
   font-family: var(--s-mono);
   font-size: 10.5px;
 }
 .viewport__stats:hover {
-  background: rgb(14 15 17 / 0.8);
+  background: var(--s-panel);
   color: var(--s-fg);
 }
 .viewport__stats .is-low {
@@ -545,9 +545,9 @@ async function onDrop(event: DragEvent): Promise<void> {
   align-items: center;
   gap: 8px;
   padding: 26px 30px;
-  border: 1px solid rgb(255 255 255 / 0.06);
+  border: 1px solid var(--s-float-line);
   border-radius: 12px;
-  background: rgb(22 23 26 / 0.72);
+  background: var(--s-float);
   backdrop-filter: blur(8px);
   color: var(--s-fg-2);
   text-align: center;
@@ -573,7 +573,7 @@ async function onDrop(event: DragEvent): Promise<void> {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #16181b;
+  background: var(--s-canvas);
   color: var(--s-fg-2);
 }
 .viewport__overlay strong {
@@ -589,13 +589,13 @@ async function onDrop(event: DragEvent): Promise<void> {
   gap: 8px;
   padding: 6px 12px;
   border-radius: 6px;
-  background: rgb(20 21 24 / 0.86);
+  background: var(--s-float);
   transform: translateX(-50%);
 }
 .viewport__spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgb(255 255 255 / 0.15);
+  border: 2px solid var(--s-line-2);
   border-top-color: var(--s-accent);
   border-radius: 50%;
   animation: viewport-spin 0.9s linear infinite;

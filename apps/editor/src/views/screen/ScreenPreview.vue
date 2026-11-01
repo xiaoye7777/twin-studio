@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
   left: 50%;
   margin: 0;
   padding: 4px 14px;
-  border: 1px solid rgb(226 180 86 / 0.45);
+  border: 1px solid color-mix(in srgb, var(--s-warn) 45%, transparent);
   border-radius: 14px;
   background: rgb(20 16 8 / 0.82);
   color: #f2cf86;

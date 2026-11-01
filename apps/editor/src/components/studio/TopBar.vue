@@ -11,6 +11,7 @@ import { useProjectStore } from '@/stores/project'
 import { useSession } from '@/studio/context'
 import { saveSelectionAsComponent } from '@/studio/saveComponent'
 import { useShell } from '@/studio/shell'
+import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import DropMenu, { type MenuItem } from './DropMenu.vue'
 
 const session = useSession()
@@ -213,6 +214,7 @@ const viewMenu = computed<MenuItem[]>(() => {
         </button>
         <span class="topbar__sep" />
       </template>
+      <ThemeSwitcher />
       <button
         class="s-btn s-btn--ghost"
         title="保存后在 Viewer SDK 中打开，即数据大屏中的效果"
@@ -256,8 +258,8 @@ const viewMenu = computed<MenuItem[]>(() => {
   flex-shrink: 0;
   place-items: center;
   border-radius: 6px;
-  background: linear-gradient(135deg, #f2a66c, #d9703a);
-  color: #1b130c;
+  background: linear-gradient(135deg, var(--s-accent-2), var(--s-accent));
+  color: var(--s-on-accent);
   font-size: 12px;
   font-weight: 800;
 }

@@ -18,8 +18,10 @@ import {
   Tag,
   Unlock,
 } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { type ModelPart, targetNodeId, type SceneNodeV2 } from '@twin-studio/core'
+import { type MenuSections, useContextMenu } from '@/components/ui/menu'
+import UiMenu from '@/components/ui/UiMenu.vue'
 import { useSession } from '@/studio/context'
 import { saveSelectionAsComponent } from '@/studio/saveComponent'
 import { useShell } from '@/studio/shell'
@@ -33,7 +35,7 @@ const openModels = reactive(new Set<string>())
 /** Parts whose open state differs from the default (wrapper parts that hold everything start open). */
 const flippedParts = reactive(new Set<string>())
 const drag = reactive({ ids: [] as string[], over: '' as string, zone: '' as '' | 'before' | 'into' | 'after' })
-const menu = reactive({ open: false, x: 0, y: 0 })
+const menu = useContextMenu()
 const renameText = ref('')
 const renameInput = ref<HTMLInputElement[]>()
 
@@ -278,77 +280,59 @@ function resetDrag(): void {
 // ---------------------------------------------------------------- context menu
 
 function openMenu(event: MouseEvent, row: NodeRow | null): void {
-  event.preventDefault()
   if (row && !selected.value.has(row.node.id)) session.select([row.node.id])
-  menu.open = true
-  menu.x = event.clientX
-  menu.y = event.clientY
-  setTimeout(() => document.addEventListener('pointerdown', closeMenu, { once: true }))
+  menu.openAt(event)
 }
 
-function closeMenu(): void {
-  menu.open = false
-}
-
-function act(action: () => void): void {
-  menu.open = false
-  action()
-}
-
-const menuItems = computed(() => {
+/** 右键菜单：点在模型部件上是部件菜单，否则是对象菜单（没选中东西时只有「新建分组」）。 */
+const menuSections = computed<MenuSections>(() => {
   const part = session.part.value
   if (part) {
     const hidden = session.partOverride(part.nodeId, part.assetNodeId)?.visible === false
     return [
-      { label: '聚焦', action: () => void session.focusSelection() },
-      { label: hidden ? '显示' : '隐藏', action: () => session.setPartVisible(part.nodeId, part.assetNodeId, hidden) },
-      { label: '恢复部件', action: () => session.resetPart(part.nodeId, part.assetNodeId) },
-      { label: '回到模型', action: () => session.selectParent() },
-      { label: '删除部件', action: () => session.deleteParts(part.nodeId, [part.assetNodeId]), danger: true },
+      [
+        { label: '聚焦', action: () => void session.focusSelection() },
+        {
+          label: hidden ? '显示' : '隐藏',
+          action: () => session.setPartVisible(part.nodeId, part.assetNodeId, hidden),
+        },
+        { label: '恢复部件', action: () => session.resetPart(part.nodeId, part.assetNodeId) },
+        { label: '回到模型', action: () => session.selectParent() },
+      ],
+      [{ label: '删除部件', action: () => session.deleteParts(part.nodeId, [part.assetNodeId]), danger: true }],
     ]
   }
   const nodes = session.selectedNodes
+  const newGroup = [{ label: '新建分组', action: () => void session.addGroup() }]
+  if (!nodes.length) return [newGroup]
   const one = nodes.length === 1 ? nodes[0]! : null
-  const items: Array<{ label: string; action: () => void; danger?: boolean } | null> = [
-    one ? { label: '重命名', action: () => void startRename(one) } : null,
-    nodes.length ? { label: '聚焦', action: () => void session.focusSelection() } : null,
-    nodes.length ? { label: '创建副本', action: () => session.duplicateSelection() } : null,
-    nodes.length ? { label: '组合', action: () => void session.groupSelection() } : null,
-    nodes.some(node => node.kind === 'group') ? { label: '取消组合', action: () => session.ungroupSelection() } : null,
-    nodes.length
-      ? {
-          label: nodes.every(node => node.visible) ? '隐藏' : '显示',
-          action: () => session.toggleVisibilityOfSelection(),
-        }
-      : null,
-    nodes.length
-      ? {
-          label: nodes.every(node => node.locked) ? '解锁' : '锁定',
-          action: () =>
-            session.setLocked(
-              nodes.map(node => node.id),
-              !nodes.every(node => node.locked),
-            ),
-        }
-      : null,
-    nodes.length
-      ? {
-          label: '移到最外层',
-          action: () =>
-            session.reparent(
-              nodes.map(node => node.id),
-              null,
-            ),
-        }
-      : null,
-    nodes.length ? { label: '保存为组件…', action: () => void saveSelectionAsComponent(session) } : null,
-    { label: '新建分组', action: () => void session.addGroup() },
-    nodes.length ? { label: '删除', action: () => session.deleteSelection(), danger: true } : null,
+  const ids = nodes.map(node => node.id)
+  const allLocked = nodes.every(node => node.locked)
+  return [
+    [
+      ...(one ? [{ label: '重命名', action: () => void startRename(one) }] : []),
+      { label: '聚焦', action: () => void session.focusSelection() },
+      { label: '创建副本', action: () => session.duplicateSelection() },
+    ],
+    [
+      { label: '组合', action: () => void session.groupSelection() },
+      ...(nodes.some(node => node.kind === 'group')
+        ? [{ label: '取消组合', action: () => session.ungroupSelection() }]
+        : []),
+      { label: '移到最外层', action: () => session.reparent(ids, null) },
+      ...newGroup,
+    ],
+    [
+      {
+        label: nodes.every(node => node.visible) ? '隐藏' : '显示',
+        action: () => session.toggleVisibilityOfSelection(),
+      },
+      { label: allLocked ? '解锁' : '锁定', action: () => session.setLocked(ids, !allLocked) },
+      { label: '保存为组件…', action: () => void saveSelectionAsComponent(session) },
+    ],
+    [{ label: '删除', action: () => session.deleteSelection(), danger: true }],
   ]
-  return items.filter((item): item is NonNullable<typeof item> => item !== null)
 })
-
-onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
 </script>
 
 <template>
@@ -494,24 +478,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
       {{ session.doc.value.nodes.length }} 个对象 · 已选 {{ session.selection.value.length }}
     </div>
 
-    <Teleport to="body">
-      <div
-        v-if="menu.open"
-        class="tree-menu s-float studio-popup"
-        :style="{ left: `${menu.x}px`, top: `${menu.y}px` }"
-        @pointerdown.stop
-      >
-        <button
-          v-for="item in menuItems"
-          :key="item.label"
-          class="tree-menu__item"
-          :class="{ 'is-danger': item.danger }"
-          @click="act(item.action)"
-        >
-          {{ item.label }}
-        </button>
-      </div>
-    </Teleport>
+    <UiMenu v-if="menu.visible" :x="menu.x" :y="menu.y" :sections="menuSections" @close="menu.close()" />
   </div>
 </template>
 
@@ -560,7 +527,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
 }
 .tree__row:hover,
 .tree__row.is-hovered {
-  background: rgb(255 255 255 / 0.035);
+  background: var(--s-hover);
 }
 .tree__row.is-selected {
   background: var(--s-accent-soft);
@@ -611,25 +578,25 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
   color: var(--s-fg-3);
 }
 .tree__icon.is-model {
-  color: #c9b28f;
+  color: var(--s-kind-model);
 }
 .tree__icon.is-group {
-  color: #c7a35a;
+  color: var(--s-kind-group);
 }
 .tree__icon.is-path {
-  color: #5fc7e8;
+  color: var(--s-kind-path);
 }
 .tree__icon.is-area {
-  color: #5cc4ae;
+  color: var(--s-kind-area);
 }
 .tree__icon.is-label {
-  color: #e8a26c;
+  color: var(--s-kind-label);
 }
 .tree__icon.is-light {
-  color: #f0d070;
+  color: var(--s-kind-light);
 }
 .tree__icon.is-part {
-  color: #9d8f7a;
+  color: var(--s-kind-part);
 }
 .tree__row.is-part .tree__name {
   color: var(--s-fg-2);
@@ -694,37 +661,5 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
   flex-shrink: 0;
   padding: 6px 12px;
   border-top: 1px solid var(--s-line);
-}
-.tree-menu {
-  position: fixed;
-  z-index: 3000;
-  min-width: 150px;
-  padding: 4px;
-  font:
-    12px/1.45 Inter,
-    system-ui,
-    'PingFang SC',
-    sans-serif;
-}
-.tree-menu__item {
-  display: block;
-  width: 100%;
-  height: 27px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: #e8e6e1;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.tree-menu__item:hover {
-  background: rgb(232 137 74 / 0.14);
-  color: #f4ab78;
-}
-.tree-menu__item.is-danger:hover {
-  background: rgb(229 103 92 / 0.15);
-  color: #e5675c;
 }
 </style>

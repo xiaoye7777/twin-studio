@@ -358,8 +358,8 @@ div.card {
   place-items: center;
   overflow: hidden;
   border-radius: 4px;
-  background: radial-gradient(circle at 50% 40%, #2c2e33, #1a1b1e 75%);
-  color: #4c4e54;
+  background: radial-gradient(circle at 50% 40%, var(--s-raised), var(--s-panel-2) 75%);
+  color: var(--s-fg-4);
 }
 .card__thumb img {
   width: 100%;

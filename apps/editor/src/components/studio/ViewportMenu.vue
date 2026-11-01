@@ -1,21 +1,17 @@
 <script setup lang="ts">
 import { Vector3 } from 'three'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed } from 'vue'
+import type { MenuItem } from '@/components/ui/menu'
+import UiMenu from '@/components/ui/UiMenu.vue'
 import { useSession } from '@/studio/context'
 import { saveSelectionAsComponent } from '@/studio/saveComponent'
 import { useShell } from '@/studio/shell'
 
-interface Item {
-  label: string
-  shortcut?: string
-  action: () => void
-  danger?: boolean
-}
+type Item = MenuItem
 
 const session = useSession()
 const shell = useShell()
 const menu = computed(() => session.ui.contextMenu)
-const element = ref<HTMLElement>()
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 const point = computed(() => (menu.value?.point ? new Vector3(...menu.value.point) : null))
 
@@ -97,105 +93,16 @@ const sections = computed<Item[][]>(() => {
     [{ label: '全选', shortcut: `${mod}A`, action: () => session.selectAll() }],
   ]
 })
-
-// Kept on screen: flips left / up near the right and bottom edges.
-const position = computed(() => {
-  const m = menu.value
-  if (!m) return {}
-  const width = 200
-  const height = sections.value.flat().length * 28 + sections.value.length * 9 + 8
-  return {
-    left: `${Math.min(m.x, window.innerWidth - width - 8)}px`,
-    top: `${m.y + height > window.innerHeight - 8 ? Math.max(8, m.y - height) : m.y}px`,
-  }
-})
-
-function run(item: Item): void {
-  // Actions read the clicked point from the open menu, so it closes afterwards.
-  item.action()
-  session.closeContextMenu()
-}
-
-const close = (event: Event) => {
-  if (event instanceof KeyboardEvent && event.key !== 'Escape') return
-  if (event.target instanceof Node && element.value?.contains(event.target)) return
-  session.closeContextMenu()
-}
-const events = ['pointerdown', 'keydown', 'wheel'] as const
-const unlisten = () => events.forEach(type => window.removeEventListener(type, close, true))
-watch(menu, open => {
-  unlisten()
-  // Later than the pointerup that opened the menu, which must not close it.
-  if (open) setTimeout(() => events.forEach(type => window.addEventListener(type, close, true)))
-})
-onBeforeUnmount(unlisten)
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="menu"
-      ref="element"
-      class="viewport-menu s-float studio-popup"
-      :style="position"
-      data-testid="viewport-menu"
-      @contextmenu.prevent
-    >
-      <template v-for="(section, index) in sections" :key="index">
-        <div v-if="index > 0" class="viewport-menu__sep" />
-        <button
-          v-for="item in section"
-          :key="item.label"
-          class="viewport-menu__item"
-          :class="{ 'is-danger': item.danger }"
-          :data-testid="`menu-${item.label}`"
-          @click="run(item)"
-        >
-          <span>{{ item.label }}</span>
-          <span v-if="item.shortcut" class="viewport-menu__key">{{ item.shortcut }}</span>
-        </button>
-      </template>
-    </div>
-  </Teleport>
+  <!-- 三维视口的右键菜单：内容随点到的东西变化（部件 / 选中的对象 / 空白处）。 -->
+  <UiMenu
+    v-if="menu"
+    :x="menu.x"
+    :y="menu.y"
+    :sections="sections"
+    testid="viewport-menu"
+    @close="session.closeContextMenu()"
+  />
 </template>
-
-<style scoped>
-.viewport-menu {
-  position: fixed;
-  z-index: 3000;
-  display: flex;
-  width: 200px;
-  flex-direction: column;
-  padding: 4px;
-}
-.viewport-menu__item {
-  display: flex;
-  height: 28px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--s-fg);
-  font-size: 12.5px;
-  text-align: left;
-  cursor: pointer;
-}
-.viewport-menu__item:hover {
-  background: var(--s-hover);
-}
-.viewport-menu__item.is-danger {
-  color: var(--s-danger);
-}
-.viewport-menu__key {
-  color: var(--s-fg-3);
-  font-family: var(--s-mono);
-  font-size: 11px;
-}
-.viewport-menu__sep {
-  height: 1px;
-  margin: 4px 6px;
-  background: var(--s-line);
-}
-</style>

@@ -442,7 +442,7 @@ const statusText = computed(() => {
   cursor: pointer;
 }
 .picker__current:hover {
-  border-color: #45464c;
+  border-color: var(--s-line-strong);
 }
 .picker__current strong {
   font-size: 12.5px;
@@ -549,7 +549,7 @@ const statusText = computed(() => {
   color: var(--s-fg);
 }
 .s-select.is-variable {
-  border-color: rgb(111 179 224 / 0.5);
+  border-color: color-mix(in srgb, var(--s-data) 50%, transparent);
   color: var(--s-data);
 }
 .order {

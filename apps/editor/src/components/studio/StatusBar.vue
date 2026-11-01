@@ -58,7 +58,7 @@ const cursor = computed(() => (ui.cursor ? ui.cursor.map(value => value.toFixed(
   white-space: nowrap;
 }
 .status__item .s-dot {
-  color: #55565b;
+  color: var(--s-fg-4);
 }
 .status__item.is-connected .s-dot {
   color: var(--s-ok);

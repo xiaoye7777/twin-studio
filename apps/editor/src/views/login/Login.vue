@@ -112,14 +112,14 @@ async function login() {
   overflow: hidden;
   padding: 36px 48px;
   border-right: 1px solid var(--s-line);
-  background: #121417;
+  background: var(--s-bg);
 }
 .login__grid {
   position: absolute;
   inset: -40% -20% 0;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    linear-gradient(var(--s-canvas-dot) 1px, transparent 1px),
+    linear-gradient(90deg, var(--s-canvas-dot) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse at 50% 70%, #000 20%, transparent 70%);
   transform: perspective(700px) rotateX(58deg);
@@ -132,7 +132,7 @@ async function login() {
   width: 70%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(232 137 74 / 0.22), transparent 65%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--s-accent) 22%, transparent), transparent 65%);
   filter: blur(10px);
 }
 .login__brand {
@@ -159,8 +159,8 @@ async function login() {
   height: 34px;
   place-items: center;
   border-radius: 9px;
-  background: linear-gradient(135deg, #f2a66c, #d9703a);
-  color: #1b130c;
+  background: linear-gradient(135deg, var(--s-accent-2), var(--s-accent));
+  color: var(--s-on-accent);
   font-size: 17px;
   font-weight: 800;
 }

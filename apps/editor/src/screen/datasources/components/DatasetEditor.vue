@@ -503,9 +503,9 @@ h4:first-child {
   align-items: baseline;
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid rgb(116 192 142 / 0.35);
+  border: 1px solid color-mix(in srgb, var(--s-ok) 35%, transparent);
   border-radius: var(--s-radius-sm);
-  background: rgb(116 192 142 / 0.08);
+  background: color-mix(in srgb, var(--s-ok) 8%, transparent);
   color: var(--s-ok);
 }
 .result span {
@@ -518,8 +518,8 @@ h4:first-child {
   line-height: 1.6;
 }
 .result.is-error {
-  border-color: rgb(229 103 92 / 0.4);
-  background: rgb(229 103 92 / 0.08);
+  border-color: color-mix(in srgb, var(--s-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--s-danger) 8%, transparent);
   color: var(--s-danger);
 }
 .tree {

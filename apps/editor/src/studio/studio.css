@@ -1,39 +1,7 @@
 /*
- * Twin Studio editor design system. Warm graphite surfaces, one ember accent, quiet chrome so the scene
- * stays the brightest thing on screen. Every studio surface uses these tokens.
+ * 编辑器的通用控件样式：面板、页签、按钮、输入框、提示文字等（类名都以 s- 开头）。
+ * 颜色只用 theme/tokens.css 里的变量，所以深色、浅色主题下都成立。
  */
-.studio,
-.studio-home,
-.studio-dialog,
-.studio-popup {
-  --s-bg: #121315;
-  --s-panel: #1a1b1e;
-  --s-panel-2: #202125;
-  --s-raised: #26272b;
-  --s-field: #111214;
-  --s-hover: #2b2c31;
-  --s-active: #34353b;
-  --s-line: #27282c;
-  --s-line-2: #34353a;
-  --s-fg: #e8e6e1;
-  --s-fg-2: #a9a6a0;
-  --s-fg-3: #706e6a;
-  --s-accent: #e8894a;
-  --s-accent-2: #f4ab78;
-  --s-accent-soft: rgb(232 137 74 / 0.14);
-  --s-accent-line: rgb(232 137 74 / 0.5);
-  --s-ok: #74c08e;
-  --s-warn: #e2b456;
-  --s-danger: #e5675c;
-  --s-data: #6fb3e0;
-  --s-x: #d8695e;
-  --s-y: #8bbd6b;
-  --s-z: #6c9ad6;
-  --s-radius: 6px;
-  --s-radius-sm: 4px;
-  --s-shadow: 0 10px 30px rgb(0 0 0 / 0.38), 0 1px 0 rgb(255 255 255 / 0.03) inset;
-  --s-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
-}
 
 .studio {
   position: fixed;
@@ -42,16 +10,8 @@
   grid-template-rows: 44px 1fr 24px;
   background: var(--s-bg);
   color: var(--s-fg);
-  font:
-    12px/1.45 Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font: 12px/1.45 var(--s-font);
   font-variant-numeric: tabular-nums;
-  color-scheme: dark;
   user-select: none;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -60,11 +20,11 @@
 .studio * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #3a3b40 transparent;
+  scrollbar-color: var(--s-scrollbar) transparent;
 }
 
 .studio ::selection {
-  background: rgb(232 137 74 / 0.35);
+  background: var(--s-selection);
 }
 
 .studio input,
@@ -149,7 +109,7 @@
 }
 
 .s-empty svg {
-  color: #4a4b50;
+  color: var(--s-fg-4);
 }
 
 .s-hint {
@@ -192,7 +152,7 @@
 }
 
 .s-btn:hover {
-  border-color: #46474d;
+  border-color: var(--s-line-strong);
   background: var(--s-hover);
 }
 
@@ -208,7 +168,7 @@
 .s-btn--primary {
   border-color: transparent;
   background: var(--s-accent);
-  color: #1b130c;
+  color: var(--s-on-accent);
   font-weight: 600;
 }
 
@@ -229,7 +189,7 @@
 }
 
 .s-btn--danger:hover {
-  border-color: rgb(229 103 92 / 0.5);
+  border-color: color-mix(in srgb, var(--s-danger) 50%, transparent);
   color: var(--s-danger);
 }
 
@@ -304,27 +264,27 @@
 .s-select {
   appearance: none;
   padding-right: 22px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23807e79' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238895a0' stroke-width='1.4'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   cursor: pointer;
 }
 
 .s-select option {
-  background: #1d1e21;
+  background: var(--s-panel-2);
 }
 
 .s-input:hover,
 .s-select:hover,
 .s-textarea:hover {
-  border-color: #45464c;
+  border-color: var(--s-line-strong);
 }
 
 .s-input:focus,
 .s-select:focus,
 .s-textarea:focus {
   border-color: var(--s-accent-line);
-  box-shadow: 0 0 0 2px rgb(232 137 74 / 0.14);
+  box-shadow: 0 0 0 2px var(--s-accent-soft);
 }
 
 .s-kbd {
@@ -360,22 +320,22 @@
 }
 
 .s-badge--ok {
-  background: rgb(116 192 142 / 0.14);
+  background: color-mix(in srgb, var(--s-ok) 14%, transparent);
   color: var(--s-ok);
 }
 
 .s-badge--warn {
-  background: rgb(226 180 86 / 0.14);
+  background: color-mix(in srgb, var(--s-warn) 14%, transparent);
   color: var(--s-warn);
 }
 
 .s-badge--danger {
-  background: rgb(229 103 92 / 0.15);
+  background: color-mix(in srgb, var(--s-danger) 15%, transparent);
   color: var(--s-danger);
 }
 
 .s-badge--data {
-  background: rgb(111 179 224 / 0.14);
+  background: color-mix(in srgb, var(--s-data) 14%, transparent);
   color: var(--s-data);
 }
 
@@ -389,28 +349,9 @@
 
 /* Floating chrome over the viewport. */
 .s-float {
-  border: 1px solid rgb(255 255 255 / 0.06);
+  border: 1px solid var(--s-float-line);
   border-radius: 8px;
-  background: rgb(24 25 28 / 0.82);
+  background: var(--s-float);
   box-shadow: var(--s-shadow);
   backdrop-filter: blur(10px);
-}
-
-/* Element Plus dialogs and popovers in the studio palette. */
-html.dark {
-  --el-bg-color: #1d1e21;
-  --el-bg-color-overlay: #222327;
-  --el-border-color: #34353a;
-  --el-border-color-light: #2d2e33;
-  --el-text-color-primary: #e8e6e1;
-  --el-text-color-regular: #c9c6c0;
-  --el-color-primary: #e8894a;
-  --el-color-primary-light-3: #f0a573;
-  --el-color-primary-light-5: #b9764a;
-  --el-color-primary-light-7: #6b4a33;
-  --el-color-primary-light-8: #4f3a2b;
-  --el-color-primary-light-9: #33281f;
-  --el-color-primary-dark-2: #c97335;
-  --el-fill-color-blank: #141517;
-  --el-mask-color: rgb(8 9 10 / 0.6);
 }

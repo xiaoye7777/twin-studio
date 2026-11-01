@@ -181,7 +181,7 @@ function setColor(index: number, color: string): void {
   max-height: 90px;
   border-radius: 4px;
   object-fit: contain;
-  background: #0b0d10;
+  background: var(--s-field);
 }
 .field__palette {
   display: flex;

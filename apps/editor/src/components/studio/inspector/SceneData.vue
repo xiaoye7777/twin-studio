@@ -126,7 +126,7 @@ const devices = computed(() => {
   height: 7px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #4a4b50;
+  background: var(--s-fg-4);
 }
 .device__dot.is-live {
   background: var(--s-ok);

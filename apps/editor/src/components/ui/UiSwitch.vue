@@ -26,7 +26,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
   padding: 0;
   border: 0;
   border-radius: 8px;
-  background: #3a3b40;
+  background: var(--s-line-strong);
   cursor: pointer;
   transition: background-color 140ms ease;
 }
@@ -40,7 +40,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #f2f0ec;
+  background: var(--s-knob);
   transition: transform 140ms ease;
 }
 .ui-switch.is-on .ui-switch__knob {

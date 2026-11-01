@@ -59,7 +59,7 @@ function applyText(): void {
   flex-shrink: 0;
   margin: 0 3px;
   border-radius: 3px;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+  box-shadow: inset 0 0 0 1px var(--s-line-2);
   cursor: pointer;
 }
 .ui-color__swatch input {

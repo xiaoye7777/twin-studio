@@ -134,7 +134,7 @@ const scalarClass = computed(() =>
   transform: rotate(90deg);
 }
 .node__key {
-  color: #c9a7e8;
+  color: var(--s-guide);
 }
 .node__summary {
   color: var(--s-fg-3);
@@ -144,13 +144,13 @@ const scalarClass = computed(() =>
   text-overflow: ellipsis;
 }
 .node__value.is-number {
-  color: #8fd1a6;
+  color: var(--s-ok);
 }
 .node__value.is-string {
-  color: #e9c08a;
+  color: var(--s-warn);
 }
 .node__value.is-other {
-  color: #7fb4e8;
+  color: var(--s-data);
 }
 .node__pick {
   display: none;
@@ -172,7 +172,7 @@ const scalarClass = computed(() =>
   display: inline-flex;
 }
 .node__pick.is-list {
-  border-color: rgb(111 179 224 / 0.45);
+  border-color: color-mix(in srgb, var(--s-data) 45%, transparent);
   color: var(--s-data);
 }
 .node__line.is-selected .node__pick {

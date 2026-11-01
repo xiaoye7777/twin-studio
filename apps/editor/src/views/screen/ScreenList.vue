@@ -14,6 +14,8 @@ import {
 } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import type { MenuSections } from '@/components/ui/menu'
+import UiDropdown from '@/components/ui/UiDropdown.vue'
 import { useProjectStore } from '@/stores/project'
 import CreateScreenDialog from '@/screen/components/CreateScreenDialog.vue'
 import ScreenThumbnail from '@/screen/components/ScreenThumbnail.vue'
@@ -27,7 +29,6 @@ const screens = useScreenStore()
 const projects = useProjectStore()
 const sources = useDataSourceStore()
 const creating = ref(false)
-const menu = ref('')
 const importInput = ref<HTMLInputElement>()
 
 onMounted(() => void screens.refresh())
@@ -42,13 +43,25 @@ function edit(screen: ScreenDocument): void {
 }
 
 function preview(screen: ScreenDocument): void {
-  menu.value = ''
   window.open(router.resolve({ name: 'screen-preview', params: { screenId: screen.id } }).href, '_blank')
 }
 
 /** The big screen: the published version (the draft until there is one). */
 function play(screen: ScreenDocument): void {
   window.open(router.resolve({ name: 'screen-play', params: { screenId: screen.id } }).href, '_blank')
+}
+
+/** 卡片右下角「更多」菜单。 */
+function cardMenu(screen: ScreenDocument): MenuSections {
+  return [
+    [
+      { label: '预览草稿', icon: Eye, action: () => preview(screen) },
+      { label: '重命名', icon: Type, action: () => void rename(screen) },
+      { label: '创建副本', icon: Copy, action: () => void duplicate(screen) },
+      { label: '导出 JSON', icon: FileUp, action: () => void exportScreen(screen) },
+    ],
+    [{ label: '删除', icon: Trash2, danger: true, action: () => void remove(screen) }],
+  ]
 }
 
 function status(screen: ScreenDocument): { label: string; tone: string } {
@@ -58,7 +71,6 @@ function status(screen: ScreenDocument): { label: string; tone: string } {
 }
 
 async function rename(screen: ScreenDocument): Promise<void> {
-  menu.value = ''
   try {
     const { value } = await ElMessageBox.prompt('大屏名称', '重命名', {
       inputValue: screen.name,
@@ -74,13 +86,11 @@ async function rename(screen: ScreenDocument): Promise<void> {
 }
 
 async function duplicate(screen: ScreenDocument): Promise<void> {
-  menu.value = ''
   await screens.duplicate(screen)
   ElMessage.success('已创建副本')
 }
 
 async function remove(screen: ScreenDocument): Promise<void> {
-  menu.value = ''
   try {
     await ElMessageBox.confirm(`删除「${screen.name}」？此操作不可撤销。`, '删除大屏', {
       type: 'warning',
@@ -96,7 +106,6 @@ async function remove(screen: ScreenDocument): Promise<void> {
 
 /** The screen file carries the interfaces its widgets use (without passwords or tokens). */
 async function exportScreen(screen: ScreenDocument): Promise<void> {
-  menu.value = ''
   await sources.load()
   const ids = new Set(
     screen.widgets.flatMap(widget =>
@@ -167,7 +176,6 @@ async function importScreen(event: Event): Promise<void> {
         :key="screen.id"
         class="card"
         :data-testid="`screen-card-${screen.name}`"
-        @mouseleave="menu = ''"
       >
         <button class="card__cover" :title="`编辑 ${screen.name}`" @click="edit(screen)">
           <img v-if="screen.cover" class="card__image" :src="screen.cover" alt="" />
@@ -190,18 +198,11 @@ async function importScreen(event: Event): Promise<void> {
           <button class="s-icon-btn" title="放映（已发布的版本）" data-testid="screen-preview" @click="play(screen)">
             <MonitorPlay :size="15" />
           </button>
-          <div class="card__more">
-            <button class="s-icon-btn" title="更多" @click="menu = menu === screen.id ? '' : screen.id">
-              <MoreHorizontal :size="15" />
-            </button>
-            <div v-if="menu === screen.id" class="card__menu s-float">
-              <button @click="preview(screen)"><Eye :size="13" />预览草稿</button>
-              <button @click="rename(screen)"><Type :size="13" />重命名</button>
-              <button @click="duplicate(screen)"><Copy :size="13" />创建副本</button>
-              <button @click="exportScreen(screen)"><FileUp :size="13" />导出 JSON</button>
-              <button class="is-danger" @click="remove(screen)"><Trash2 :size="13" />删除</button>
-            </div>
-          </div>
+          <UiDropdown :sections="cardMenu(screen)" align="end" :width="150">
+            <template #default="{ toggle }">
+              <button class="s-icon-btn" title="更多" @click="toggle"><MoreHorizontal :size="15" /></button>
+            </template>
+          </UiDropdown>
         </div>
       </article>
     </div>
@@ -330,44 +331,12 @@ async function importScreen(event: Event): Promise<void> {
   color: var(--s-fg-3);
 }
 .card__status.is-changed {
-  background: rgb(226 180 86 / 0.14);
+  background: color-mix(in srgb, var(--s-warn) 14%, transparent);
   color: var(--s-warn);
 }
 .card__status.is-live {
-  background: rgb(116 192 142 / 0.14);
+  background: color-mix(in srgb, var(--s-ok) 14%, transparent);
   color: var(--s-ok);
-}
-.card__more {
-  position: relative;
-}
-.card__menu {
-  position: absolute;
-  z-index: 5;
-  top: 30px;
-  right: 0;
-  display: flex;
-  min-width: 140px;
-  flex-direction: column;
-  padding: 4px;
-}
-.card__menu button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--s-fg);
-  font-size: 12.5px;
-  text-align: left;
-  cursor: pointer;
-}
-.card__menu button:hover {
-  background: var(--s-hover);
-}
-.card__menu button.is-danger {
-  color: var(--s-danger);
 }
 .screens__empty {
   display: flex;

@@ -243,7 +243,7 @@ function remove(id: string): void {
   align-items: center;
   gap: 6px;
   padding: 0 8px 4px;
-  color: #7dd3fc;
+  color: var(--s-accent);
 }
 .event__head .s-select {
   flex: 1;

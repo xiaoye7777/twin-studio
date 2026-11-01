@@ -117,7 +117,7 @@ function onDragStart(event: DragEvent, type: string): void {
   color: var(--s-fg);
 }
 .item svg {
-  color: #7dd3fc;
+  color: var(--s-accent);
 }
 .item span {
   overflow: hidden;

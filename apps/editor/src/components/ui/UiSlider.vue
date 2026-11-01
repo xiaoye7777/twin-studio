@@ -54,22 +54,22 @@ const emit = defineEmits<{ update: [value: number]; commit: [] }>()
 .ui-slider input[type='range']::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--s-accent) var(--fill), #3a3b40 var(--fill));
+  background: linear-gradient(to right, var(--s-accent) var(--fill), var(--s-line-2) var(--fill));
 }
 .ui-slider input[type='range']::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
   margin-top: -4.5px;
   appearance: none;
-  border: 2px solid #1a1b1e;
+  border: 2px solid var(--s-panel);
   border-radius: 50%;
-  background: #f2f0ec;
+  background: var(--s-knob);
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.3);
 }
 .ui-slider input[type='range']::-moz-range-track {
   height: 3px;
   border-radius: 2px;
-  background: #3a3b40;
+  background: var(--s-line-2);
 }
 .ui-slider input[type='range']::-moz-range-progress {
   height: 3px;
@@ -79,9 +79,9 @@ const emit = defineEmits<{ update: [value: number]; commit: [] }>()
 .ui-slider input[type='range']::-moz-range-thumb {
   width: 10px;
   height: 10px;
-  border: 2px solid #1a1b1e;
+  border: 2px solid var(--s-panel);
   border-radius: 50%;
-  background: #f2f0ec;
+  background: var(--s-knob);
 }
 .ui-slider__number {
   width: 64px;

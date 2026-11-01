@@ -456,14 +456,14 @@ async function createFromCurl(): Promise<void> {
 .method {
   padding: 1px 0;
   border-radius: 3px;
-  background: rgb(116 192 142 / 0.15);
+  background: color-mix(in srgb, var(--s-ok) 15%, transparent);
   color: var(--s-ok);
   font: 600 10px var(--s-mono);
   text-align: center;
 }
 .method.POST,
 .method.PUT {
-  background: rgb(226 180 86 / 0.15);
+  background: color-mix(in srgb, var(--s-warn) 15%, transparent);
   color: var(--s-warn);
 }
 .curl {

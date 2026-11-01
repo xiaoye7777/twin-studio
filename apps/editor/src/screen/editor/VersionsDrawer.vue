@@ -162,7 +162,7 @@ async function remove(version: ScreenVersion): Promise<void> {
   background: var(--s-panel-2);
 }
 .version.is-live {
-  border-color: rgb(116 192 142 / 0.5);
+  border-color: color-mix(in srgb, var(--s-ok) 50%, transparent);
 }
 .version img,
 .version__blank {
@@ -201,7 +201,7 @@ async function remove(version: ScreenVersion): Promise<void> {
 .version__text em {
   padding: 0 5px;
   border-radius: 3px;
-  background: rgb(116 192 142 / 0.15);
+  background: color-mix(in srgb, var(--s-ok) 15%, transparent);
   color: var(--s-ok);
   font-style: normal;
 }

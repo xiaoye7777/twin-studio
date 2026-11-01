@@ -62,7 +62,7 @@ function submit(): void {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: #a9a6a0;
+  color: var(--s-fg-2);
   font-size: 12px;
 }
 .field .s-input {
@@ -70,6 +70,6 @@ function submit(): void {
   font-size: 13px;
 }
 .field__error {
-  color: #e5675c;
+  color: var(--s-danger);
 }
 </style>
