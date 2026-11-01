@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '@/components/ui/confirm'
+import { ElMessage } from 'element-plus'
 import {
   Box,
   Boxes,
@@ -42,15 +43,13 @@ function addComponent(item: SceneComponentRecord): void {
 }
 
 async function removeComponent(item: SceneComponentRecord): Promise<void> {
-  try {
-    await ElMessageBox.confirm(`从组件库删除「${item.name}」？已放置到场景中的不受影响。`, '删除组件', {
-      customClass: 'studio-dialog',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
+  if (
+    !(await confirmAction(`从组件库删除「${item.name}」？已放置到场景中的不受影响。`, {
+      title: '删除组件',
+      confirm: '删除',
+    }))
+  )
     return
-  }
   await componentStore.remove(item.id)
 }
 

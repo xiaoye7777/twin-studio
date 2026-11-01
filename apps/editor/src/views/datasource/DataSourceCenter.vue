@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '@/components/ui/confirm'
+import { ElMessage } from 'element-plus'
 import {
   Copy,
   Download,
@@ -106,15 +107,14 @@ function editConnection(connection: ApiConnection): void {
 
 async function removeConnection(connection: ApiConnection): Promise<void> {
   const count = store.datasetsOf(connection.id).length
-  try {
-    await ElMessageBox.confirm(
-      `删除数据服务「${connection.name}」及其 ${count} 个接口？使用这些接口的组件将没有数据。`,
-      '删除数据服务',
-      { type: 'warning', customClass: 'studio-dialog', confirmButtonText: '删除', cancelButtonText: '取消' },
-    )
-  } catch {
+  if (
+    !(await confirmAction(`删除数据服务「${connection.name}」及其 ${count} 个接口？使用这些接口的组件将没有数据。`, {
+      title: '删除数据服务',
+      confirm: '删除',
+      danger: true,
+    }))
+  )
     return
-  }
   await store.removeConnection(connection.id)
 }
 
@@ -193,17 +193,15 @@ async function duplicateDataset(dataset: ApiDataset): Promise<void> {
 
 async function removeDataset(dataset: ApiDataset): Promise<void> {
   const users = usage.value.get(dataset.id) ?? []
-  try {
-    await ElMessageBox.confirm(
+  if (
+    !(await confirmAction(
       users.length
         ? `「${dataset.name}」正被 ${users.length} 个大屏使用（${users.slice(0, 3).join('、')}${users.length > 3 ? ' 等' : ''}），删除后这些组件将没有数据。确定删除？`
         : `删除接口「${dataset.name}」？`,
-      '删除接口',
-      { type: 'warning', customClass: 'studio-dialog', confirmButtonText: '删除', cancelButtonText: '取消' },
-    )
-  } catch {
+      { title: '删除接口', confirm: '删除', danger: true },
+    ))
+  )
     return
-  }
   await store.removeDataset(dataset.id)
 }
 

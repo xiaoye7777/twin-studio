@@ -12,6 +12,8 @@
 
 ## 架构
 
+> 第一次读代码先看 **[docs/architecture.md](docs/architecture.md)**（中文导读：整体地图、数据流、从哪个文件读起），core 的细节见 [packages/core/README.md](packages/core/README.md)。
+
 ```
 apps/editor ──┬─> packages/core（引擎 + 文档 + 运行时）
               └─> packages/viewer ──> packages/core   （编辑器「大屏预览」= 导出 zip 后用 SDK 加载）

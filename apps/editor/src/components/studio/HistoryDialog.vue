@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '@/components/ui/confirm'
+import { ElMessage } from 'element-plus'
 import { History, ImageOff, RotateCcw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { SceneHistoryRepository, type SceneSnapshotMeta } from '@/infrastructure/history/SceneHistoryRepository'
@@ -54,15 +55,13 @@ async function create(): Promise<void> {
 }
 
 async function restore(item: SceneSnapshotMeta): Promise<void> {
-  try {
-    await ElMessageBox.confirm(
+  if (
+    !(await confirmAction(
       `用「${item.label}」（${when(item.createdAt)}）替换当前场景？当前场景会先保存为一个版本，也可以撤销。`,
-      '恢复版本',
-      { customClass: 'studio-dialog', confirmButtonText: '恢复', cancelButtonText: '取消' },
-    )
-  } catch {
+      { title: '恢复版本', confirm: '恢复' },
+    ))
+  )
     return
-  }
   try {
     await session.restoreSnapshot(item.id)
     shell.dialog = null

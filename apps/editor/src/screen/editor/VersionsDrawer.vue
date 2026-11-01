@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '@/components/ui/confirm'
+import { ElMessage } from 'element-plus'
 import { Bookmark, Clock3, Eye, History, Rocket, RotateCcw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -54,15 +55,13 @@ function preview(version: ScreenVersion): void {
 }
 
 async function restore(version: ScreenVersion): Promise<void> {
-  try {
-    await ElMessageBox.confirm(
+  if (
+    !(await confirmAction(
       `恢复到「${version.label}」（${time(version.createdAt)}）？当前内容会先自动保存为一个版本，恢复后也可以撤销。`,
-      '恢复历史版本',
-      { customClass: 'studio-dialog', confirmButtonText: '恢复', cancelButtonText: '取消' },
-    )
-  } catch {
+      { title: '恢复历史版本', confirm: '恢复' },
+    ))
+  )
     return
-  }
   await session.restore(version)
   ElMessage.success('已恢复；需要放映这个版本时请重新发布')
 }

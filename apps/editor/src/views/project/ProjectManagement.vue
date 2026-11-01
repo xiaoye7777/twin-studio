@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { confirmAction } from '@/components/ui/confirm'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { FileUp, Plus, Sparkles } from 'lucide-vue-next'
 import { ref } from 'vue'
@@ -89,23 +90,11 @@ async function renameProject(project: Project): Promise<void> {
 }
 
 async function removeProject(project: Project): Promise<void> {
-  try {
-    await ElMessageBox.confirm(
-      `删除「${project.name}」？场景数据和历史版本将从本机移除，此操作不可撤销。建议先导出项目包备份。`,
-      '删除项目',
-      {
-        type: 'warning',
-        customClass: 'studio-dialog',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-      },
-    )
-    await scenes.remove(project.id)
-    void new SceneHistoryRepository().removeProject(project.id).catch(() => {})
-    projectStore.removeProject(project.id)
-  } catch {
-    // Cancelled.
-  }
+  const message = `删除「${project.name}」？场景数据和历史版本将从本机移除，此操作不可撤销。建议先导出项目包备份。`
+  if (!(await confirmAction(message, { title: '删除项目', confirm: '删除', danger: true }))) return
+  await scenes.remove(project.id)
+  void new SceneHistoryRepository().removeProject(project.id).catch(() => {})
+  projectStore.removeProject(project.id)
 }
 
 function editProject(project: Project): void {

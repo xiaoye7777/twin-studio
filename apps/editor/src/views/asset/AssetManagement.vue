@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { confirmAction } from '@/components/ui/confirm'
+import { ElMessage } from 'element-plus'
 import { Box, Image as ImageIcon, Trash2, Upload } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { builtinModels } from '@/editor/builtinModels'
@@ -87,19 +88,12 @@ async function usage(id: string): Promise<string[]> {
 
 async function remove(id: string, name: string): Promise<void> {
   const used = await usage(id)
-  try {
-    await ElMessageBox.confirm(
-      used.length
-        ? `「${name}」正在被 ${used.join('、')} 使用，删除后这些场景中的模型将无法加载。确定删除？`
-        : `删除「${name}」？`,
-      '删除资源',
-      { type: 'warning', customClass: 'studio-dialog', confirmButtonText: '删除', cancelButtonText: '取消' },
-    )
-    await repository.removeBatch([id])
-    await assetStore.refresh()
-  } catch {
-    // Cancelled.
-  }
+  const message = used.length
+    ? `「${name}」正在被 ${used.join('、')} 使用，删除后这些场景中的模型将无法加载。确定删除？`
+    : `删除「${name}」？`
+  if (!(await confirmAction(message, { title: '删除资源', confirm: '删除', danger: true }))) return
+  await repository.removeBatch([id])
+  await assetStore.refresh()
 }
 </script>
 

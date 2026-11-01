@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { confirmAction } from '@/components/ui/confirm'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Copy,
@@ -91,16 +92,14 @@ async function duplicate(screen: ScreenDocument): Promise<void> {
 }
 
 async function remove(screen: ScreenDocument): Promise<void> {
-  try {
-    await ElMessageBox.confirm(`删除「${screen.name}」？此操作不可撤销。`, '删除大屏', {
-      type: 'warning',
-      customClass: 'studio-dialog',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
+  if (
+    !(await confirmAction(`删除「${screen.name}」？此操作不可撤销。`, {
+      title: '删除大屏',
+      confirm: '删除',
+      danger: true,
+    }))
+  )
     return
-  }
   await screens.remove(screen.id)
 }
 
