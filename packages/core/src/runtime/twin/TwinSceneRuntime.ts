@@ -1,3 +1,8 @@
+/*
+ * Viewer 的总装：一块画布上把引擎、SceneSync、数据运行时、告警规则、特效、交互、导览拼在一起，
+ * 并把内部状态翻译成对外的事件（选中、点击、告警、导览状态）。Viewer SDK 的组件就是包了一层它。
+ * 编辑器不用它，编辑器自己在 EditorSession 里组装（多了编辑相关的部分）。
+ */
 import { reactive } from 'vue'
 import type { Object3D } from 'three'
 import { EffectRuntime } from '../effects/EffectRuntime'

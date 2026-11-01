@@ -1,3 +1,7 @@
+/*
+ * 特效运行时：把特效实例（发光、描边、数据标牌、告警标牌、扫描…）画到目标对象上。
+ * 特效配置是纯数据；three.js 资源都归这里管理和释放。具体每种特效长什么样在 effectVisuals.ts。
+ */
 import { Box3, Color, Group, Mesh, Vector3 } from 'three'
 import type { Material, Object3D } from 'three'
 import { cloneEffects, isEffectInstance, type EffectInstance } from '../../domain/effects'

@@ -1,3 +1,8 @@
+/*
+ * TwinEngine：一块画布一个三维引擎（three.js），编辑器和 Viewer 共用。
+ * 负责渲染器、场景、相机（CameraRig）、后期处理（RenderPipeline）、天空光照（Atmosphere）、天气、拾取、截图和帧循环。
+ * 业务对象都放在 content 下；天空、地面、特效、辅助线等是基础设施，拾取时忽略。
+ */
 import {
   AxesHelper,
   Box3,

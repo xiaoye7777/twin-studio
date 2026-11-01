@@ -1,3 +1,6 @@
+/*
+ * 相机：轨道控制（旋转、平移、缩放），以及脚本控制的移动——飞到视角、聚焦对象、导览、镜头范围限制。
+ */
 import CameraControls from 'camera-controls'
 import {
   Box3,

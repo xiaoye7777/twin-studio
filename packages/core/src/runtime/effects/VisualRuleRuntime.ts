@@ -1,3 +1,7 @@
+/*
+ * 告警规则求值：监听运行时数据，对每条启用的规则判断条件（如 temperature > 60），命中就生成特效实例交给 EffectRuntime，
+ * 不再命中或数据源断开时撤掉。同时为每条规则记录诊断信息（为什么没生效），编辑器里能看到。
+ */
 import { watch, type WatchStopHandle } from 'vue'
 import { instantiateTemplate } from '../../domain/effectTemplates'
 import { evaluateCondition, type VisualRule } from '../../domain/visualRules'

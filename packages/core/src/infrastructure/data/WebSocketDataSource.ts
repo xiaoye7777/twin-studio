@@ -1,3 +1,8 @@
+/*
+ * WebSocket 数据源：连接网关，收到的消息按「设备编号 + 变量名」写入运行时状态；断线后 1s → 10s 退避重连。
+ * 连上后先发一条订阅消息（本场景有哪些设备和变量），模拟器据此生成数据，真实网关可以忽略。
+ * mapWebSocketDeviceMessage 也被 HTTP 轮询和静态数据源共用。
+ */
 import type { TwinBinding, TwinRuntimeValueData, TwinVariableDataType } from '../../domain/twin'
 import type { DataSource, DataSourceConnectionStatus } from './DataSource'
 

@@ -1,3 +1,7 @@
+/*
+ * 导览播放：逐步飞到视角（或聚焦对象）、显示字幕、切换图层显隐、停留，然后进入下一步；可循环。
+ * 用户手动操作相机就停止导览，讲解员随时可以接手。
+ */
 import type { CameraBookmark, Tour } from '../../domain/scene'
 import type { CameraView } from '../../engine/CameraRig'
 

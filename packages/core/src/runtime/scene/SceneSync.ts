@@ -1,3 +1,18 @@
+/*
+ * SceneSync：把场景文档变成三维对象，并在文档变化时只更新变了的部分。编辑器和 Viewer 都用它。
+ *
+ * 用法：mount(doc) 第一次建好场景；之后每次文档变化调用 update(newDoc)（排队串行执行，不用等待）。
+ *
+ * 一次更新（apply）分五步：
+ *   1. 新节点、类型变了或换了模型文件的节点：新建三维对象（build，模型要异步加载）
+ *   2. 删除的节点、要重建的节点：从场景里移除旧对象（remove）
+ *   3. 内容变了的节点（引用和上次不同）：原地更新属性（applyNode → applyModel / applyPrimitive / 标签 / 灯光…）
+ *   4. 父子关系变了的节点：重新挂到新的父对象下；新的顶层对象最后交给引擎（引擎此时为它建拾取索引）
+ *   5. 场景设置（天空、光照、后期）变了就更新
+ *
+ * 「变没变」只看对象引用：DocumentStore 产出的新文档里，没改的节点和旧文档是同一个对象。
+ * 模型部件的覆盖（改材质、隐藏、移动）在 applyModel 里先恢复成导入时的样子再套用，所以去掉覆盖就能复原。
+ */
 import { Group, type Material, Mesh, type MeshStandardMaterial, type Object3D } from 'three'
 import {
   applySceneTransform,

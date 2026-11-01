@@ -1,3 +1,7 @@
+/*
+ * 场景文件的版本：按文件里的版本号用对应的 schema 校验，再逐版本迁移到当前版本（目前 v1 → v2）。
+ * 比当前程序更新的文件会报「请升级」，而不是勉强打开。改格式时：加 schema、加迁移、提升版本号。
+ */
 import { z } from 'zod'
 import { isRecord } from '../schemaHelpers'
 import { migrateSceneV1ToV2 } from './sceneMigrations'

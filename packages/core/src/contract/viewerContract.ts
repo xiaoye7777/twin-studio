@@ -1,3 +1,7 @@
+/*
+ * Viewer SDK 对外的类型：事件（选中、点击、悬停、告警、导览）、运行时状态、公开 API。
+ * 改这里要同步 packages/viewer/index.d.ts（手写的对外声明），pnpm type-check 会检查两者是否一致。
+ */
 import type { DeepReadonly } from 'vue'
 import type {
   TwinBinding,

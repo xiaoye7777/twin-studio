@@ -1,3 +1,6 @@
+/*
+ * 读取 .twin.zip 项目包：解压、校验清单和场景文件、把模型等资源放进内存仓库，供 Viewer 加载。
+ */
 import { loadSceneDocument, type SceneDocument } from '../../domain/scene'
 import type { AssetMetadata, AssetRecord, AssetRepository } from '../assets/AssetRepository'
 import type { SceneRepository } from '../scenes/SceneRepository'

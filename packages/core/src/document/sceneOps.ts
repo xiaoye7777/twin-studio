@@ -1,3 +1,8 @@
+/*
+ * 场景文档上的编辑操作（纯函数）：新建空文档、查找节点、删除（连带删掉引用它的绑定、特效、规则）、复制、
+ * 组合 / 取消组合、调整父子关系（保持世界坐标不变）、提取 / 插入组件等。
+ * 写给 Immer 草稿用（会原地修改），也可以用在普通的拷贝上。
+ */
 import { Euler, Matrix4, Quaternion, Vector3 } from 'three'
 import { defaultDataSources } from '../domain/dataSources'
 import {

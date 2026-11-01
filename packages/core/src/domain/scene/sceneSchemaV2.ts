@@ -1,3 +1,7 @@
+/*
+ * 场景文档 v2 的 zod schema：节点、变换、设置、设备绑定、特效、规则、交互、视角、导览、放映、数据源。
+ * 读取任何场景文件都要先过这里的校验；docs/schema/ 下发布的 JSON Schema 由它生成。
+ */
 import { z } from 'zod'
 import { ProjectDataSourcesSchema } from '../dataSources'
 import { EffectInstanceSchema } from '../effects'

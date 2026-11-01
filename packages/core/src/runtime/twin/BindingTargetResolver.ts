@@ -1,3 +1,7 @@
+/*
+ * 绑定目标 ↔ 三维对象：设备绑定、特效、规则用「目标」（某个节点，或某个模型的某个部件）来指对象，
+ * 这里负责在场景里找到对应的三维对象，以及反过来从被点到的对象找出它代表的目标。
+ */
 import type { Object3D } from 'three'
 import { targetNodeId, type TwinBindingTarget } from '../../domain/twin'
 import { findAssetInstanceRoot, getEditorMetadata } from '../scene/objectMetadata'

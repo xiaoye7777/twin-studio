@@ -1,3 +1,7 @@
+/*
+ * 运行时数据状态（Vue 响应式）：设备绑定列表、每个「绑定 + 变量」的当前值、数据源连接状态。
+ * 值只在内存里，不写进文档；runtimeRevision 每次有新值加一，界面和规则据此更新。
+ */
 import { ref, shallowRef } from 'vue'
 import {
   twinBindingTargetKey,

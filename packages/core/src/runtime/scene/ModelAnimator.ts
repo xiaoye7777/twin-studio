@@ -1,3 +1,6 @@
+/*
+ * 模型动画：播放模型文件自带的动画片段，以及让部件旋转（如风机叶片），转速可以跟随设备变量。
+ */
 import {
   type AnimationAction,
   type AnimationClip,

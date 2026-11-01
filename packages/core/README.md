@@ -28,6 +28,8 @@ src/
   contract/        Viewer 对外的类型（事件、状态、API）
 ```
 
+每个关键文件开头都有一段中文说明（做什么、谁在用、要点），打开文件先看那一段。
+
 **阅读顺序建议**：`domain/scene/sceneTypes.ts`（文档长什么样）→ `document/DocumentStore.ts`（怎么改）→
 `runtime/scene/SceneSync.ts`（怎么画出来）→ `runtime/twin/TwinDataRuntime.ts`（数据怎么进来）→
 `runtime/effects/VisualRuleRuntime.ts`（数据怎么变成效果）→ `runtime/twin/TwinSceneRuntime.ts`（Viewer 怎么把以上拼起来）。
@@ -52,7 +54,7 @@ src/
 - `update(doc)` 拿新文档和上次的对比：**节点对象引用没变就跳过**（得益于上面的共享引用），变了才更新对应的三维对象。
   所以改一个节点的颜色，只有那一个对象被重新设置。
 - 每个节点「挂载」为一个 `MountedNode`：三维对象 + 该节点上次应用的数据。类型变了（或模型换了文件）才重建对象，否则原地更新。
-- 不同节点类型各有创建 / 更新函数（`nodeObjects.ts`：基本体、路径、区域、标签、灯光；模型走 `loadGLTFModel`）。
+- 不同节点类型各有创建 / 更新函数，每种一个文件：`runtime/scene/nodes/`（primitive 基本体、path 路径、area 区域、label 标签、light 灯光、shared 共用工具；`nodeObjects.ts` 汇总导出）。模型走 `loadGLTFModel`。
 - **模型部件**：模型内部的子物体可以单独改材质、显隐、位置（`overrides`）。SceneSync 记下每个部件导入时的原始状态（`AssetNodeState`），
   每次先恢复原样再套用覆盖，所以删掉覆盖就能回到原样。
 - 结构变化时（父子关系变了）会先把整棵树从引擎摘下（`suspended`），改完再挂回去，因为引擎在挂上时建立了拾取索引。

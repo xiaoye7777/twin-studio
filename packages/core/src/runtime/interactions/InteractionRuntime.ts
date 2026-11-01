@@ -1,3 +1,7 @@
+/*
+ * 点击交互的执行：预览 / Viewer 中点击、双击、悬停对象时，按场景配置执行动作
+ * （显示 / 隐藏对象、飞到视角、播放导览、选中设备、向宿主发事件……）。
+ */
 import type { Object3D } from 'three'
 import { cloneInteractions, type InteractionTrigger, type SceneInteraction } from '../../domain/interactions'
 import { twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'

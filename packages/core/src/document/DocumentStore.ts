@@ -1,3 +1,11 @@
+/*
+ * DocumentStore：可编辑文档的唯一真相，撤销 / 重做的来源。
+ *
+ * - 文档是冻结的；修改只能 transaction(label, recipe)：recipe 改一个 Immer 草稿，得到新文档和正反两组补丁。
+ * - 撤销 = 应用反向补丁，重做 = 应用正向补丁，任何修改都自动可撤销。
+ * - coalesceKey 相同的连续事务合并成一步（拖动、滑块），seal() 结束合并。
+ * - 没改的部分与旧文档共享引用，订阅者（SceneSync）据此只处理变化的部分。
+ */
 import { applyPatches, type Draft, enablePatches, freeze, type Objectish, type Patch, produceWithPatches } from 'immer'
 
 /** How the document last changed; subscribers use it to tell edits from history navigation and loads. */
