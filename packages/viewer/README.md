@@ -1,4 +1,4 @@
-# @twin-studio/viewer 0.5.0
+# @twin-studio/viewer 0.6.0
 
 Vue 3 项目运行组件。支持 Node 20.16+ 和 pnpm 10.20.0；加载 Editor 导出的 .twin.zip，恢复模型、绑定、实时数据、规则、特效和交互。
 
@@ -53,7 +53,7 @@ viewer.value?.screenshot()                 // 当前画面 PNG
 
 Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消息，不另建 Mock 或 Runtime Store。0.2.0 移除了旧版 dataSource prop / setDataSource()；迁移时把配置移入项目。
 
-**实时值只来自 WebSocket。** 连接未建立、断开或出错时，Runtime State 中没有任何实时值（`runtimeValues` 为空，`getRuntimeValue()` 返回 null），规则特效也会停止；页面上看到数值在变化，就说明 WebSocket 连接正常。SDK 内不包含任何模拟数据。
+**数值只来自项目配置的数据源**：WebSocket 推送、HTTP 定时请求（0.6.0 起）或静态数据（0.6.0 起，编辑器里手填，用于演示）。数据源未建立、断开或出错时，Runtime State 中没有任何实时值（`runtimeValues` 为空，`getRuntimeValue()` 返回 null），规则特效也会停止；页面上看到数值在变化，就说明 WebSocket 连接正常。SDK 内不包含任何模拟数据。
 
 `dataSourceStatus` 取值：
 
@@ -77,6 +77,11 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 切换 source 或卸载组件会关闭旧连接并清理场景资源。演示和开发时可使用 monorepo 中的设备模拟器 `tools/device-simulator` 作为 WebSocket 服务。
 
 ## 更新记录
+
+### 0.6.0（未发布）
+
+- **新的数据源类型**：项目可以使用「定时请求」（每隔几秒请求一个 HTTP 接口，返回格式与 WebSocket 消息相同）或「静态数据」（编辑器里手填的数值）。`dataSourceType` 相应多了 `http`、`static` 两个取值，其余接口和事件没有变化。
+- 使用这两种数据源的项目包需要 0.6.0；只用 WebSocket 的项目包，0.5.0 照常打开。
 
 ### 0.5.0
 

@@ -8,6 +8,7 @@ import UiText from '@/components/ui/UiText.vue'
 import { useSession } from '@/studio/context'
 import { deviceIdFor, deviceTemplates, deviceVariables } from '@/studio/deviceTemplates'
 import { useShell } from '@/studio/shell'
+import StaticValueInput from './StaticValueInput.vue'
 
 const props = defineProps<{ nodes: SceneNodeV2[] }>()
 const session = useSession()
@@ -19,6 +20,15 @@ const binding = computed(() => {
 })
 const templateId = ref(deviceTemplates[0]!.id)
 const connected = computed(() => session.twin.dataSourceStatus === 'connected')
+/** 静态数据时，变量的值可以直接在这里改。 */
+const editable = computed(() => session.activeSource?.type === 'static')
+const sourceLabel = computed(() => {
+  if (editable.value) return '静态数据（可直接修改数值）'
+  if (!session.activeSource) return '场景未启用数据源'
+  return connected.value ? '数据接收中' : '数据源未连接'
+})
+const staticValue = (key: string) =>
+  binding.value ? session.dataSourceOf('static')?.values[binding.value.device.id]?.[key] : undefined
 const boundCount = computed(() => props.nodes.filter(item => session.bindingFor(item.id)).length)
 
 function bind(): void {
@@ -125,9 +135,9 @@ function removeVariable(index: number): void {
         <UiRow label="类型">
           <UiText :model-value="binding.device.type ?? ''" mono @commit="updateDevice('type', $event)" />
         </UiRow>
-        <UiRow label="实时状态">
+        <UiRow label="数据">
           <span class="s-badge" :class="connected ? 's-badge--ok' : 's-badge--warn'">
-            <span class="s-dot" />{{ connected ? '数据接收中' : '数据源未连接' }}
+            <span class="s-dot" />{{ sourceLabel }}
           </span>
         </UiRow>
       </UiSection>
@@ -138,7 +148,9 @@ function removeVariable(index: number): void {
         </template>
         <div class="vars">
           <div class="vars__head">
-            <span>键</span><span>名称</span><span>类型</span><span>单位</span><span>实时值</span><span />
+            <span>键</span><span>名称</span><span>类型</span><span>单位</span
+            ><span>{{ editable ? '值' : '实时值' }}</span
+            ><span />
           </div>
           <div v-for="(variable, index) in binding.variables" :key="variable.id" class="vars__row">
             <UiText
@@ -161,7 +173,14 @@ function removeVariable(index: number): void {
               <option value="string">文本</option>
             </select>
             <UiText :model-value="variable.unit ?? ''" @commit="updateVariable(index, { unit: $event || undefined })" />
-            <span class="vars__value s-mono" :class="{ 'is-live': connected }">{{
+            <StaticValueInput
+              v-if="editable"
+              :data-type="variable.dataType"
+              :value="staticValue(variable.key)"
+              :testid="`node-static-${variable.key}`"
+              @commit="session.setStaticValue(binding.device.id, variable.key, $event)"
+            />
+            <span v-else class="vars__value s-mono" :class="{ 'is-live': connected }">{{
               session.liveValue(binding.id, variable.key)
             }}</span>
             <button class="s-icon-btn" title="删除变量" @click="removeVariable(index)"><Trash2 :size="12" /></button>

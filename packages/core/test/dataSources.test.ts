@@ -69,3 +69,47 @@ describe('activeDataSource', () => {
     ])
   })
 })
+
+describe('http and static sources', () => {
+  const http = {
+    id: 'http',
+    name: '定时请求',
+    type: 'http',
+    enabled: true,
+    url: 'https://api.example.com/devices/latest',
+    method: 'GET',
+    interval: 5,
+    resultPath: 'data.list',
+    withCredentials: false,
+  } as const
+  const fixed = {
+    id: 'static',
+    name: '静态数据',
+    type: 'static',
+    enabled: true,
+    values: { 'ESS-001': { soc: 72 } },
+  } as const
+
+  it.each([
+    ['http', [http]],
+    ['same-origin path', [{ ...http, url: '/park-api/devices' }]],
+    ['post with body', [{ ...http, method: 'POST', body: '{"site":1}' }]],
+    ['static values', [fixed]],
+    ['one enabled among types', [http, { ...fixed, enabled: false }, { ...ws, enabled: false }]],
+  ])('accepts %s', (_label, value) => expect(isProjectDataSources(value)).toBe(true))
+
+  it.each([
+    ['ws url on http', [{ ...http, url: 'ws://host/rt' }]],
+    ['protocol-relative url', [{ ...http, url: '//evil.example.com/x' }]],
+    ['credentials in http url', [{ ...http, url: 'https://user:pw@host/x' }]],
+    ['zero interval', [{ ...http, interval: 0 }]],
+    ['token header', [{ ...http, headers: { Authorization: 'Bearer x' } }]],
+    ['object as a static value', [{ ...fixed, values: { 'ESS-001': { soc: { nested: 1 } } } }]],
+    ['two enabled of different types', [http, fixed]],
+  ])('rejects %s', (_label, value) => expect(isProjectDataSources(value)).toBe(false))
+
+  it('makes http and static sources active like websocket', () => {
+    expect(activeDataSource([http])?.type).toBe('http')
+    expect(activeDataSource([{ ...ws, enabled: false }, fixed])?.type).toBe('static')
+  })
+})

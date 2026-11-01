@@ -1,16 +1,35 @@
 # 项目数据源
 
-场景文件的 `dataSources` 字段保存实时数据来源，编辑器与 Viewer SDK 使用相同字段和校验：
+场景文件的 `dataSources` 字段保存设备数据的来源，编辑器与 Viewer SDK 使用相同字段和校验。最多启用一个，三种类型：
+
+| 类型 | 用途 | 说明 |
+| --- | --- | --- |
+| `websocket` 推送 | 生产环境 | 网关实时推送，下文「消息」的格式 |
+| `http` 定时请求 | 没有推送服务时 | 每隔 `interval` 秒请求 `url`，在 `resultPath`（如 `data`）处读取与推送消息相同格式的数组；`POST` 且请求体为空时，自动发送下文的订阅消息，后端可只返回这些设备 |
+| `static` 静态数据 | 调试、演示 | `values: { 设备编号: { 变量: 值 } }`，在编辑器里直接填写，改完立即生效 |
+
+场景文件会随项目包分发，所以三种配置都不能包含账号、密码或 Token（地址中的账号密码会被拒绝）；需要登录的 HTTP 接口请与大屏同域部署，或打开 `withCredentials` 带上浏览器 Cookie。使用 `http` / `static` 的项目需要 Viewer SDK 0.6.0 及以上。
+
+```json
+{"dataSources":[{"id":"http","name":"定时请求","type":"http","enabled":true,"url":"https://park.example.com/api/devices/latest","method":"GET","interval":5,"resultPath":"data","withCredentials":false}]}
+```
+
+WebSocket 配置示例：
 
 ```json
 {"dataSources":[{"id":"realtime","name":"实时设备数据","type":"websocket","enabled":true,"url":"ws://127.0.0.1:8787/realtime"}]}
 ```
 
-**实时值只来自 WebSocket。** 缺字段、空数组、全部禁用或旧版 `type: "mock"` 条目都表示“未配置”（`dataSourceStatus: 'unconfigured'`），不产生任何值；连接断开或出错时立即清空实时值，并以 1s → 10s 退避自动重连。新项目默认连接本地设备模拟器 `ws://127.0.0.1:8787/realtime`。最多启用一个来源；ws/wss 地址不能包含用户名、密码或 #；HTTPS 页面需使用 wss。
+缺字段、空数组、全部禁用或旧版 `type: "mock"` 条目都表示“未配置”（`dataSourceStatus: 'unconfigured'`），不产生任何值；连接断开或请求出错时立即清空数值。WebSocket 以 1s → 10s 退避自动重连，HTTP 按间隔照常重试。新项目默认连接本地设备模拟器 `ws://127.0.0.1:8787/realtime`。最多启用一个来源；ws/wss 地址不能包含用户名、密码或 #；HTTPS 页面需使用 wss。
 
 ## 编辑器
 
-未选中对象时，检查器「数据」页：填写 WebSocket 地址、开关「启用」、查看连接状态和消息数，下方列出所有已绑定设备及其实时数据。修改是普通的文档编辑（可撤销、自动保存），导出项目包时随场景一起带出。
+未选中对象时，检查器「数据」页顶部选择来源：不启用 / 推送 / 定时请求 / 静态数据。
+- 推送：填写 WebSocket 地址。
+- 定时请求：方法、地址、间隔、数据位置、请求体、是否带登录态；「试请求一次」显示返回了几台本场景绑定的设备。
+- 静态数据：设备列表里每个变量都有输入框；选中对象后，它「数据」页签的变量表也可以直接改值。「记下当前数值」把正在收到的实时值存为静态数据，方便先连网关再切到离线演示。
+
+修改是普通的文档编辑（可撤销、自动保存），导出项目包时随场景一起带出。
 
 ## 消息
 

@@ -110,7 +110,7 @@ export interface ViewerPerformance {
   setting: ViewerQuality
   pixelRatio: number
 }
-export type DataSourceType = 'mock' | 'websocket'
+export type DataSourceType = 'mock' | 'websocket' | 'http' | 'static'
 /** 'unconfigured': the package has no enabled WebSocket source — no runtime values will ever appear. */
 export type DataSourceConnectionStatus = 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
 export type ViewerRuntimeState = DeepReadonly<{
@@ -516,6 +516,30 @@ export const TwinSceneViewer: DefineComponent<{
   captions?: boolean
 }>
 
+/**
+ * Where device values come from; at most one is enabled.
+ * `http` and `static` since 0.6.0: packages using them need SDK 0.6.0 or later.
+ */
 export type ProjectDataSource = { id: string; name: string; enabled: boolean } & (
-  { type: 'mock' } | { type: 'websocket'; url: string }
+  | { type: 'mock' }
+  | { type: 'websocket'; url: string }
+  | {
+      type: 'http'
+      /** http(s):// or a same-origin path starting with /. */
+      url: string
+      method: 'GET' | 'POST'
+      /** Seconds between requests. */
+      interval: number
+      /** Where the device messages are in the response, e.g. "data.list"; empty = the whole response. */
+      resultPath: string
+      /** POST body; empty sends the scene's device list (the WebSocket subscribe message). */
+      body?: string
+      /** Send the browser's cookies for that site. */
+      withCredentials: boolean
+    }
+  | {
+      type: 'static'
+      /** deviceId → variable key → value. */
+      values: Record<string, Record<string, number | string | boolean>>
+    }
 )

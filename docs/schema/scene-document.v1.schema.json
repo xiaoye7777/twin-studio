@@ -66,6 +66,116 @@
               "url"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "http"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "GET",
+                  "POST"
+                ]
+              },
+              "interval": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600
+              },
+              "resultPath": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "withCredentials": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "type",
+              "enabled",
+              "url",
+              "method",
+              "interval",
+              "resultPath",
+              "withCredentials"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "const": "static"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "values": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "type",
+              "enabled",
+              "values"
+            ],
+            "additionalProperties": false
           }
         ]
       }

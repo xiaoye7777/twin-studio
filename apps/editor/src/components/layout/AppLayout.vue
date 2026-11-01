@@ -32,7 +32,7 @@ const nav = [
       <div class="home__theme"><ThemeSwitcher align="start" label /></div>
       <div class="home__version">
         <span>编辑器 v2 · 场景格式 v2</span>
-        <span>Viewer SDK 0.5.0</span>
+        <span>Viewer SDK 0.6.0</span>
       </div>
     </aside>
     <main class="home__main">

@@ -147,6 +147,34 @@ const profile = args.package
   ? packageProfile(resolve(process.env.INIT_CWD ?? process.cwd(), args.package))
   : zeroCarbonProfile
 
+/**
+ * HTTP polling (the editor's 定时请求 source): GET returns the default profile's latest values; a POST
+ * with the subscribe message returns values for exactly those devices. Generators are kept per device
+ * list, so values move smoothly from one poll to the next like the WebSocket feed.
+ */
+const pollingGenerators = new Map()
+function readJson(request) {
+  return new Promise(resolve => {
+    let text = ''
+    request.on('data', chunk => (text += chunk))
+    request.on('end', () => {
+      try {
+        resolve(text ? JSON.parse(text) : null)
+      } catch {
+        resolve(null)
+      }
+    })
+  })
+}
+async function latestValues(request) {
+  if (request.method !== 'POST') return profile.next()
+  const devices = subscriptionDevices(await readJson(request))
+  if (!devices?.length) return profile.next()
+  const key = JSON.stringify(devices.map(device => [device.id, [...device.variables.keys()]]))
+  if (!pollingGenerators.has(key)) pollingGenerators.set(key, deviceGenerator(devices, 'polling'))
+  return pollingGenerators.get(key).next()
+}
+
 const server = createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*')
   response.setHeader('Access-Control-Allow-Headers', '*')
@@ -155,6 +183,10 @@ const server = createServer(async (request, response) => {
   if (request.method === 'OPTIONS') {
     response.statusCode = 204
     response.end()
+    return
+  }
+  if (request.url?.startsWith('/api/devices/latest')) {
+    response.end(JSON.stringify({ code: 0, msg: 'ok', data: await latestValues(request) }))
     return
   }
   if (await handleDemoApi(request, response, tick)) return

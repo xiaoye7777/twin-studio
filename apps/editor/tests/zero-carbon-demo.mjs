@@ -1,7 +1,7 @@
 // Demo suite: the zero-carbon sample end to end in the editor — structure, live data from the simulator,
 // alarm rules, generated view thumbnails, the guided tour in preview, and the project card cover.
 import assert from 'node:assert/strict'
-import { createDemo, launch, save, setDataSource, studio } from './helpers.mjs'
+import { createDemo, launch, save, setDataSource, studio, waitForStudio } from './helpers.mjs'
 
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5173'
 const dataPort = process.env.TWIN_DATA_PORT || '8787'
@@ -134,6 +134,36 @@ try {
   const cover = await page.locator('[data-testid="project-card-零碳智慧园区 Demo"] img').getAttribute('src')
   assert(cover?.startsWith('data:image/jpeg'), 'project cover is a scene screenshot')
   report.projectCover = 'PASS'
+
+  // ---------------------------------------------------------------- HTTP polling and static data
+  await page.goBack()
+  await waitForStudio(page)
+  await page.getByTestId('scene-tab-data').click()
+  await page.getByTestId('datasource-type').getByText('定时请求').click()
+  await page.getByTestId('datasource-http-url').fill(`http://127.0.0.1:${dataPort}/api/devices/latest`)
+  await page.getByTestId('datasource-http-url').press('Enter')
+  await page.waitForFunction(
+    () => {
+      const twin = window.__studio.twin
+      const meter = twin.bindings.find(binding => binding.device.id === 'EM-001')
+      return twin.dataSourceType === 'http' && typeof twin.getRuntimeValue(meter.id, 'power')?.value === 'number'
+    },
+    null,
+    { timeout: 20000 },
+  )
+  report.httpPolling = 'PASS'
+  // Static data: a value typed in the panel reaches the runtime at once.
+  await page.getByTestId('datasource-type').getByText('静态数据').click()
+  const input = page.getByTestId('static-EM-001-power')
+  await input.fill('321')
+  await input.press('Enter')
+  await page.waitForFunction(() => {
+    const twin = window.__studio.twin
+    const meter = twin.bindings.find(binding => binding.device.id === 'EM-001')
+    return twin.dataSourceType === 'static' && twin.getRuntimeValue(meter.id, 'power')?.value === 321
+  })
+  assert.equal((await studio(page, () => window.__studio.activeSource.values))['EM-001'].power, 321)
+  report.staticData = 'PASS'
 
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))

@@ -1,8 +1,16 @@
-import { activeDataSource, type ProjectDataSource } from '../../domain/dataSources'
+import { type ActiveDataSourceConfig, activeDataSource, type ProjectDataSource } from '../../domain/dataSources'
 import type { UnwrapNestedRefs } from 'vue'
-import type { TwinBinding } from '../../domain/twin'
+import type { TwinBinding, TwinRuntimeValueData } from '../../domain/twin'
 import { BindingTargetResolver } from './BindingTargetResolver'
-import { MockDataSource, WebSocketDataSource, type DataSource, type DataSourceType } from '../../infrastructure/data'
+import {
+  type DataSource,
+  type DataSourceConnectionStatus,
+  type DataSourceType,
+  HttpPollingDataSource,
+  MockDataSource,
+  StaticDataSource,
+  WebSocketDataSource,
+} from '../../infrastructure/data'
 import type { createTwinState } from './createTwinState'
 
 export type TwinRuntimeState = UnwrapNestedRefs<ReturnType<typeof createTwinState>>
@@ -27,8 +35,8 @@ function createQaMockSource(state: TwinRuntimeState, getBindings: () => readonly
 }
 
 /**
- * Per-scene data lifecycle, shared by Editor and Viewer. Runtime values exist only while a WebSocket
- * source is connected: any other state clears them, so visible values always mean live network data.
+ * 一个场景的数据生命周期（编辑器和 Viewer 共用）：按场景配置启动一个数据源，把收到的值写进运行时状态。
+ * 数值只在数据源正常时存在：断开或出错就清空，屏幕上不会留着过期的值。
  */
 export class TwinDataRuntime {
   private source: DataSource | null = null
@@ -62,20 +70,29 @@ export class TwinDataRuntime {
       this.state.setDataSourceState('websocket', 'unconfigured')
       return
     }
-    this.run(
-      'websocket',
-      new WebSocketDataSource({
-        url: config.url,
-        getBindings,
-        setRuntimeValue: (id, key, value) => this.state.setRuntimeValue(id, key, value),
-        onStatus: (status, error) => {
-          // Never leave stale values on screen once the live connection is gone.
-          if (status !== 'connected') this.state.clearRuntimeValues()
-          this.state.setDataSourceState('websocket', status, error)
-        },
-        onMessage: () => this.state.recordDataSourceMessage(),
-      }),
-    )
+    this.run(config.type, this.createSource(config, getBindings))
+  }
+
+  private createSource(config: ActiveDataSourceConfig, getBindings: () => readonly TwinBinding[]): DataSource {
+    const common = {
+      getBindings,
+      setRuntimeValue: (id: string, key: string, value: TwinRuntimeValueData) =>
+        this.state.setRuntimeValue(id, key, value),
+      onStatus: (status: DataSourceConnectionStatus, error?: string) => {
+        // 连接不在了就清空数值，不留过期的值。
+        if (status !== 'connected') this.state.clearRuntimeValues()
+        this.state.setDataSourceState(config.type, status, error)
+      },
+      onMessage: () => this.state.recordDataSourceMessage(),
+    }
+    switch (config.type) {
+      case 'websocket':
+        return new WebSocketDataSource({ ...common, url: config.url })
+      case 'http':
+        return new HttpPollingDataSource({ ...common, ...config })
+      case 'static':
+        return new StaticDataSource({ ...common, values: config.values })
+    }
   }
   private run(type: DataSourceType, source: DataSource): void {
     this.stop()
