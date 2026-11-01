@@ -355,3 +355,27 @@
   box-shadow: var(--s-shadow);
   backdrop-filter: blur(10px);
 }
+
+/* ---------------------------------------------------------------- 属性面板里常用的小块 */
+
+/* 只读的值：一行，过长省略 */
+.s-value {
+  overflow: hidden;
+  color: var(--s-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 分组里的说明文字 */
+.s-note {
+  margin: 4px 0 0;
+  padding: 0 12px;
+}
+
+/* 分组底部的一排按钮 */
+.s-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px 2px;
+}

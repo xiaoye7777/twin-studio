@@ -140,7 +140,7 @@ function rename(value: string): void {
           @update:model-value="session.modelParts.setPartVisible(part.nodeId, part.assetNodeId, $event)"
         />
       </UiRow>
-      <div class="props__buttons">
+      <div class="s-buttons">
         <button
           class="s-btn"
           :disabled="!override"
@@ -171,7 +171,7 @@ function rename(value: string): void {
   padding: 10px 12px;
   border-bottom: 1px solid var(--s-line);
 }
-.props__buttons {
+.s-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
