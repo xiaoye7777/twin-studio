@@ -23,7 +23,6 @@ try {
   report.newProject = 'PASS'
 
   // ---------------------------------------------------------------- adding content
-  await page.getByTestId('tab-assets').click()
   await page.getByTestId('builtin-container').click()
   await page.waitForFunction(() => window.__studio.doc.value.nodes.length === 1)
   await settled(page)
@@ -181,6 +180,7 @@ try {
   await page.waitForFunction(() => window.__studio.doc.value.settings.time.hour === 22)
   assert.equal((await doc()).settings.sky.mode, 'gradient')
 
+  await page.getByTestId('tab-views').click()
   await page.getByTestId('add-bookmark').click()
   await page.waitForFunction(() => window.__studio.doc.value.bookmarks.length === 1)
   assert((await doc()).bookmarks[0].thumbnail.startsWith('data:image/jpeg'))
@@ -191,6 +191,7 @@ try {
   await page.waitForSelector('[data-testid="tour-bar"]')
   await studio(page, () => window.__studio.views.stopTour())
   await page.waitForSelector('[data-testid="tour-bar"]', { state: 'detached' })
+  await page.getByTestId('tab-scene').click()
   report.lookViewsTours = 'PASS'
 
   // ---------------------------------------------------------------- panel layout
@@ -256,7 +257,6 @@ try {
 
   // ---------------------------------------------------------------- compressed deliveries
   // Draco geometry and KTX2 textures decode with the decoders bundled into the app (no CDN).
-  await page.getByTestId('tab-assets').click()
   await page
     .getByTestId('asset-upload')
     .setInputFiles(fileURLToPath(new URL('./fixtures/turbine-draco-ktx2.glb', import.meta.url)))
@@ -449,7 +449,6 @@ try {
   await page.getByText('保存为组件…').click()
   await page.locator('.el-message-box input').fill('风机组件')
   await page.locator('.el-message-box').getByRole('button', { name: '保存' }).click()
-  await page.getByTestId('tab-assets').click()
   const componentCard = page.getByTestId('component-风机组件')
   await componentCard.waitFor()
   const placedBefore = (await doc()).nodes.length

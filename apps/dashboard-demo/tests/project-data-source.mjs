@@ -27,7 +27,6 @@ try {
   // ---------------------------------------------------------------- editor: export
   const projectId = await createDemo(page, editor)
   // A Draco + KTX2 delivery travels in the package; the SDK must decode it with its bundled decoders.
-  await page.getByTestId('tab-assets').click()
   await page
     .getByTestId('asset-upload')
     .setInputFiles(fileURLToPath(new URL('../../editor/tests/fixtures/turbine-draco-ktx2.glb', import.meta.url)))

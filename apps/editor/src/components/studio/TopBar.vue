@@ -96,7 +96,13 @@ const editMenu = computed<MenuItem[]>(() => {
 })
 
 const addMenu = computed<MenuItem[]>(() => [
-  { label: '模型（资源库）', action: () => (shell.leftTab = 'assets') },
+  {
+    label: '模型（资源库）',
+    action: () => {
+      shell.dockOpen = true
+      shell.assetTab = 'all'
+    },
+  },
   { divider: true },
   { label: '立方体', action: () => addPrimitive('box') },
   { label: '平面', action: () => addPrimitive('plane') },
@@ -131,7 +137,7 @@ const viewMenu = computed<MenuItem[]>(() => {
       checked: helpers.axes,
       action: () => session.updateSettings(s => void (s.helpers.axes = !s.helpers.axes), '坐标轴'),
     },
-    { label: '底部面板（视角与导览）', checked: shell.dockOpen, action: () => (shell.dockOpen = !shell.dockOpen) },
+    { label: '底部面板（资源）', checked: shell.dockOpen, action: () => (shell.dockOpen = !shell.dockOpen) },
     { divider: true },
     { label: '聚焦选中', shortcut: 'F', action: () => void session.focusSelection() },
     { label: '透视', shortcut: '0', action: () => void session.viewFrom('perspective') },
@@ -238,7 +244,7 @@ const viewMenu = computed<MenuItem[]>(() => {
   gap: 12px;
   padding: 0 8px;
   border-bottom: 1px solid var(--s-line);
-  background: var(--s-panel);
+  background: var(--s-wash-bar), var(--s-panel);
 }
 .topbar__left,
 .topbar__right {

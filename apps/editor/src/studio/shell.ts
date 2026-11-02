@@ -34,7 +34,9 @@ export function createShellState() {
     leftWidth: layout.left,
     rightWidth: layout.right,
     dockHeight: layout.dock,
-    leftTab: 'scene' as 'scene' | 'assets',
+    leftTab: 'scene' as 'scene' | 'views',
+    /** 底栏资源库当前的标签。 */
+    assetTab: 'all',
     sceneTab: 'environment' as 'environment' | 'data' | 'presentation',
     nodeTab: 'properties' as 'properties' | 'data' | 'effects' | 'interactions',
     renaming: null as string | null,

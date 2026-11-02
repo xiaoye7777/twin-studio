@@ -1,355 +1,211 @@
 <script setup lang="ts">
-import { confirmAction } from '@/components/ui/confirm'
-import { ElMessage } from 'element-plus'
-import {
-  Box,
-  Boxes,
-  Circle,
-  Cone,
-  Cylinder,
-  Lightbulb,
-  RectangleHorizontal,
-  Spline,
-  SquareDashed,
-  Tag,
-  Upload,
-  X,
-} from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import type { PrimitiveShape } from '@twin-studio/core'
-import {
-  writeAssetDragPayload,
-  writeBuiltinModelDragPayload,
-  writeComponentDragPayload,
-  writePrimitiveDragPayload,
-} from '@/editor/assetDrag'
-import { builtinModels, importBuiltinModel, type BuiltinModel } from '@/editor/builtinModels'
-import { IndexedDbAssetRepository } from '@/infrastructure/assets'
-import { useAssetStore } from '@/stores/assets'
-import { useComponentStore } from '@/stores/components'
-import type { SceneComponentRecord } from '@/infrastructure/components/ComponentRepository'
-import { useSession } from '@/studio/context'
-import { modelThumbnail } from '@/studio/modelThumbnails'
-import UiSection from '@/components/ui/UiSection.vue'
+/**
+ * 底栏的资源库：标签分类 + 搜索 + 卡片网格。卡片数据和缩略图在 studio/useAssetLibrary.ts。
+ * 卡片可以拖进视口，也可以单击放置（绘制工具单击后进入绘制状态）。
+ */
+import { ChevronDown, Search, Upload, X } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { useShell } from '@/studio/shell'
+import { useAssetLibrary } from '@/studio/useAssetLibrary'
 
-const session = useSession()
-const componentStore = useComponentStore()
-const myComponents = computed(() =>
-  componentStore.components.filter(item => !filter.value || item.name.includes(filter.value)),
-)
-
-function addComponent(item: SceneComponentRecord): void {
-  session.create.addComponent(item.data)
-}
-
-async function removeComponent(item: SceneComponentRecord): Promise<void> {
-  if (
-    !(await confirmAction(`从组件库删除「${item.name}」？已放置到场景中的不受影响。`, {
-      title: '删除组件',
-      confirm: '删除',
-    }))
-  )
-    return
-  await componentStore.remove(item.id)
-}
-
-function componentHint(item: SceneComponentRecord): string {
-  const { nodes, bindings, visualRules } = item.data
-  const parts = [`${nodes.length} 个对象`]
-  if (bindings.length) parts.push(`${bindings.length} 个设备`)
-  if (visualRules.length) parts.push(`${visualRules.length} 条告警规则`)
-  return `${item.name} · ${parts.join(' · ')} — 拖入视口或单击放置`
-}
-const assetStore = useAssetStore()
-const repository = new IndexedDbAssetRepository()
-const thumbs = reactive<Record<string, string>>({})
-const uploading = ref(false)
+const shell = useShell()
+const { filter, tabs, visible, thumbs, uploading, upload } = useAssetLibrary()
 const fileInput = ref<HTMLInputElement>()
-const filter = ref('')
 
-const categories = computed(() => {
-  const groups = new Map<string, BuiltinModel[]>()
-  for (const model of builtinModels) {
-    if (filter.value && !model.name.includes(filter.value)) continue
-    groups.set(model.category, [...(groups.get(model.category) ?? []), model])
-  }
-  return [...groups]
-})
-const builtinFiles = new Set(builtinModels.map(model => model.file))
-const myModels = computed(() =>
-  assetStore.assets.filter(
-    asset =>
-      asset.assetType === 'model' &&
-      !builtinFiles.has(asset.name) &&
-      (!filter.value || asset.name.includes(filter.value)),
-  ),
-)
-
-const primitives: Array<{ shape: PrimitiveShape; label: string; icon: unknown }> = [
-  { shape: 'box', label: '立方体', icon: Box },
-  { shape: 'plane', label: '平面', icon: RectangleHorizontal },
-  { shape: 'cylinder', label: '圆柱', icon: Cylinder },
-  { shape: 'sphere', label: '球体', icon: Circle },
-  { shape: 'cone', label: '圆锥', icon: Cone },
-]
-const drawing = [
-  { kind: 'path', label: '能流线', hint: '管线、电缆、能量流向', icon: Spline },
-  { kind: 'area', label: '区域', hint: '功能分区、地块、围栏', icon: SquareDashed },
-  { kind: 'label', label: '文字标签', hint: '楼宇名称、区域标题', icon: Tag },
-  { kind: 'light', label: '灯光', hint: '夜景点光源、射灯', icon: Lightbulb },
-] as const
-
-onMounted(async () => {
-  void componentStore.refresh()
-  await assetStore.refresh()
-  for (const model of builtinModels) {
-    void modelThumbnail(`builtin:${model.file}`, `${import.meta.env.BASE_URL}demo-assets/${model.file}`).then(image => {
-      if (image) thumbs[model.key] = image
-    })
-  }
-  for (const asset of myModels.value) void loadThumb(asset.id)
-})
-
-async function loadThumb(assetId: string): Promise<void> {
-  const record = await repository.get(assetId)
-  if (!record) return
-  const url = URL.createObjectURL(record.blob)
-  const image = await modelThumbnail(`asset:${record.fingerprint}`, url)
-  URL.revokeObjectURL(url)
-  if (image) thumbs[assetId] = image
+function selectTab(id: string): void {
+  shell.assetTab = id
+  shell.dockOpen = true
 }
 
-async function addBuiltin(model: BuiltinModel): Promise<void> {
-  try {
-    const record = await importBuiltinModel(model, repository)
-    void assetStore.refresh()
-    await session.create.addModel(record.id)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '模型加载失败')
-  }
+function onFiles(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const files = [...(input.files ?? [])]
+  input.value = ''
+  if (files.length) void upload(files)
 }
 
-async function addAsset(assetId: string): Promise<void> {
-  try {
-    await session.create.addModel(assetId)
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '模型加载失败')
-  }
-}
-
-async function upload(event: Event): Promise<void> {
-  const files = [...((event.target as HTMLInputElement).files ?? [])]
-  ;(event.target as HTMLInputElement).value = ''
-  if (!files.length) return
-  uploading.value = true
-  try {
-    for (const file of files) {
-      if (!file.name.toLowerCase().endsWith('.glb')) {
-        ElMessage.warning(`${file.name}：目前支持 .glb 模型（支持 Meshopt / Draco / KTX2 压缩）`)
-        continue
-      }
-      const { asset, isNew } = await assetStore.importAsset(file, 'model')
-      void loadThumb(asset.id)
-      ElMessage.success(isNew ? `已导入 ${asset.name}` : `${asset.name} 已在资源库中`)
-    }
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '导入失败')
-  } finally {
-    uploading.value = false
-  }
-}
-
-function sizeLabel(bytes: number): string {
-  return bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
+const emptyHints: Record<string, string> = {
+  mine: '建模同事交付的 .glb 模型导入后出现在这里，可在多个项目中复用。',
+  components:
+    '选中配置好的对象（如带设备绑定和告警规则的储能柜），右键「保存为组件」，即可在任何项目中拖入复用，设备编号自动递增。',
 }
 </script>
 
 <template>
-  <div class="library s-scroll" data-testid="asset-library">
-    <div class="library__search">
-      <input v-model="filter" class="s-input" placeholder="搜索资源" />
-    </div>
-
-    <UiSection
-      v-for="[category, models] in categories"
-      :key="category"
-      :title="`内置模型 · ${category}`"
-      :count="models.length"
-    >
-      <div class="library__grid">
+  <div class="library" data-testid="asset-library">
+    <header class="library__head">
+      <button
+        class="library__toggle"
+        :title="shell.dockOpen ? '收起资源面板' : '展开资源面板'"
+        @click="shell.dockOpen = !shell.dockOpen"
+      >
+        <ChevronDown :size="13" />
+        资源
+      </button>
+      <nav class="library__tabs">
         <button
-          v-for="model in models"
-          :key="model.key"
-          class="card"
-          draggable="true"
-          :title="`${model.description} — 拖入视口或单击放置`"
-          :data-testid="`builtin-${model.key}`"
-          @dragstart="writeBuiltinModelDragPayload($event.dataTransfer!, model.key)"
-          @click="addBuiltin(model)"
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="s-tab library__tab"
+          :class="{ 'is-active': shell.dockOpen && shell.assetTab === tab.id }"
+          :data-testid="`asset-tab-${tab.id}`"
+          @click="selectTab(tab.id)"
         >
-          <span class="card__thumb">
-            <img v-if="thumbs[model.key]" :src="thumbs[model.key]" alt="" />
-            <Box v-else :size="22" />
-          </span>
-          <span class="card__name">{{ model.name }}</span>
+          {{ tab.label }}<small>{{ tab.count }}</small>
         </button>
-      </div>
-    </UiSection>
+      </nav>
+      <label class="library__search">
+        <Search :size="12" />
+        <input v-model="filter" placeholder="搜索资源" data-testid="asset-search" />
+      </label>
+      <button class="s-btn s-btn--sm" :disabled="uploading" @click="fileInput?.click()">
+        <Upload :size="12" />{{ uploading ? '导入中…' : '导入 GLB' }}
+      </button>
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".glb,model/gltf-binary"
+        multiple
+        hidden
+        data-testid="asset-upload"
+        @change="onFiles"
+      />
+    </header>
 
-    <UiSection title="我的模型" :count="myModels.length">
-      <template #actions>
-        <button class="s-btn s-btn--sm" :disabled="uploading" @click="fileInput?.click()">
-          <Upload :size="12" />{{ uploading ? '导入中…' : '导入 GLB' }}
-        </button>
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".glb,model/gltf-binary"
-          multiple
-          hidden
-          data-testid="asset-upload"
-          @change="upload"
-        />
-      </template>
-      <div v-if="myModels.length" class="library__grid">
-        <button
-          v-for="asset in myModels"
-          :key="asset.id"
-          class="card"
-          draggable="true"
-          :title="`${asset.name} · ${sizeLabel(asset.size)}`"
-          :data-testid="`asset-${asset.name}`"
-          @dragstart="writeAssetDragPayload($event.dataTransfer!, asset.id)"
-          @click="addAsset(asset.id)"
-        >
-          <span class="card__thumb">
-            <img v-if="thumbs[asset.id]" :src="thumbs[asset.id]" alt="" />
-            <Box v-else :size="22" />
-          </span>
-          <span class="card__name">{{ asset.name.replace(/\.glb$/i, '') }}</span>
-        </button>
-      </div>
-      <p v-else class="library__note s-hint">建模同事交付的 .glb 模型导入后出现在这里，可在多个项目中复用。</p>
-    </UiSection>
-
-    <UiSection title="我的组件" :count="myComponents.length" data-testid="component-library">
-      <div v-if="myComponents.length" class="library__grid">
+    <div v-if="shell.dockOpen" class="library__body s-scroll" :style="{ height: `${shell.dockHeight}px` }">
+      <div v-if="visible.length" class="library__grid">
         <div
-          v-for="item in myComponents"
-          :key="item.id"
+          v-for="item in visible"
+          :key="item.key"
           class="card"
           role="button"
           tabindex="0"
-          draggable="true"
-          :title="componentHint(item)"
-          :data-testid="`component-${item.name}`"
-          @dragstart="writeComponentDragPayload($event.dataTransfer!, item.id)"
-          @click="addComponent(item)"
-          @keydown.enter="addComponent(item)"
+          :draggable="!!item.drag"
+          :class="{ 'is-draggable': !!item.drag }"
+          :title="item.title"
+          :data-testid="item.testid"
+          @dragstart="item.drag?.($event.dataTransfer!)"
+          @click="item.activate()"
+          @keydown.enter="item.activate()"
         >
           <span class="card__thumb">
-            <img v-if="item.thumbnail" :src="item.thumbnail" alt="" class="card__photo" />
-            <Boxes v-else :size="22" />
+            <img v-if="item.thumb && thumbs[item.thumb]" :src="thumbs[item.thumb]" alt="" />
+            <component :is="item.icon" v-else :size="22" />
           </span>
           <span class="card__name">{{ item.name }}</span>
-          <button class="card__remove" title="从组件库删除" @click.stop="removeComponent(item)">
+          <button v-if="item.remove" class="card__remove" title="从组件库删除" @click.stop="item.remove()">
             <X :size="11" />
           </button>
         </div>
       </div>
-      <p v-else class="library__note s-hint">
-        选中配置好的对象（如带设备绑定和告警规则的储能柜），右键「保存为组件」，即可在任何项目中拖入复用，设备编号自动递增。
-      </p>
-    </UiSection>
-
-    <UiSection title="基本体" :count="primitives.length">
-      <div class="library__row">
-        <button
-          v-for="item in primitives"
-          :key="item.shape"
-          class="chip"
-          draggable="true"
-          :title="`${item.label} — 拖入视口或单击放置`"
-          :data-testid="`primitive-${item.shape}`"
-          @dragstart="writePrimitiveDragPayload($event.dataTransfer!, item.shape)"
-          @click="session.create.addPrimitive(item.shape)"
-        >
-          <component :is="item.icon" :size="16" />
-          <span>{{ item.label }}</span>
-        </button>
-      </div>
-    </UiSection>
-
-    <UiSection title="绘制与标注">
-      <div class="library__list">
-        <button v-for="item in drawing" :key="item.kind" class="tool" @click="session.tools.startDrawing(item.kind)">
-          <component :is="item.icon" :size="16" class="tool__icon" />
-          <span class="tool__text">
-            <strong>{{ item.label }}</strong>
-            <small>{{ item.hint }}</small>
-          </span>
-        </button>
-      </div>
-    </UiSection>
+      <p v-else class="library__note s-hint">{{ filter ? '没有匹配的资源' : emptyHints[shell.assetTab] }}</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.library {
-  padding-bottom: 16px;
+.library__head {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+.library__toggle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--s-fg);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.library__toggle svg {
+  color: var(--s-fg-3);
+  transform: rotate(-90deg);
+  transition: transform 140ms ease;
+}
+.dock.is-open .library__toggle svg {
+  transform: none;
+}
+.library__tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.library__tab {
+  flex-shrink: 0;
+  height: 32px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.library__tab small {
+  margin-left: 4px;
+  color: var(--s-fg-4);
+  font-size: 10px;
 }
 .library__search {
-  padding: 8px 8px 4px;
+  display: flex;
+  width: 150px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid var(--s-line-2);
+  border-radius: var(--s-radius-sm);
+  background: var(--s-field);
+  color: var(--s-fg-3);
+}
+.library__search:focus-within {
+  border-color: var(--s-accent-line);
+}
+.library__search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-size: 11.5px;
+}
+.library__body {
+  flex: none;
+  border-top: 1px solid var(--s-line);
 }
 .library__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 6px;
-  padding: 0 8px;
+  padding: 8px;
 }
 .card {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 4px;
-  padding: 4px 4px 6px;
+  padding: 4px 4px 5px;
   border: 1px solid var(--s-line);
   border-radius: 6px;
   background: var(--s-panel-2);
   color: var(--s-fg);
-  text-align: left;
-  cursor: grab;
+  cursor: pointer;
   transition:
     border-color 120ms ease,
     background-color 120ms ease;
 }
+.card.is-draggable {
+  cursor: grab;
+}
 .card:hover {
   border-color: var(--s-accent-line);
   background: var(--s-raised);
-}
-div.card {
-  position: relative;
-  cursor: pointer;
-}
-.card__photo {
-  object-fit: cover !important;
-}
-.card__remove {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: none;
-  width: 18px;
-  height: 18px;
-  place-items: center;
-  border: 0;
-  border-radius: 4px;
-  background: rgb(0 0 0 / 0.55);
-  color: #fff;
-  cursor: pointer;
-}
-.card:hover .card__remove {
-  display: grid;
 }
 .card__thumb {
   display: grid;
@@ -358,7 +214,7 @@ div.card {
   overflow: hidden;
   border-radius: 4px;
   background: radial-gradient(circle at 50% 40%, var(--s-raised), var(--s-panel-2) 75%);
-  color: var(--s-fg-4);
+  color: var(--s-fg-3);
 }
 .card__thumb img {
   width: 100%;
@@ -372,66 +228,26 @@ div.card {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.library__row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
-  padding: 0 8px;
-}
-.chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 2px 6px;
-  border: 1px solid var(--s-line);
-  border-radius: 6px;
-  background: var(--s-panel-2);
-  color: var(--s-fg-2);
-  font-size: 10.5px;
-  cursor: grab;
-}
-.chip:hover {
-  border-color: var(--s-accent-line);
+.card__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: none;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: var(--s-float);
   color: var(--s-fg);
-}
-.library__list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 8px;
-}
-.tool {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border: 1px solid var(--s-line);
-  border-radius: 6px;
-  background: var(--s-panel-2);
-  text-align: left;
   cursor: pointer;
 }
-.tool:hover {
-  border-color: var(--s-accent-line);
-}
-.tool__icon {
-  color: var(--s-accent-2);
-}
-.tool__text {
-  display: flex;
-  flex-direction: column;
-}
-.tool__text strong {
-  font-size: 12px;
-  font-weight: 500;
-}
-.tool__text small {
-  color: var(--s-fg-3);
-  font-size: 10.5px;
+.card:hover .card__remove {
+  display: grid;
 }
 .library__note {
   margin: 0;
-  padding: 0 12px;
+  padding: 16px;
+  text-align: center;
 }
 </style>

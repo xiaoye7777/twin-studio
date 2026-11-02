@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useShell } from '@/studio/shell'
-import AssetLibrary from './AssetLibrary.vue'
 import SceneTree from './SceneTree.vue'
+import ViewsPanel from './ViewsPanel.vue'
 
 const shell = useShell()
 </script>
@@ -19,14 +19,14 @@ const shell = useShell()
       </button>
       <button
         class="s-tab"
-        :class="{ 'is-active': shell.leftTab === 'assets' }"
-        data-testid="tab-assets"
-        @click="shell.leftTab = 'assets'"
+        :class="{ 'is-active': shell.leftTab === 'views' }"
+        data-testid="tab-views"
+        @click="shell.leftTab = 'views'"
       >
-        资源
+        视角
       </button>
     </div>
     <SceneTree v-show="shell.leftTab === 'scene'" />
-    <AssetLibrary v-if="shell.leftTab === 'assets'" />
+    <ViewsPanel v-if="shell.leftTab === 'views'" />
   </aside>
 </template>
