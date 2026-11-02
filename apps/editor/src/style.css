@@ -29,7 +29,8 @@ body,
 
 body {
   min-height: 100vh;
-  background: var(--s-bg);
+  background: var(--s-wash-page), var(--s-bg);
+  background-attachment: fixed;
 }
 
 button,

@@ -119,7 +119,7 @@ async function preview(): Promise<void> {
   gap: 8px;
   padding: 0 12px;
   border-bottom: 1px solid var(--s-line);
-  background: var(--s-panel);
+  background: var(--s-wash-bar), var(--s-panel);
 }
 .topbar__mark {
   padding: 2px 7px;

@@ -304,7 +304,7 @@ function setGeometry(key: 'x' | 'y' | 'w' | 'h' | 'rotation', value: number): vo
   min-height: 0;
   flex-direction: column;
   border-left: 1px solid var(--s-line);
-  background: var(--s-panel);
+  background: var(--s-wash), var(--s-panel);
 }
 .inspector__tabs {
   display: flex;

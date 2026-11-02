@@ -46,7 +46,7 @@
   display: flex;
   min-height: 0;
   flex-direction: column;
-  background: var(--s-panel);
+  background: var(--s-wash), var(--s-panel);
 }
 
 .s-panel-head {

@@ -92,7 +92,7 @@ async function login() {
   display: grid;
   min-height: 100vh;
   grid-template-columns: minmax(0, 1.2fr) minmax(380px, 1fr);
-  background: var(--s-bg);
+  background: var(--s-wash-page), var(--s-bg);
   color: var(--s-fg);
   font:
     13px/1.5 Inter,
@@ -102,7 +102,6 @@ async function login() {
     'PingFang SC',
     'Microsoft YaHei',
     sans-serif;
-  color-scheme: dark;
 }
 .login__hero {
   position: relative;
@@ -112,7 +111,7 @@ async function login() {
   overflow: hidden;
   padding: 36px 48px;
   border-right: 1px solid var(--s-line);
-  background: var(--s-bg);
+  background: transparent;
 }
 .login__grid {
   position: absolute;

@@ -46,7 +46,7 @@ const nav = [
   display: grid;
   min-height: 100vh;
   grid-template-columns: 220px minmax(0, 1fr);
-  background: var(--s-bg);
+  background: var(--s-wash-page), var(--s-bg);
   color: var(--s-fg);
   font:
     13px/1.5 Inter,
@@ -56,7 +56,6 @@ const nav = [
     'PingFang SC',
     'Microsoft YaHei',
     sans-serif;
-  color-scheme: dark;
 }
 .home__nav {
   position: sticky;
@@ -67,7 +66,7 @@ const nav = [
   gap: 2px;
   padding: 16px 12px;
   border-right: 1px solid var(--s-line);
-  background: var(--s-panel);
+  background: var(--s-wash), var(--s-panel);
 }
 .home__brand {
   display: flex;

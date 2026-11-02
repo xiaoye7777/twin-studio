@@ -62,7 +62,7 @@ const ui = props.session.ui
   min-height: 0;
   flex-direction: column;
   border-right: 1px solid var(--s-line);
-  background: var(--s-panel);
+  background: var(--s-wash), var(--s-panel);
 }
 .workspace__tabs {
   display: flex;
