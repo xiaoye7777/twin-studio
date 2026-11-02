@@ -11,23 +11,35 @@ const selection = computed(() => {
   if (nodes.length === 1) return `${nodeKindLabels[nodes[0]!.kind]} · ${nodes[0]!.name}`
   return `已选 ${nodes.length} 个对象`
 })
+/** 启用了多个接口时，显示连上了几个。 */
+const sources = computed(() => {
+  const states = twin.dataSourceStates
+  return { total: states.length, connected: states.filter(state => state.status === 'connected').length }
+})
 const dataLabel = computed(() => {
+  const count = sources.value.total > 1 ? `${sources.value.connected}/${sources.value.total} 个接口 · ` : ''
   const labels: Record<string, string> = {
     unconfigured: '数据源未启用',
     connecting: '数据源连接中',
-    connected: `实时数据 · ${twin.dataSourceMessageCount} 条`,
+    connected: `实时数据 · ${count}${twin.dataSourceMessageCount} 条`,
     disconnected: '数据源已断开',
     error: '数据源错误',
   }
   return labels[twin.dataSourceStatus] ?? twin.dataSourceStatus
 })
+const partial = computed(() => sources.value.connected > 0 && sources.value.connected < sources.value.total)
 const cursor = computed(() => (ui.cursor ? ui.cursor.map(value => value.toFixed(1)).join(', ') : '—'))
 </script>
 
 <template>
   <footer class="status" data-testid="status-bar">
     <span class="status__item">{{ selection }}</span>
-    <span class="status__item" :class="`is-${twin.dataSourceStatus}`" data-testid="status-data">
+    <span
+      class="status__item"
+      :class="partial ? 'is-partial' : `is-${twin.dataSourceStatus}`"
+      :title="twin.dataSourceError ?? ''"
+      data-testid="status-data"
+    >
       <span class="s-dot" />{{ dataLabel }}
     </span>
     <span v-if="ui.warnings.length" class="status__item is-warning" :title="ui.warnings.join('\n')">
@@ -47,7 +59,7 @@ const cursor = computed(() => (ui.cursor ? ui.cursor.map(value => value.toFixed(
   gap: 16px;
   padding: 0 10px;
   border-top: 1px solid var(--s-line);
-  background: var(--s-panel);
+  background: var(--s-wash-bar), var(--s-panel);
   color: var(--s-fg-3);
   font-size: 11px;
 }
@@ -64,6 +76,7 @@ const cursor = computed(() => (ui.cursor ? ui.cursor.map(value => value.toFixed(
   color: var(--s-ok);
   box-shadow: 0 0 6px var(--s-ok);
 }
+.status__item.is-partial .s-dot,
 .status__item.is-connecting .s-dot {
   color: var(--s-warn);
 }

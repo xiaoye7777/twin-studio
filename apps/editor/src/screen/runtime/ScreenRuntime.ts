@@ -17,6 +17,7 @@ import { useProjectStore } from '@/stores/project'
 import { deviceTemplates } from '@/studio/deviceTemplates'
 import { ApiDataManager, type ApiRequestSpec, type ApiState, requestKey } from '../datasources/ApiDataManager'
 import { apiUse, apiWidgetData } from '../datasources/mapping'
+import { sceneSourceHeaders } from '../datasources/sceneSource'
 import { useDataSourceStore } from '../datasources/store'
 import type { DataBinding, ScreenAction, ScreenDocument, Widget } from '../model'
 import { formatDate, formatNumber } from '../widgets/format'
@@ -110,7 +111,7 @@ export class ScreenRuntime {
   /** Variable values as the document last set them, to tell an edited default from a filter change. */
   private variableDefaults = new Map<string, string>()
   private readonly stopApiWatch: () => void
-  private readonly data = new TwinDataRuntime(this.twin, new AnyTarget())
+  private readonly data = new TwinDataRuntime(this.twin, new AnyTarget(), { requestHeaders: sceneSourceHeaders })
   private packageFor: { projectId: string; blob: Promise<Blob> } | null = null
   private readonly scenes = new LocalSceneRepository()
   private readonly times: number[] = []

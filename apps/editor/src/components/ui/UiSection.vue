@@ -3,18 +3,20 @@ import { ChevronRight } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 const props = withDefaults(
-  defineProps<{ title: string; collapsible?: boolean; open?: boolean; count?: number | null }>(),
+  /** nested：放在另一个折叠区里的小标题。 */
+  defineProps<{ title: string; collapsible?: boolean; open?: boolean; count?: number | null; nested?: boolean }>(),
   {
     collapsible: true,
     open: true,
     count: null,
+    nested: false,
   },
 )
 const expanded = ref(props.open)
 </script>
 
 <template>
-  <section class="ui-section" :class="{ 'is-open': expanded }">
+  <section class="ui-section" :class="{ 'is-open': expanded, 'is-nested': nested }">
     <header class="ui-section__head" @click="collapsible && (expanded = !expanded)">
       <ChevronRight v-if="collapsible" class="ui-section__chevron" :size="13" />
       <span class="ui-section__title">{{ title }}</span>
@@ -67,5 +69,19 @@ const expanded = ref(props.open)
 }
 .ui-section__body {
   padding: 0 0 10px;
+}
+.ui-section.is-nested {
+  border-bottom: 0;
+  border-top: 1px solid var(--s-line);
+}
+.ui-section.is-nested .ui-section__head {
+  height: 28px;
+}
+.ui-section.is-nested .ui-section__title {
+  color: var(--s-fg-2);
+  font-weight: 500;
+}
+.ui-section.is-nested .ui-section__body {
+  padding-bottom: 6px;
 }
 </style>

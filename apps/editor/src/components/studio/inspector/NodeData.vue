@@ -19,16 +19,28 @@ const binding = computed(() => {
   return node.value ? session.devices.bindingFor(node.value.id) : undefined
 })
 const templateId = ref(deviceTemplates[0]!.id)
-const connected = computed(() => session.twin.dataSourceStatus === 'connected')
-/** 静态数据时，变量的值可以直接在这里改。 */
-const editable = computed(() => session.devices.activeSource?.type === 'static')
-const sourceLabel = computed(() => {
-  if (editable.value) return '静态数据（可直接修改数值）'
-  if (!session.devices.activeSource) return '场景未启用数据源'
-  return connected.value ? '数据接收中' : '数据源未连接'
+/** 现在有值的变量数；变量后面显示值，值的来源可以在场景「数据」页签看。 */
+const live = computed(() => {
+  void session.twin.runtimeRevision
+  const current = binding.value
+  return current ? current.variables.filter(item => session.twin.getRuntimeValue(current.id, item.key)).length : 0
 })
-const staticValue = (key: string) =>
-  binding.value ? session.devices.dataSourceOf('static')?.values[binding.value.device.id]?.[key] : undefined
+const connected = computed(() => live.value > 0)
+/** 这台设备的数据由哪些接口提供。 */
+const providers = computed(() => {
+  const current = binding.value
+  if (!current) return []
+  const list = current.variables.flatMap(variable => session.devices.providersOf(current.device.id, variable.key))
+  return [...new Set(list.map(source => source.name))]
+})
+const sourceLabel = computed(() => {
+  if (!providers.value.length) return '没有接口提供这台设备'
+  return connected.value ? `${providers.value.join('、')}` : `等待 ${providers.value.join('、')}`
+})
+/** 这个变量由静态数据提供时，值可以直接在这里改。 */
+const staticSource = (key: string) =>
+  binding.value ? session.devices.staticSourceFor(binding.value.device.id, key) : undefined
+const editable = computed(() => binding.value?.variables.some(variable => staticSource(variable.key)) ?? false)
 const boundCount = computed(() => props.nodes.filter(item => session.devices.bindingFor(item.id)).length)
 
 function bind(): void {
@@ -177,11 +189,13 @@ function removeVariable(index: number): void {
             </select>
             <UiText :model-value="variable.unit ?? ''" @commit="updateVariable(index, { unit: $event || undefined })" />
             <StaticValueInput
-              v-if="editable"
+              v-if="staticSource(variable.key)"
               :data-type="variable.dataType"
-              :value="staticValue(variable.key)"
+              :value="staticSource(variable.key)!.values[binding.device.id]?.[variable.key]"
               :testid="`node-static-${variable.key}`"
-              @commit="session.devices.setStaticValue(binding.device.id, variable.key, $event)"
+              @commit="
+                session.devices.setStaticValue(staticSource(variable.key)!.id, binding.device.id, variable.key, $event)
+              "
             />
             <span v-else class="vars__value s-mono" :class="{ 'is-live': connected }">{{
               session.devices.liveValue(binding.id, variable.key)

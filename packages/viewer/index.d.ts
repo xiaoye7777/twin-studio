@@ -113,6 +113,15 @@ export interface ViewerPerformance {
 export type DataSourceType = 'mock' | 'websocket' | 'http' | 'static'
 /** 'unconfigured': the package has no enabled WebSocket source — no runtime values will ever appear. */
 export type DataSourceConnectionStatus = 'unconfigured' | 'connecting' | 'connected' | 'disconnected' | 'error'
+/** The live state of one data interface. Since 0.6.0. */
+export interface DataSourceRuntimeState {
+  id: string
+  name: string
+  type: DataSourceType
+  status: DataSourceConnectionStatus
+  error: string | null
+  messageCount: number
+}
 export type ViewerRuntimeState = DeepReadonly<{
   projectId: string | null
   bindings: TwinBinding[]
@@ -127,6 +136,8 @@ export type ViewerRuntimeState = DeepReadonly<{
   dataSourceStatus: DataSourceConnectionStatus
   dataSourceMessageCount: number
   dataSourceError: string | null
+  /** One entry per data interface; the fields above summarize them. Since 0.6.0. */
+  dataSourceStates: DataSourceRuntimeState[]
 }> & { getRuntimeValue(bindingId: string, variableKey: string): DeepReadonly<TwinRuntimeValue> | null }
 export interface ViewerDiagnostics {
   dataSource: { type: DataSourceType; status: DataSourceConnectionStatus; messageCount: number; error: string | null }
@@ -512,17 +523,40 @@ export const TwinSceneViewer: DefineComponent<{
   quality?: ViewerQuality
   /** Kiosk mode: seconds without input before the project's autoplay tour starts. Since 0.4.0. */
   idleSeconds?: number
+  /**
+   * Sign-in headers for the scene's HTTP data interfaces. Tokens never travel in the project file: the scene
+   * only names a credential (authRef), and this returns the headers for it. Since 0.6.0.
+   */
+  dataRequestHeaders?: (
+    source: Extract<ProjectDataSource, { type: 'http' }>,
+  ) => Record<string, string> | Promise<Record<string, string> | undefined> | undefined
   /** Show tour captions over the scene (default true). Since 0.4.0. */
   captions?: boolean
 }>
 
 /**
- * Where device values come from; at most one is enabled.
- * `http` and `static` since 0.6.0: packages using them need SDK 0.6.0 or later.
+ * Where device values come from. Several may be enabled at once; when more than one provides the same
+ * variable, the earlier one in the list wins and the next takes over when it disconnects. Since 0.6.0
+ * `http` and `static` sources, and several enabled at once.
  */
-export type ProjectDataSource = { id: string; name: string; enabled: boolean } & (
+export type ProjectDataSource = {
+  id: string
+  name: string
+  enabled: boolean
+  /** The devices this interface provides; omitted = every device found in its data. */
+  devices?: Array<{ deviceId: string; variables?: string[] }>
+} & (
   | { type: 'mock' }
-  | { type: 'websocket'; url: string }
+  | {
+      type: 'websocket'
+      url: string
+      /** Where the device messages are inside each message, e.g. "payload"; empty = the whole message. */
+      resultPath?: string
+      /** First message after connecting; empty sends the interface's device list. */
+      subscribe?: string
+      heartbeat?: { interval: number; message: string }
+      mapping?: DataSourceMapping
+    }
   | {
       type: 'http'
       /** http(s):// or a same-origin path starting with /. */
@@ -530,12 +564,22 @@ export type ProjectDataSource = { id: string; name: string; enabled: boolean } &
       method: 'GET' | 'POST'
       /** Seconds between requests. */
       interval: number
+      /** Seconds; omitted = at most the interval, at most 15. */
+      timeout?: number
+      params?: Array<{ key: string; value: string }>
+      /** No sign-in headers here: see `authRef`. */
+      headers?: Array<{ key: string; value: string }>
       /** Where the device messages are in the response, e.g. "data.list"; empty = the whole response. */
       resultPath: string
-      /** POST body; empty sends the scene's device list (the WebSocket subscribe message). */
+      /** POST body; empty sends the interface's device list (the WebSocket subscribe message). */
       body?: string
       /** Send the browser's cookies for that site. */
       withCredentials: boolean
+      /** Names a credential; the `dataRequestHeaders` prop turns it into headers. */
+      authRef?: string
+      /** 'auto' (default) treats a `{ code, msg }` failure with HTTP 200 as an error. */
+      envelope?: 'auto' | 'off'
+      mapping?: DataSourceMapping
     }
   | {
       type: 'static'
@@ -543,3 +587,18 @@ export type ProjectDataSource = { id: string; name: string; enabled: boolean } &
       values: Record<string, Record<string, number | string | boolean>>
     }
 )
+
+/** How a response becomes device values; omitted = `{ deviceId, <variable>: value }` rows. */
+export interface DataSourceMapping {
+  /** One row per device (default), one row per variable, or an object keyed by device id. */
+  format?: 'device-row' | 'metric-row' | 'device-map'
+  /** Default "deviceId"; empty = the data belongs to the interface's `devices`. */
+  deviceField?: string
+  valuesPath?: string
+  /** metric-row: default "metric". */
+  metricField?: string
+  /** metric-row: default "value". */
+  valueField?: string
+  /** Variable key → field name in the response, when they differ. */
+  fields?: Record<string, string>
+}

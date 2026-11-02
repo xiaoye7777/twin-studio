@@ -18,11 +18,16 @@ export class StaticDataSource implements DataSource {
   constructor(private readonly options: StaticDataSourceOptions) {}
 
   start(): void {
+    this.apply()
+    this.options.onStatus('connected')
+  }
+
+  /** 写入一次。另一个接口断开、它的值被清掉后，会再调一次，让静态值接管这些变量。 */
+  apply(): void {
     const bindings = this.options.getBindings()
     for (const [deviceId, values] of Object.entries(this.options.values))
       for (const update of mapWebSocketDeviceMessage({ deviceId, ...values }, bindings))
         this.options.setRuntimeValue(update.bindingId, update.variableKey, update.value)
-    this.options.onStatus('connected')
   }
 
   stop(): void {

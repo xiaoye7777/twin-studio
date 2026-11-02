@@ -59,12 +59,22 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 
 | 值 | 含义 |
 | --- | --- |
-| `unconfigured` | 项目包没有启用的 WebSocket 数据源（缺少 dataSources、空数组、全部禁用或旧版 mock 配置），不会产生数据 |
+| `unconfigured` | 项目包没有启用的数据接口（缺少 dataSources、空数组、全部禁用或旧版 mock 配置），不会产生数据 |
 | `connecting` | 正在连接或断线重连中（1s → 2s → 4s … 最长 10s 退避） |
 | `connected` | 已连接，数据来自该连接 |
 | `disconnected` / `error` | 连接不可用，实时值已清空，`dataSourceError` 给出原因 |
 
-建议大屏把 `dataSourceStatus !== 'connected'` 明确展示给用户，并在没有值时显示“—”。最多启用一个数据源，不做鉴权。配置不应包含密码、Token 等秘密；URL 中用户名密码会被拒绝。部署时需保证 URL 对浏览器可达，HTTPS 宿主使用 wss。
+建议大屏把 `dataSourceStatus !== 'connected'` 明确展示给用户，并在没有值时显示“—”。
+
+一个项目可以同时启用多个数据接口（0.6.0 起）：`dataSourceStatus` 是汇总（只要有一个连着就是 `connected`），每个接口的状态在 `getRuntimeState().dataSourceStates`；一个接口断开只清空它提供的值。
+
+配置不能包含密码、Token 等秘密；URL 中的用户名密码、名字像 Token 的参数和请求头会被拒绝。需要认证的 HTTP 接口，场景里只保存引用（`authRef`），由 `dataRequestHeaders` 属性提供请求头（0.6.0 起）：
+
+```vue
+<TwinSceneViewer :source="url" :data-request-headers="source => ({ Authorization: `Bearer ${getToken()}` })" />
+```
+
+部署时需保证 URL 对浏览器可达，HTTPS 宿主使用 wss。
 
 消息接受单个对象或数组：
 ```json
@@ -81,7 +91,8 @@ Viewer 自动读取配置并启动连接。宿主不传连接 URL，不解析消
 ### 0.6.0（未发布）
 
 - **新的数据源类型**：项目可以使用「定时请求」（每隔几秒请求一个 HTTP 接口，返回格式与 WebSocket 消息相同）或「静态数据」（编辑器里手填的数值）。`dataSourceType` 相应多了 `http`、`static` 两个取值，其余接口和事件没有变化。
-- 使用这两种数据源的项目包需要 0.6.0；只用 WebSocket 的项目包，0.5.0 照常打开。
+- 可以同时启用多个数据接口，每个接口可限定涉及设备、说明数据格式（`mapping`）；新增 `dataSourceStates`、`dataRequestHeaders`。
+- 使用这些功能的项目包需要 0.6.0；只启用一个 WebSocket 且没有新字段的项目包，0.5.0 照常打开。
 
 ### 0.5.0
 

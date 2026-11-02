@@ -15,4 +15,4 @@ pnpm --filter @twin-studio/core schema:update
 
 The unit tests fail when a file here is out of date.
 
-A few rules cannot be expressed in JSON Schema and are enforced when a package is loaded: unique effect, rule and interaction ids; safe WebSocket URLs (ws/wss, no credentials or fragment); at most one enabled data source; interaction metadata limited to JSON nested 10 levels; and "highlight" actions only on hover-enter.
+A few rules cannot be expressed in JSON Schema and are enforced when a package is loaded: unique effect, rule and interaction ids; safe data source URLs (no credentials or fragment; ws/wss or http/https) and no sign-in headers or parameters; interaction metadata limited to JSON nested 10 levels; and "highlight" actions only on hover-enter.

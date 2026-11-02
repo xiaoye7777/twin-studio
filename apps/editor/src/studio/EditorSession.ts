@@ -42,6 +42,7 @@ import { type DrawKind, DrawTool } from './DrawTool'
 import { type SceneHistoryRepository, type SnapshotKind } from '@/infrastructure/history/SceneHistoryRepository'
 import { MeasureTool, type MeasureReadout } from './MeasureTool'
 import { type GizmoMode, TransformGizmo } from './TransformGizmo'
+import { sceneSourceHeaders } from '@/screen/datasources/sceneSource'
 import { DeviceData } from './session/DeviceData'
 import { DrawingTools } from './session/DrawingTools'
 import { ModelParts } from './session/ModelParts'
@@ -188,7 +189,7 @@ export interface EditorSessionDeps {
     }
     this.store = new DocumentStore(createEmptyDocument(deps.projectId, deps.projectName), 300)
     this.resolver = new BindingTargetResolver(id => this.sync.objectFor(id))
-    this.dataRuntime = new TwinDataRuntime(this.twin, this.resolver)
+    this.dataRuntime = new TwinDataRuntime(this.twin, this.resolver, { requestHeaders: sceneSourceHeaders })
     this.gizmo = new TransformGizmo(this.engine, {
       onStart: () => {},
       onChange: ({ worlds }) => this.applyGizmo(worlds),

@@ -137,35 +137,203 @@ try {
   assert(cover?.startsWith('data:image/jpeg'), 'project cover is a scene screenshot')
   report.projectCover = 'PASS'
 
-  // ---------------------------------------------------------------- HTTP polling and static data
+  // ---------------------------------------------------------------- several data interfaces at once
   await page.goBack()
   await waitForStudio(page)
   await page.getByTestId('scene-tab-data').click()
-  await page.getByTestId('datasource-type').getByText('定时请求').click()
-  await page.getByTestId('datasource-http-url').fill(`http://127.0.0.1:${dataPort}/api/devices/latest`)
-  await page.getByTestId('datasource-http-url').press('Enter')
-  await page.waitForFunction(
-    () => {
+  const meter = () =>
+    studio(page, () => {
       const twin = window.__studio.twin
-      const meter = twin.bindings.find(binding => binding.device.id === 'EM-001')
-      return twin.dataSourceType === 'http' && typeof twin.getRuntimeValue(meter.id, 'power')?.value === 'number'
-    },
-    null,
-    { timeout: 20000 },
-  )
+      const binding = twin.bindings.find(item => item.device.id === 'EM-001')
+      const read = key => {
+        const value = twin.getRuntimeValue(binding.id, key)
+        return value && { value: value.value, source: window.__studio.devices.source(value.sourceId)?.name }
+      }
+      return { power: read('power'), variables: binding.variables.map(item => item.key) }
+    })
+  /** Waits until EM-001's power comes from this interface (and has this value, when given). */
+  const waitPower = (source, expected) =>
+    page.waitForFunction(
+      ([name, value]) => {
+        const twin = window.__studio.twin
+        const binding = twin.bindings.find(item => item.device.id === 'EM-001')
+        const power = twin.getRuntimeValue(binding.id, 'power')
+        return (
+          power &&
+          window.__studio.devices.source(power.sourceId)?.name === name &&
+          (value === null || power.value === value)
+        )
+      },
+      [source, expected ?? null],
+      { timeout: 20000 },
+    )
+
+  // First interface: HTTP polling of the simulator, next to the WebSocket gateway.
+  await page.getByTestId('add-source').click()
+  await page.getByTestId('add-source-http').click()
+  const firstSource = page.getByTestId('source-定时请求接口')
+  await firstSource.getByTestId('datasource-http-url').fill(`http://127.0.0.1:${dataPort}/api/devices/latest`)
+  await firstSource.getByTestId('datasource-http-url').press('Enter')
+  await page.getByTestId('source-enabled-实时设备数据').click()
+  await waitPower('定时请求接口')
   report.httpPolling = 'PASS'
-  // Static data: a value typed in the panel reaches the runtime at once.
-  await page.getByTestId('datasource-type').getByText('静态数据').click()
-  const input = page.getByTestId('static-EM-001-power')
+
+  // Second interface in another format: one row per variable, text numbers, other field names.
+  let meterResponse = {
+    code: 0,
+    data: {
+      rows: [
+        { id: 'EM-001', name: 'power', val: '123.5' },
+        { id: 'EM-404', name: 'power', val: '1' },
+      ],
+    },
+  }
+  await page.route('**/api/park/meters**', route =>
+    meterResponse
+      ? route.fulfill({
+          contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify(meterResponse),
+        })
+      : route.abort(),
+  )
+  await page.getByTestId('add-source').click()
+  await page.getByTestId('add-source-http').click()
+  const secondSource = page.getByTestId('source-定时请求接口 2')
+  await secondSource.getByTestId('source-method').selectOption('GET')
+  await secondSource.getByTestId('datasource-http-url').fill(`http://127.0.0.1:${dataPort}/api/park/meters`)
+  await secondSource.getByTestId('datasource-http-url').press('Enter')
+  await secondSource.getByTestId('source-interval').fill('1')
+  await secondSource.getByTestId('source-interval').press('Enter')
+  // Query parameters are sent; a sign-in header is refused, because scene files travel.
+  await secondSource.getByText('查询参数', { exact: true }).click()
+  await secondSource.getByTestId('source-params-add').click()
+  await secondSource.getByTestId('source-params-key-0').fill('site')
+  await secondSource.getByTestId('source-params-key-0').press('Enter')
+  await secondSource.getByTestId('source-params-value-0').fill('east')
+  await secondSource.getByTestId('source-params-value-0').press('Enter')
+  await secondSource.getByText('请求头', { exact: true }).click()
+  await secondSource.getByTestId('source-headers-add').click()
+  await secondSource.getByTestId('source-headers-key-0').fill('Authorization')
+  await secondSource.getByTestId('source-headers-key-0').press('Enter')
+  await secondSource.getByText('不能写进场景文件').waitFor()
+
+  // A test request finds the list in the response, then parsing settings update the verdict without a new request.
+  await secondSource.getByTestId('source-probe').click()
+  await secondSource.getByTestId('source-probe-result').getByText('没有解析出数值').waitFor()
+  await secondSource.getByText('数据解析', { exact: true }).click()
+  assert.equal(await secondSource.getByTestId('source-result-path').inputValue(), 'data.rows')
+  await secondSource.getByTestId('source-format').selectOption('metric-row')
+  await secondSource.getByTestId('source-device-field').fill('id')
+  await secondSource.getByTestId('source-device-field').press('Enter')
+  await secondSource.getByTestId('source-metric-field').fill('name')
+  await secondSource.getByTestId('source-metric-field').press('Enter')
+  await secondSource.getByTestId('source-value-field').fill('val')
+  await secondSource.getByTestId('source-value-field').press('Enter')
+  await secondSource.getByTestId('source-probe-result').getByText('认出 1 台设备，解析出 1 个值').waitFor()
+
+  // This interface covers one device and one variable.
+  await secondSource.getByText('涉及设备', { exact: true }).click()
+  await secondSource.getByTestId('source-device-mode').getByText('指定设备').click()
+  await secondSource.getByTestId('source-add-device').selectOption('EM-001')
+  await secondSource.getByText('EM-001').first().click()
+  const onlyPower = await studio(page, () => {
+    const binding = window.__studio.twin.bindings.find(item => item.device.id === 'EM-001')
+    return binding.variables.map(item => item.key).filter(key => key !== 'power')
+  })
+  for (const key of onlyPower) await secondSource.getByTestId(`source-var-EM-001-${key}`).uncheck()
+  const scope = await studio(page, () => window.__studio.devices.sources.at(-1).devices)
+  assert.deepEqual(scope, [{ deviceId: 'EM-001', variables: ['power'] }])
+
+  // Lower in the list it only fills gaps; moved up it wins, and the device mixes values from both.
+  await waitPower('定时请求接口')
+  await secondSource.getByTestId('source-menu').click()
+  await page.getByText('上移（优先）').click()
+  await waitPower('定时请求接口 2', 123.5)
+  assert.equal(
+    await page.getByTestId('source-定时请求接口 2').getByTestId('datasource-status').textContent(),
+    '请求成功',
+  )
+  report.twoInterfacesOneDevice = 'PASS'
+
+  // The device list shows each variable's source.
+  await page.getByTestId('device-EM-001').locator('header').click()
+  await page.getByTestId('device-EM-001').getByText('定时请求接口 2').first().waitFor()
+
+  // One interface failing clears only its values; the next one takes over, and the rest keep working.
+  meterResponse = null
+  await page.getByTestId('source-定时请求接口 2').getByTestId('source-error').waitFor({ timeout: 10000 })
+  await waitPower('定时请求接口')
+  assert.equal(await studio(page, () => window.__studio.twin.dataSourceStatus), 'connected')
+  assert((await page.getByTestId('status-data').textContent()).includes('1/2 个接口'))
+  assert.equal(await page.getByTestId('source-定时请求接口').getByTestId('source-error').count(), 0)
+  report.interfaceFailureIsolated = 'PASS'
+
+  // Static data: a value typed in the panel reaches the runtime at once, and fills in when nothing else provides it.
+  await page.getByTestId('add-source').click()
+  await page.getByTestId('add-source-static').click()
+  const input = page.getByTestId('source-static-EM-001-power')
   await input.fill('321')
   await input.press('Enter')
-  await page.waitForFunction(() => {
-    const twin = window.__studio.twin
-    const meter = twin.bindings.find(binding => binding.device.id === 'EM-001')
-    return twin.dataSourceType === 'static' && twin.getRuntimeValue(meter.id, 'power')?.value === 321
-  })
-  assert.equal((await studio(page, () => window.__studio.devices.activeSource.values))['EM-001'].power, 321)
+  await page.getByTestId('source-enabled-定时请求接口').click()
+  await page.getByTestId('source-enabled-定时请求接口 2').click()
+  await waitPower('静态数据', 321)
+  const fixed = await studio(page, () => window.__studio.devices.sources.find(item => item.type === 'static').values)
+  assert.equal(fixed['EM-001'].power, 321)
   report.staticData = 'PASS'
+
+  // All of it saves and comes back.
+  await save(page)
+  await page.reload()
+  await waitForStudio(page)
+  assert.deepEqual(
+    await studio(page, () => window.__studio.doc.value.dataSources.map(item => [item.name, item.enabled])),
+    [
+      ['实时设备数据', false],
+      ['定时请求接口 2', false],
+      ['定时请求接口', false],
+      ['静态数据', true],
+    ],
+  )
+  assert.deepEqual((await meter()).power, { value: 321, source: '静态数据' })
+  report.interfacesSaved = 'PASS'
+
+  // A registered interface becomes a scene interface; its token is sent, but stays out of the scene file.
+  await page.evaluate(async url => {
+    const { useDataSourceStore } = await import('/src/screen/datasources/store.ts')
+    const { createConnection, createDataset } = await import('/src/screen/datasources/model.ts')
+    const store = useDataSourceStore()
+    await store.load()
+    const connection = { ...createConnection('园区后台', url), auth: { type: 'bearer', token: 'secret-token' } }
+    await store.saveConnection(connection)
+    await store.saveDatasets([
+      createDataset(connection.id, {
+        name: '电表实时',
+        path: '/meters',
+        resultPath: 'data.rows',
+        refresh: 2,
+        params: [{ key: 'site', label: '站点', in: 'query', type: 'string', required: false, default: 'east' }],
+      }),
+    ])
+  }, `http://127.0.0.1:${dataPort}/api/park`)
+  await page.getByTestId('scene-tab-data').click()
+  await page.getByTestId('add-source').click()
+  await page.getByTestId('add-source-http').click()
+  const signedIn = page.waitForRequest(
+    request =>
+      request.url().includes('/api/park/meters?site=east') && request.headers().authorization === 'Bearer secret-token',
+  )
+  await page.getByTestId('source-定时请求接口 3').getByTestId('source-import').selectOption({ label: '电表实时' })
+  await signedIn
+  const imported = await studio(page, () => window.__studio.devices.sources.at(-1))
+  assert.deepEqual(
+    [imported.name, imported.method, imported.interval, imported.resultPath, imported.params],
+    ['电表实时', 'GET', 2, 'data.rows', [{ key: 'site', value: 'east' }]],
+  )
+  assert(imported.authRef, 'the interface refers to the registered service')
+  const sceneFile = await studio(page, () => JSON.stringify(window.__studio.doc.value))
+  assert(!sceneFile.includes('secret-token'), 'the token never enters the scene file')
+  report.registeredInterface = 'PASS'
 
   assert.deepEqual(errors, [])
   console.log(JSON.stringify(report, null, 2))

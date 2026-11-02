@@ -11,7 +11,7 @@ src/
   domain/          数据长什么样：类型 + zod 校验 + 纯函数。不碰 three.js，不碰浏览器。
     scene/           场景文档（节点、变换、设置），版本与迁移
     twin/            设备绑定：哪个对象 ↔ 哪台设备、哪些变量
-    dataSources/     数据源配置：WebSocket / HTTP / 静态
+    dataSources/     数据接口配置：WebSocket / HTTP / 静态，涉及设备，数据格式
     effects/         特效实例（发光、描边、标牌…）的参数
     effectTemplates/ 内置特效模板（规则触发时套用）
     visualRules/     告警规则：变量 + 条件 → 特效模板
@@ -64,11 +64,17 @@ src/
 
 `runtime/twin/createTwinState.ts`、`runtime/twin/TwinDataRuntime.ts`、`infrastructure/data/`、`runtime/effects/`
 
-- **运行时状态**（`createTwinState`）是一个 Vue 响应式对象：设备绑定列表、每个「绑定 + 变量」的当前值、数据源状态。
+- **运行时状态**（`createTwinState`）是一个 Vue 响应式对象：设备绑定列表、每个「绑定 + 变量」的当前值（记着来自哪个接口）、
+  每个接口的状态（`dataSourceStates`）和汇总。
   值只在内存里，**不写进文档**。`runtimeRevision` 每次有新值就加一，界面和规则靠它触发更新。
-- **TwinDataRuntime** 负责数据源的生命周期：读场景的 `dataSources`，启动启用的那一个（WebSocket / HTTP 轮询 / 静态），
-  断开或出错就清空所有值。三种数据源都实现同一个 `DataSource` 接口（`start` / `stop`），收到的消息都交给
-  `mapWebSocketDeviceMessage` 按设备编号和变量类型筛选后写入状态。
+- **TwinDataRuntime** 负责接口的生命周期：读场景的 `dataSources`，同时运行所有启用的接口（WebSocket / HTTP 轮询 / 静态）。
+  - 三种接口都实现同一个 `DataSource` 接口（`start` / `stop`）。每个接口拿到的 `getBindings()` 已按它的「涉及设备」筛好（`bindingsForSource`），
+    所以范围限制不用写在各个实现里。
+  - 接口的返回交给 `messageMapping.ts`，按 `mapping` 说明的格式解析成「绑定 + 变量 + 值」。
+  - 一个接口断开或出错，只清空它提供的值。同一个变量有多个接口提供时，列表靠前的优先（`writeValue`）；靠前的值被清空后，
+    靠后的接管（静态数据只写一次，所以 `releaseValues` 会让它再写一次）。
+  - 再次调用 `start()` 时比较配置，只重启改过的接口，其他接口不断线。
+  - 场景文件不能有 Token：需要认证的 HTTP 接口只存引用（`authRef`），请求头由创建 `TwinDataRuntime` 时传入的 `requestHeaders` 提供。
 - **VisualRuleRuntime** 监听运行时状态，对每条启用的规则求值（`evaluateCondition`），命中就生成特效实例交给 **EffectRuntime**；
   特效的三维表现在 `effectVisuals.ts`。规则没命中或数据源断开，特效自动撤掉。
 
@@ -94,6 +100,7 @@ src/
 | `runtime/tour/TourPlayer.ts` | 导览：逐步飞到视角、显示字幕、切换图层；手动操作即打断 |
 | `runtime/twin/TwinSceneRuntime.ts` | Viewer 的总装：引擎 + SceneSync + 数据 + 规则 + 交互 + 导览 + 对外事件 |
 | `infrastructure/packages/` | `.twin.zip` 项目包：格式、读写、资源校验 |
+| `infrastructure/data/probeDataSource.ts` | 「试请求」：和运行时用同一份请求逻辑，把原始返回交给配置界面 |
 | `contract/viewerContract.ts` | Viewer SDK 对外的类型；改这里要同步 `packages/viewer/index.d.ts`（类型检查会对比） |
 
 ## 测试

@@ -1,3 +1,4 @@
+import { envelopeError } from '@twin-studio/core'
 import type { ApiConnection, ApiDataset, ApiField, ApiFieldType, ApiParam } from './model'
 
 export interface ApiResponse {
@@ -90,21 +91,6 @@ export function getPath(value: unknown, path: string): unknown {
     current = (current as Record<string, unknown>)[part]
   }
   return current
-}
-
-const successCodes = new Set(['0', '200', 'success', 'ok', 'true'])
-
-/** `{ code, msg, data }` style failures reported with HTTP 200. */
-function envelopeError(body: unknown): string {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return ''
-  const record = body as Record<string, unknown>
-  const code = record.code ?? record.status ?? record.errcode
-  if (code === undefined || typeof code === 'object') return ''
-  if (record.success === true || successCodes.has(String(code).toLowerCase())) return ''
-  // `status` alone is often a business field ("running"); only a numeric one is a result code.
-  if (record.code === undefined && record.errcode === undefined && typeof record.status !== 'number') return ''
-  const message = record.msg ?? record.message ?? record.errmsg ?? record.error
-  return `接口返回错误：${typeof message === 'string' && message ? message : '未说明原因'}（code = ${String(code)}）`
 }
 
 function describeStatus(status: number, body: unknown, path: string): string {

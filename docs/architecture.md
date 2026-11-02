@@ -48,7 +48,7 @@ tools/device-simulator  设备模拟器：扮演数据网关（WebSocket / HTTP�
 ## 三、实时数据怎么变成三维效果
 
 ```
- 数据源（场景文档里的 dataSources，一次启用一个）
+ 数据接口（场景文档里的 dataSources，可以同时启用多个）
    推送 WebSocket ┐
    定时请求 HTTP  ├─▶ 设备消息 {deviceId, 变量: 值}
    静态数据       ┘

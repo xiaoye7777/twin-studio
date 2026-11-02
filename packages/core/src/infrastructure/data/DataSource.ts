@@ -4,6 +4,16 @@ export type DataSourceConnectionStatus = 'unconfigured' | 'connecting' | 'connec
 
 export type ViewerDataSourceConfig = { type: 'mock' } | { type: 'websocket'; url: string }
 
+/** 一个数据接口此刻的运行状态。 */
+export interface DataSourceRuntimeState {
+  id: string
+  name: string
+  type: DataSourceType
+  status: DataSourceConnectionStatus
+  error: string | null
+  messageCount: number
+}
+
 export interface DataSource {
   start(): void
   stop(): void

@@ -9,11 +9,11 @@ SceneEditor.vue                       打开项目：读场景 → 创建 Editor
 ├─ TopBar.vue                         菜单（文件/编辑/添加/视图）、编辑/预览切换、撤销重做、主题、导出
 ├─ LeftPanel.vue
 │   ├─ SceneTree.vue                  场景树：层级、拖拽改父子、右键菜单、模型部件
-│   └─ AssetLibrary.vue               资源：模型、组件，拖进视口
+│   └─ ViewsPanel.vue                 视角（书签）+ TourEditor.vue（导览），都可折叠
 ├─ StudioViewport.vue                 三维视口：画布、工具栏、框选、绘制 / 测量提示、右键菜单（ViewportMenu）
-├─ BottomDock.vue                     视角与导览
+├─ BottomDock.vue → AssetLibrary.vue  资源：按标签分类的模型、组件、基本体、绘制工具，拖进视口（数据在 useAssetLibrary.ts）
 ├─ InspectorPanel.vue                 右侧检查器：未选中时是场景页签，选中时是对象页签
-│   ├─ 场景：SceneEnvironment（环境）/ SceneData（数据源与设备）/ ScenePresentation（放映）
+│   ├─ 场景：SceneEnvironment（环境）/ SceneData（数据接口与设备，组件在 inspector/data/）/ ScenePresentation（放映）
 │   └─ 对象：NodeProperties（属性）/ NodeData（设备绑定）/ NodeEffects（特效与规则）/ NodeInteractions（交互）
 │        选中模型部件时：PartProperties / PartMaterial
 ├─ StatusBar.vue                      底部状态栏
@@ -47,7 +47,7 @@ SceneEditor.vue                       打开项目：读场景 → 创建 Editor
 | `session.tools` | `session/DrawingTools.ts` | 绘制（路径 / 区域 / 标签 / 灯光）与测量（距离 / 面积） |
 | `session.create` | `session/NodeCreation.ts` | 添加模型、基本体、分组、组件；把绘制结果变成节点 |
 | `session.nodes` | `session/NodeEditing.ts` | 改属性、显隐锁定、删除、复制粘贴、组合、层级、对齐分布、落地、阵列、方向键微调 |
-| `session.devices` | `session/DeviceData.ts` | 设备绑定、批量绑定、数据源（推送 / 定时请求 / 静态数据）、实时值显示 |
+| `session.devices` | `session/DeviceData.ts` | 设备绑定、批量绑定、数据接口的增删改（可以同时启用多个）、试请求、实时值显示 |
 | `session.effects` | `session/NodeEffects.ts` | 特效、告警规则、点击交互 |
 | `session.views` | `session/ViewsAndTours.ts` | 视角（书签）、导览编辑、放映设置；播放由 `session.tours`（core 的 TourPlayer）负责 |
 
@@ -58,5 +58,21 @@ SceneEditor.vue                       打开项目：读场景 → 创建 Editor
 一条修改从界面到画面的路径（以「改颜色」为例）：
 `NodeProperties.vue` 调 `session.nodes.updateNode(id, recipe)` → `session.edit()` → `DocumentStore.transaction` →
 文档变化回调 → `SceneSync.update()` 只更新这一个节点的材质。撤销时 DocumentStore 应用反向补丁，走同样的回调。
+
+## 场景的数据接口（inspector/data/）
+
+`SceneData.vue` 分两块：「数据源」每个接口一个 `SourceCard`，「设备」是 `DeviceList`。
+
+| 文件 | 做什么 |
+| --- | --- |
+| `SourceCard.vue` | 一个接口的折叠区：状态、开关、更多操作 |
+| `HttpSourceFields` / `WebSocketSourceFields` / `StaticSourceFields` | 三种接口各自的配置 |
+| `SourceParsing.vue` | 数据解析：数据位置、数据格式、字段对照 |
+| `SourceDevices.vue` | 涉及设备：全部 / 指定，每台设备可只勾部分变量 |
+| `SourceProbe.vue` + `useSourceProbe.ts` | 试请求：结果只在内存里，改解析设置时立即重算 |
+| `DeviceList.vue` | 全部设备：每个变量的值和来源接口 |
+
+运行逻辑在 core（见 `packages/core/README.md` 的「数据」一节）。需要认证的接口通过 `screen/datasources/sceneSource.ts`
+从「数据接口」页面登记的数据服务取请求头，Token 不进场景文件。
 
 调试：开发环境下浏览器控制台里的 `window.__studio` 就是当前 session，例如 `__studio.nodes.dropToGround()`。

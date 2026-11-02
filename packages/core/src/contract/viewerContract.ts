@@ -11,7 +11,7 @@ import type {
   TwinRuntimeValue,
 } from '../domain/twin'
 import type { InteractionMetadata, InteractionTrigger } from '../domain/interactions'
-import type { DataSourceConnectionStatus, DataSourceType } from '../infrastructure/data'
+import type { DataSourceConnectionStatus, DataSourceRuntimeState, DataSourceType } from '../infrastructure/data'
 
 export type { TwinBindingTarget } from '../domain/twin'
 
@@ -135,6 +135,8 @@ export type ViewerRuntimeState = DeepReadonly<{
   dataSourceStatus: DataSourceConnectionStatus
   dataSourceMessageCount: number
   dataSourceError: string | null
+  /** 每个数据接口的状态；上面几项是它们的汇总。 */
+  dataSourceStates: DataSourceRuntimeState[]
 }> & {
   getRuntimeValue(bindingId: string, variableKey: string): DeepReadonly<TwinRuntimeValue> | null
 }

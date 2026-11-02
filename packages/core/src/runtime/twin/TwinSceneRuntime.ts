@@ -31,7 +31,7 @@ import { SceneSync } from '../scene/SceneSync'
 import { BindingTargetResolver, bindingTargetFromObject } from './BindingTargetResolver'
 import { applyCameraLimits } from './cameraLimits'
 import { createTwinState } from './createTwinState'
-import { TwinDataRuntime } from './TwinDataRuntime'
+import { TwinDataRuntime, type TwinDataRuntimeOptions } from './TwinDataRuntime'
 import { ViewerPointerEvents, type ViewerTargetClick } from './ViewerPointerEvents'
 import { InteractionRuntime } from '../interactions/InteractionRuntime'
 import { RuntimeVisibilityLayer } from '../interactions/runtimeVisibility'
@@ -46,6 +46,8 @@ export interface TwinSceneRuntimeOptions {
   onHoverChange?: (event: ViewerHoverEvent) => void
   /** Kiosk mode: play the project's autoplay tour after this many idle seconds (overrides the project). */
   idleSeconds?: number
+  /** 定时请求接口的认证请求头（Token 不进场景文件，由集成方提供）。 */
+  dataRequestHeaders?: TwinDataRuntimeOptions['requestHeaders']
 }
 
 const IDLE_EVENTS = ['pointerdown', 'wheel', 'keydown', 'touchstart'] as const
@@ -86,7 +88,7 @@ export class TwinSceneRuntime {
     this.sync = new SceneSync(this.engine, assets)
     this.sync.motionValue = (nodeId, key) => this.liveValue(nodeId, key)
     this.resolver = new BindingTargetResolver(id => this.sync.objectFor(id))
-    this.data = new TwinDataRuntime(this.twin, this.resolver)
+    this.data = new TwinDataRuntime(this.twin, this.resolver, { requestHeaders: options.dataRequestHeaders })
     this.tours = new TourPlayer(
       {
         getTours: () => this.document?.tours ?? [],

@@ -13,4 +13,6 @@ export interface TwinRuntimeValue {
   variableKey: string
   value: TwinRuntimeValueData
   updatedAt: string
+  /** 这个值来自哪个数据接口。 */
+  sourceId?: string
 }

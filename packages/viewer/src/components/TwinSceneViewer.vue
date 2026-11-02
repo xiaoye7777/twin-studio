@@ -7,6 +7,7 @@ import {
   type TwinBindingTarget,
   type TwinPackageSource,
   TwinSceneRuntime,
+  type TwinSceneRuntimeOptions,
   type TwinSceneViewerEvents,
   type TwinSceneViewerPublicApi,
   type ViewerQuality,
@@ -21,10 +22,12 @@ const props = withDefaults(
     quality?: ViewerQuality
     /** Kiosk mode: seconds without input before the project's autoplay tour starts (overrides the project). */
     idleSeconds?: number
+    /** 定时请求接口的认证请求头：Token 不进场景文件，由集成方提供。 */
+    dataRequestHeaders?: TwinSceneRuntimeOptions['dataRequestHeaders']
     /** Show tour captions over the scene. Hosts with their own caption UI can turn this off. */
     captions?: boolean
   }>(),
-  { quality: 'auto', idleSeconds: undefined, captions: true },
+  { quality: 'auto', idleSeconds: undefined, dataRequestHeaders: undefined, captions: true },
 )
 const emit = defineEmits<TwinSceneViewerEvents>()
 const canvas = ref<HTMLCanvasElement>()
@@ -88,6 +91,7 @@ async function load(): Promise<void> {
       {
         quality: props.quality,
         idleSeconds: props.idleSeconds,
+        dataRequestHeaders: source => props.dataRequestHeaders?.(source),
         onTourChange: state => {
           if (!mounted || request !== generation) return
           tour.value = state
