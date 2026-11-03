@@ -199,6 +199,12 @@ export function removeModelParts(
 }
 
 /** Deep-copies nodes (with subtrees and their effects) next to the originals. Returns the new top ids. */
+/** 让目标改指另一个节点（模型部件的 id 不变）。 */
+function retarget(target: TwinBindingTarget, nodeId: string): void {
+  if (target.type === 'asset-instance' || target.type === 'asset-node') target.instanceId = nodeId
+  else target.nodeId = nodeId
+}
+
 export function duplicateNodes(draft: Doc, ids: readonly string[], offset: [number, number, number]): string[] {
   const top = topmost(draft, ids)
   const created: string[] = []
@@ -232,9 +238,20 @@ export function duplicateNodes(draft: Doc, ids: readonly string[], offset: [numb
     const copyId = remap.get(nodeId)
     if (!copyId) continue
     const target = plain(effect.target) as TwinBindingTarget
-    if (target.type === 'asset-instance' || target.type === 'asset-node') target.instanceId = copyId
-    else target.nodeId = copyId
+    retarget(target, copyId)
     draft.effects.push({ ...plain(effect), id: newId('effect'), target })
+  }
+  // 交互也跟着副本走：阵列复制出来的储能柜同样能点击开门。目标指向被复制对象的，改指它的副本。
+  for (const interaction of [...draft.interactions]) {
+    const copyId = remap.get(targetNodeId(interaction.source))
+    if (!copyId) continue
+    const copy = plain(interaction) as SceneInteraction
+    copy.id = newId('interaction')
+    retarget(copy.source, copyId)
+    const target = 'target' in copy.action ? copy.action.target : undefined
+    const targetCopyId = target ? remap.get(targetNodeId(target)) : undefined
+    if (target && targetCopyId) retarget(target, targetCopyId)
+    draft.interactions.push(copy)
   }
   return created
 }

@@ -1,15 +1,20 @@
 import { Box3, Matrix4, Vector3 } from 'three'
 import {
+  type AnimationPlayMode,
+  createInteraction,
   extractComponent,
   identityTransform,
   insertComponent,
+  type InteractionTrigger,
   newId,
   nodeById,
   primitiveDefaults,
   type PrimitiveShape,
   type SceneComponentData,
   type SceneDocumentV2,
+  type SceneInteraction,
   type SceneNodeV2,
+  targetForNode,
   topmost,
   transformOf,
   uniqueName,
@@ -40,10 +45,11 @@ export class NodeCreation {
     return new Vector3(target.x, 0, target.z)
   }
 
-  private insert(label: string, nodes: SceneNodeV2[]): void {
+  private insert(label: string, nodes: SceneNodeV2[], extras: SceneInteraction[] = []): void {
     if (!nodes.length) return
     const parentId = this.insertionParent()
     this.session.edit(label, draft => {
+      draft.interactions.push(...extras)
       for (const node of nodes) {
         if (node.parentId === null && parentId) {
           // Drop into the selected group, keeping the world position.
@@ -102,11 +108,15 @@ export class NodeCreation {
     return roots
   }
 
-  /** `options` 给内置模型用：中文名字和放置时的缩放；导入的模型用文件名，不缩放。 */
+  /** `options` 给内置模型用：中文名字、放置时的缩放和预设交互；导入的模型用文件名，不缩放。 */
   async addModel(
     assetId: string,
     at?: Vector3 | null,
-    options: { name?: string; scale?: number } = {},
+    options: {
+      name?: string
+      scale?: number
+      interactions?: Array<{ trigger: InteractionTrigger; clip: string; mode: AnimationPlayMode }>
+    } = {},
   ): Promise<string | null> {
     const asset = await this.session.assets.get(assetId)
     if (!asset) throw new Error('资产不存在')
@@ -131,7 +141,13 @@ export class NodeCreation {
       locked: false,
       model: { assetId, overrides: {}, deleted: [] },
     }
-    this.insert('添加模型', [node])
+    // 预设交互和模型在同一步里加入，撤销时一起消失
+    const interactions = (options.interactions ?? []).map(({ trigger, clip, mode }) => ({
+      ...createInteraction(targetForNode(node)),
+      trigger,
+      action: { type: 'play-animation' as const, clip, mode },
+    }))
+    this.insert('添加模型', [node], interactions)
     return node.id
   }
 

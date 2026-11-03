@@ -9,15 +9,25 @@ import { GltfReader, type GltfReaderOptions } from './gltfReader'
  */
 export function normalizeAssetNodeIds(root: Object3D): void {
   const used = new Set<string>()
-  const visit = (node: Object3D, path: string): void => {
+  const visit = (node: Object3D, path: string, insidePart: boolean): void => {
     const embedded: unknown = node.userData.meteorAssetNodeId ?? node.userData.assetNodeId
+    const named = typeof embedded === 'string' && embedded !== ''
     const fallback = path === 'root' ? '__asset_root__' : `legacy:${path}`
-    const id = typeof embedded === 'string' && embedded && !used.has(embedded) ? embedded : fallback
+    const id = named && !used.has(embedded) ? embedded : fallback
     node.userData.assetNodeId = id
     used.add(id)
-    node.children.forEach((child, index) => visit(child, `${path}/${index}`))
+    // 文件给节点写了固定 id，它就是部件。它下面文件里没有名字的节点不是部件，只是它的表面：加载器把多材质网格拆成的
+    // 子网格、压缩工具为量化插入的包裹节点。选中和点击都应该落在部件上（整扇门，不是门上的标签）。id 规则不变，
+    // 已保存场景里的绑定照常解析。
+    if (insidePart && !named && node.userData.name === undefined) node.userData.partSurface = true
+    node.children.forEach((child, index) => visit(child, `${path}/${index}`, insidePart || named))
   }
-  visit(root, 'root')
+  visit(root, 'root', false)
+}
+
+/** 是不是部件的表面，而不是部件本身（见 normalizeAssetNodeIds）。 */
+export function isPartSurface(object: Object3D): boolean {
+  return object.userData.partSurface === true
 }
 
 export type ModelLoaderOptions = GltfReaderOptions

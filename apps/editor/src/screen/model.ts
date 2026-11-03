@@ -1,3 +1,4 @@
+import type { AnimationPlayMode } from '@twin-studio/core'
 import type { ApiBinding } from './datasources/model'
 
 /**
@@ -34,6 +35,9 @@ export type ScreenAction =
   | { type: 'play-tour'; tourId: string }
   | { type: 'stop-tour' }
   | { type: 'toggle-layer'; nodeId: string }
+  /** 播放模型的动画片段，比如一个按钮控制储能柜爆炸和复位。 */
+  | { type: 'play-animation'; nodeId: string; clip: string; mode: AnimationPlayMode }
+  | { type: 'stop-animation'; nodeId: string }
   | { type: 'open-url'; url: string }
   /** `$item` sets the clicked item's name. */
   | { type: 'set-variable'; variable: string; value: string }

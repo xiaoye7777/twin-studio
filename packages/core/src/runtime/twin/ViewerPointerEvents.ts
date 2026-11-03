@@ -9,6 +9,7 @@ import type { Intersection } from 'three'
 export interface PointerPickHost {
   raycastObjects(ndc: Vector2): Intersection<Object3D>[]
 }
+import { isPartSurface } from '../../engine/ModelLoader'
 import { bindingTargetFromObject } from './BindingTargetResolver'
 import type { TwinRuntimeState } from './TwinDataRuntime'
 
@@ -144,7 +145,10 @@ export class ViewerPointerEvents {
         node = node.parent
       }
       if (!node || chain.some(item => !item.visible)) continue
-      const target = chain.map(bindingTargetFromObject).find(item => item !== null)
+      const target = chain
+        .filter(item => !isPartSurface(item))
+        .map(bindingTargetFromObject)
+        .find(item => item !== null)
       if (!target) continue
       const binding = chain
         .map(bindingTargetFromObject)

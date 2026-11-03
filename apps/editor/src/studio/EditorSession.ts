@@ -28,6 +28,7 @@ import {
   type SceneSettingsV2,
   SceneSync,
   targetForNode,
+  targetNodeId,
   topmost,
   TourPlayer,
   type TourState,
@@ -664,6 +665,8 @@ export interface EditorSessionDeps {
       flyToBookmark: id => this.views.flyToBookmark(id),
       playTour: id => void this.tours.play(id),
       stopTour: () => this.tours.stop(),
+      playAnimation: (target, clip, mode) => this.sync.playClip(targetNodeId(target), clip, mode),
+      stopAnimation: (target, clip) => this.sync.stopClips(targetNodeId(target), clip),
     })
     interactions.setInteractions(this.doc.value.interactions)
     interactions.setPointerActive(true)
@@ -688,6 +691,7 @@ export interface EditorSessionDeps {
   exitPreview(): void {
     if (!this.preview) return
     this.tours.stop()
+    this.sync.clearTriggeredClips()
     this.preview.pointers.dispose()
     this.preview.interactions.dispose()
     this.preview = null

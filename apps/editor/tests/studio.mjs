@@ -344,6 +344,74 @@ try {
   assert(cabinet.partCount > 50, `cabinet has ${cabinet.partCount} parts`)
   assert(cabinet.hasCells && cabinet.hasFan, 'cabinet parts carry stable ids')
   assert(Math.abs(cabinet.doorHinge[0] + 0.677) < 0.002, `door hinge at x=${cabinet.doorHinge[0]}`)
+
+  // Clicking it plays its clips, as set up when it was placed: a click opens and closes the doors, a double-click
+  // explodes it. Fans keep running throughout and the pose is back after leaving the preview.
+  const cabinetNode = (await doc()).nodes.at(-1)
+  const presets = (await doc()).interactions.filter(item => item.source.instanceId === cabinetNode.id)
+  assert.deepEqual(
+    presets.map(item => [item.trigger, item.action.clip, item.action.mode]),
+    [
+      ['click', 'Doors_Open', 'toggle'],
+      ['double-click', 'Explode', 'toggle'],
+    ],
+  )
+  await page.keyboard.press('f')
+  await page.waitForTimeout(900)
+  const partY = part =>
+    studio(page, ([id, assetNodeId]) => window.__studio.sync.partObject(id, assetNodeId).position.y, [
+      cabinetNode.id,
+      part,
+    ])
+  const doorAngle = () =>
+    studio(
+      page,
+      id => {
+        const door = window.__studio.sync.partObject(id, 'ess.door.battery')
+        return Math.round((2 * Math.asin(door.quaternion.y) * 180) / Math.PI)
+      },
+      cabinetNode.id,
+    )
+  const doorPoint = await screenPointOfPart(page, cabinetNode.id, 'ess.door.battery')
+
+  // In the editor a double-click picks the whole door, not one of its materials, which is what an interaction needs.
+  await page.mouse.dblclick(doorPoint.x, doorPoint.y)
+  await page.waitForFunction(() => window.__studio.part.value !== null)
+  assert.equal(await studio(page, () => window.__studio.part.value.assetNodeId), 'ess.door.battery')
+  await page.keyboard.press('Escape')
+
+  const roofY = await partY('ess.roof')
+  await page.getByTestId('mode-preview').click()
+  await page.waitForSelector('.studio.is-preview')
+  // The camera may still be moving in the preview: work out where the cabinet is right before each click.
+  const cabinetPoint = () => screenPointOfPart(page, cabinetNode.id, 'ess.frame')
+  const waitDoor = wanted =>
+    page.waitForFunction(
+      ([id, angle]) => {
+        const door = window.__studio.sync.partObject(id, 'ess.door.battery')
+        return Math.abs((2 * Math.asin(door.quaternion.y) * 180) / Math.PI - angle) < 2
+      },
+      [cabinetNode.id, wanted],
+      { timeout: 15000 },
+    )
+  let point = await cabinetPoint()
+  await page.mouse.click(point.x, point.y)
+  await waitDoor(-110)
+  point = await cabinetPoint()
+  await page.mouse.click(point.x, point.y)
+  await waitDoor(0)
+  point = await cabinetPoint()
+  await page.mouse.dblclick(point.x, point.y)
+  await page.waitForFunction(
+    ([id, base]) => window.__studio.sync.partObject(id, 'ess.roof').position.y > base + 0.5,
+    [cabinetNode.id, roofY],
+    { timeout: 15000 },
+  )
+  await page.getByTestId('mode-edit').click()
+  await page.waitForSelector('.studio:not(.is-preview)')
+  assert(Math.abs((await partY('ess.roof')) - roofY) < 0.001, 'cabinet back in pose after the preview')
+  assert.equal(await doorAngle(), 0)
+  await studio(page, id => window.__studio.select([id]), cabinetNode.id)
   await page.keyboard.press(`${mod}+z`)
   await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count, beforeTower)
   await page.getByTestId('asset-tab-all').click()
@@ -534,6 +602,12 @@ try {
   // ---------------------------------------------------------------- big-screen preview
   // The SDK preview letterboxes the scene to a venue's screen shape and can simulate a weaker machine.
   const previewProject = await studio(page, () => window.__studio.projectId)
+  // The host page can drive a model's clips through the SDK.
+  await page.getByTestId('asset-tab-储能').click()
+  const beforeSdkCabinet = (await doc()).nodes.length
+  await page.getByTestId('builtin-essCabinet').click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count + 1, beforeSdkCabinet)
+  await settled(page)
   await save(page)
   await page.goto(`${base}/projects/${previewProject}/dashboard`)
   await page.waitForSelector('[data-testid="twin-scene-viewer"][data-loaded="true"]', { timeout: 60000 })
@@ -547,6 +621,18 @@ try {
       document.querySelector('[data-testid="twin-scene-viewer"]').__vueParentComponent.exposed.getPerformance()
         .setting === 'low',
   )
+  const sdkClips = await page.evaluate(() => {
+    const viewer = document.querySelector('[data-testid="twin-scene-viewer"]').__vueParentComponent.exposed
+    const cabinet = viewer.getNodes().find(node => node.name === '储能柜（可拆解）')
+    return {
+      clips: viewer.getAnimations(cabinet.id),
+      played: viewer.playAnimation(cabinet.id, 'Doors_Open', 'toggle'),
+      missing: viewer.playAnimation(cabinet.id, 'Nope'),
+      stopped: viewer.stopAnimation(cabinet.id),
+    }
+  })
+  assert(sdkClips.clips.includes('Explode'), `SDK clips: ${sdkClips.clips}`)
+  assert.deepEqual([sdkClips.played, sdkClips.missing, sdkClips.stopped], [true, false, true])
   report.screenPreview = 'PASS'
 
   assert.deepEqual(errors, [])

@@ -144,6 +144,16 @@ export class ScreenRuntime {
       .map(({ id, name }) => ({ id, name })),
   )
 
+  /** 场景里的模型：大屏按钮可以播放它们的动画片段。 */
+  readonly models = computed(() =>
+    (this.scene.value?.nodes ?? []).filter(node => node.kind === 'model').map(({ id, name }) => ({ id, name })),
+  )
+
+  /** 模型自带的动画片段。片段在模型文件里，所以要大屏上有已加载的三维场景才读得到。 */
+  clipsOf(nodeId: string): string[] {
+    return [...this.viewers.values()][0]?.getAnimations(nodeId) ?? []
+  }
+
   readonly alarms = computed<ScreenAlarm[]>(() => {
     void this.dataTick.value
     const scene = this.scene.value
@@ -540,6 +550,12 @@ export class ScreenRuntime {
         for (const viewer of viewers) viewer.setNodeVisible(nodeId, !hidden)
         return
       }
+      case 'play-animation':
+        if (action.nodeId) for (const viewer of viewers) viewer.playAnimation(action.nodeId, action.clip, action.mode)
+        return
+      case 'stop-animation':
+        if (action.nodeId) for (const viewer of viewers) viewer.stopAnimation(action.nodeId)
+        return
       case 'open-url':
         if (/^https?:\/\//i.test(action.url)) window.open(action.url, '_blank', 'noopener')
         return

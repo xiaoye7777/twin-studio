@@ -10,7 +10,7 @@ import type {
   TwinDevice,
   TwinRuntimeValue,
 } from '../domain/twin'
-import type { InteractionMetadata, InteractionTrigger } from '../domain/interactions'
+import type { AnimationPlayMode, InteractionMetadata, InteractionTrigger } from '../domain/interactions'
 import type { DataSourceConnectionStatus, DataSourceRuntimeState, DataSourceType } from '../infrastructure/data'
 
 export type { TwinBindingTarget } from '../domain/twin'
@@ -167,6 +167,12 @@ export interface TwinSceneViewerPublicApi {
   getNodes(): ViewerNode[]
   /** Shows or hides a node (and its children) without changing the project. */
   setNodeVisible(nodeId: string, visible: boolean): boolean
+  /** A model's own animation clips. */
+  getAnimations(nodeId: string): string[]
+  /** Plays a model's clip without changing the project. `toggle` plays it back on the next call. */
+  playAnimation(nodeId: string, clip: string, mode?: AnimationPlayMode): boolean
+  /** Stops clips started by playAnimation or an interaction (all of them without a name); parts return to their pose. */
+  stopAnimation(nodeId: string, clip?: string): boolean
   getAlarms(): ViewerAlarm[]
   setQuality(quality: ViewerQuality): void
   getPerformance(): ViewerPerformance

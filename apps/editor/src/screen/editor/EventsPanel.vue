@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { MousePointerClick, Plus, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
+import { animationPlayModeLabels, animationPlayModes, type AnimationPlayMode } from '@twin-studio/core'
 import UiRow from '@/components/ui/UiRow.vue'
 import UiSection from '@/components/ui/UiSection.vue'
 import { newScreenId, type ScreenAction, type Widget } from '../model'
@@ -29,10 +30,18 @@ const actionTypes: Array<{ value: ScreenAction['type']; label: string }> = [
   { value: 'play-tour', label: '播放导览' },
   { value: 'stop-tour', label: '停止导览' },
   { value: 'toggle-layer', label: '显示 / 隐藏图层' },
+  { value: 'play-animation', label: '播放模型动画' },
+  { value: 'stop-animation', label: '停止模型动画并复位' },
   { value: 'set-variable', label: '设置大屏变量（联动其他组件）' },
   { value: 'open-url', label: '打开网址' },
 ]
 const variables = computed(() => session.doc.value.variables ?? [])
+
+/** 第一段是模型默认循环播放的（比如风扇），按钮通常要的是后面的。 */
+function defaultClip(nodeId: string): string {
+  const clips = runtime.clipsOf(nodeId)
+  return clips[1] ?? clips[0] ?? ''
+}
 
 function defaultAction(type: ScreenAction['type']): ScreenAction {
   switch (type) {
@@ -44,6 +53,12 @@ function defaultAction(type: ScreenAction['type']): ScreenAction {
       return { type, tourId: runtime.tours.value[0]?.id ?? '' }
     case 'toggle-layer':
       return { type, nodeId: runtime.layers.value[0]?.id ?? '' }
+    case 'play-animation': {
+      const nodeId = runtime.models.value[0]?.id ?? ''
+      return { type, nodeId, clip: defaultClip(nodeId), mode: 'toggle' }
+    }
+    case 'stop-animation':
+      return { type, nodeId: runtime.models.value[0]?.id ?? '' }
     case 'open-url':
       return { type, url: 'https://' }
     case 'set-variable':
@@ -153,6 +168,85 @@ function remove(id: string): void {
               <option v-for="layer in runtime.layers.value" :key="layer.id" :value="layer.id">{{ layer.name }}</option>
             </select>
           </UiRow>
+          <template v-else-if="event.action.type === 'play-animation'">
+            <UiRow label="模型">
+              <select
+                class="s-select"
+                :value="event.action.nodeId"
+                data-testid="event-animation-model"
+                @change="
+                  setAction(event.id, {
+                    type: 'play-animation',
+                    nodeId: ($event.target as HTMLSelectElement).value,
+                    clip: defaultClip(($event.target as HTMLSelectElement).value),
+                    mode: (event.action as { mode: AnimationPlayMode }).mode,
+                  })
+                "
+              >
+                <option v-for="model in runtime.models.value" :key="model.id" :value="model.id">
+                  {{ model.name }}
+                </option>
+              </select>
+            </UiRow>
+            <UiRow label="片段">
+              <select
+                v-if="runtime.clipsOf(event.action.nodeId).length"
+                class="s-select"
+                :value="event.action.clip"
+                data-testid="event-animation-clip"
+                @change="
+                  setAction(event.id, {
+                    ...(event.action as Extract<ScreenAction, { type: 'play-animation' }>),
+                    clip: ($event.target as HTMLSelectElement).value,
+                  })
+                "
+              >
+                <option v-for="clip in runtime.clipsOf(event.action.nodeId)" :key="clip" :value="clip">
+                  {{ clip }}
+                </option>
+              </select>
+              <!-- 页面上还没有加载好的三维场景时读不到片段列表，直接填名字 -->
+              <input
+                v-else
+                class="s-input"
+                :value="event.action.clip"
+                placeholder="片段名，如 Explode"
+                @change="
+                  setAction(event.id, {
+                    ...(event.action as Extract<ScreenAction, { type: 'play-animation' }>),
+                    clip: ($event.target as HTMLInputElement).value,
+                  })
+                "
+              />
+            </UiRow>
+            <UiRow label="方式">
+              <select
+                class="s-select"
+                :value="event.action.mode"
+                @change="
+                  setAction(event.id, {
+                    ...(event.action as Extract<ScreenAction, { type: 'play-animation' }>),
+                    mode: ($event.target as HTMLSelectElement).value as AnimationPlayMode,
+                  })
+                "
+              >
+                <option v-for="mode in animationPlayModes" :key="mode" :value="mode">
+                  {{ animationPlayModeLabels[mode] }}
+                </option>
+              </select>
+            </UiRow>
+          </template>
+          <UiRow v-else-if="event.action.type === 'stop-animation'" label="模型">
+            <select
+              class="s-select"
+              :value="event.action.nodeId"
+              @change="
+                setAction(event.id, { type: 'stop-animation', nodeId: ($event.target as HTMLSelectElement).value })
+              "
+            >
+              <option v-for="model in runtime.models.value" :key="model.id" :value="model.id">{{ model.name }}</option>
+            </select>
+          </UiRow>
           <template v-else-if="event.action.type === 'set-variable'">
             <UiRow label="变量">
               <select
@@ -223,7 +317,8 @@ function remove(id: string): void {
     <UiSection title="三维联动说明" :open="false">
       <p class="s-hint note">
         三维 → 大屏：在三维场景组件中点击设备，会把它设为「选中设备」，设备详情等组件随之更新。<br />
-        大屏 → 三维：表格行、告警、图表、按钮的点击动作可以选中并定位设备、切换视角、播放导览或开关图层。<br />
+        大屏 →
+        三维：表格行、告警、图表、按钮的点击动作可以选中并定位设备、切换视角、播放导览、开关图层或播放模型动画。<br />
         组件 → 组件：点击动作「设置大屏变量」后，参数跟随该变量的接口组件会自动重新请求。
       </p>
     </UiSection>

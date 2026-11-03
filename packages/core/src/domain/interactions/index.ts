@@ -21,6 +21,19 @@ const InteractionMetadataSchema = z.custom<InteractionMetadata>(value => isRecor
 
 export const InteractionTriggerSchema = z.enum(['click', 'double-click', 'hover-enter', 'hover-leave'])
 
+/**
+ * 交互触发动画片段的方式。toggle：正放并停在结尾，再触发一次倒放回去（开门 / 关门、爆炸 / 复位）；
+ * once：每次从头放，停在结尾；loop：循环播放，再触发一次停止。
+ */
+export const AnimationPlayModeSchema = z.enum(['toggle', 'once', 'loop'])
+export type AnimationPlayMode = z.infer<typeof AnimationPlayModeSchema>
+export const animationPlayModes: readonly AnimationPlayMode[] = AnimationPlayModeSchema.options
+export const animationPlayModeLabels: Record<AnimationPlayMode, string> = {
+  toggle: '往返切换（再触发一次倒放回去）',
+  once: '播放一次（停在最后一帧）',
+  loop: '循环（再触发一次停止）',
+}
+
 // An explicit target is optional on every action; without one the action applies to the source.
 const actionTarget = TwinBindingTargetSchema.optional()
 export const InteractionActionSchema = z.discriminatedUnion('type', [
@@ -42,6 +55,14 @@ export const InteractionActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('fly-to-bookmark'), target: actionTarget, bookmarkId: nonEmptyString }),
   z.object({ type: z.literal('play-tour'), target: actionTarget, tourId: nonEmptyString }),
   z.object({ type: z.literal('stop-tour'), target: actionTarget }),
+  z.object({
+    type: z.literal('play-animation'),
+    target: actionTarget,
+    clip: nonEmptyString,
+    mode: AnimationPlayModeSchema,
+  }),
+  // 不写 clip：停止这个模型所有由交互触发的片段，部件回到原来的姿态
+  z.object({ type: z.literal('stop-animation'), target: actionTarget, clip: nonEmptyString.optional() }),
 ])
 
 export const SceneInteractionSchema = z
@@ -75,6 +96,8 @@ export const interactionActionTypes = [
   'fly-to-bookmark',
   'play-tour',
   'stop-tour',
+  'play-animation',
+  'stop-animation',
 ] as const satisfies readonly InteractionActionType[]
 
 export const interactionTriggerLabels: Record<InteractionTrigger, string> = {
@@ -96,6 +119,8 @@ export const interactionActionLabels: Record<InteractionActionType, string> = {
   'fly-to-bookmark': '飞到视角',
   'play-tour': '播放导览',
   'stop-tour': '停止导览',
+  'play-animation': '播放动画',
+  'stop-animation': '停止动画并复位',
 }
 
 export function createInteraction(source: TwinBindingTarget): SceneInteraction {

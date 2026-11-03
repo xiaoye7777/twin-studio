@@ -171,6 +171,12 @@ export interface TwinSceneViewerPublicApi {
   getNodes(): ViewerNode[]
   /** Shows or hides a node (and its children) without changing the project. */
   setNodeVisible(nodeId: string, visible: boolean): boolean
+  /** A model's own animation clips. Since 0.6.0. */
+  getAnimations(nodeId: string): string[]
+  /** Plays a model's clip without changing the project; `toggle` plays it back on the next call. Since 0.6.0. */
+  playAnimation(nodeId: string, clip: string, mode?: AnimationPlayMode): boolean
+  /** Stops clips started by playAnimation or an interaction; parts return to their pose. Since 0.6.0. */
+  stopAnimation(nodeId: string, clip?: string): boolean
   getAlarms(): ViewerAlarm[]
   setQuality(quality: ViewerQuality): void
   getPerformance(): ViewerPerformance
@@ -293,12 +299,16 @@ export interface VisualRule {
   template: EffectTemplate | null
 }
 export type InteractionTrigger = 'click' | 'double-click' | 'hover-enter' | 'hover-leave'
+/** toggle：正放并停在结尾，再触发一次倒放回去；once：每次从头放，停在结尾；loop：循环，再触发一次停止。 */
+export type AnimationPlayMode = 'toggle' | 'once' | 'loop'
 export type InteractionAction =
   | { type: 'select' | 'focus' | 'show' | 'hide' | 'toggle' | 'highlight'; target?: TwinBindingTarget }
   | { type: 'clear-selection' | 'stop-tour'; target?: TwinBindingTarget }
   | { type: 'emit-event'; eventName: string; metadata?: Record<string, unknown>; target?: TwinBindingTarget }
   | { type: 'fly-to-bookmark'; bookmarkId: string; target?: TwinBindingTarget }
   | { type: 'play-tour'; tourId: string; target?: TwinBindingTarget }
+  | { type: 'play-animation'; clip: string; mode: AnimationPlayMode; target?: TwinBindingTarget }
+  | { type: 'stop-animation'; clip?: string; target?: TwinBindingTarget }
 export interface SceneInteraction {
   id: string
   enabled: boolean

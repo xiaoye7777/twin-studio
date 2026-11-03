@@ -79,8 +79,8 @@ const decal = material('标签', '#ffffff', 0, 0.55, { decal: true })
 const screen = material('屏幕与指示灯', '#ffffff', 0, 0.18, { decal: true })
 const swatch = name => ({ bin: screen, swatch: name })
 const M = {
-  body: material('柜体喷涂', '#a9b0b4', 0.05, 0.6, { powder: 0.16 }),
-  inner: material('内腔喷涂', '#b6bcbf', 0.02, 0.7, { powder: 0.12 }),
+  body: material('柜体喷涂', '#9aa2a6', 0.05, 0.6, { powder: 0.16 }),
+  inner: material('内腔喷涂', '#a4abae', 0.02, 0.7, { powder: 0.12 }),
   dark: material('深灰喷涂', '#3a4248', 0.1, 0.55, { powder: 0.14 }),
   accent: material('主题青蓝', '#1d6f86', 0.15, 0.45, { powder: 0.12 }),
   zinc: tint(metal, '#a9b2b6'),

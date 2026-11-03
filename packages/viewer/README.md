@@ -37,6 +37,9 @@ viewer.value?.getTours()                   // 导览列表
 viewer.value?.playTour(id)                 // 播放；pauseTour / resumeTour / stopTour / nextTourStep / previousTourStep
 viewer.value?.getNodes()                   // 场景对象（分组可当作图层）
 viewer.value?.setNodeVisible(id, false)    // 显示 / 隐藏图层，不修改项目
+viewer.value?.getAnimations(id)            // 模型自带的动画片段
+viewer.value?.playAnimation(id, 'Doors_Open', 'toggle') // 播放片段：toggle 再调一次倒放回去，once 播一次，loop 循环
+viewer.value?.stopAnimation(id)            // 停止触发的片段，部件回到原来的姿态
 viewer.value?.getAlarms()                  // 当前告警
 viewer.value?.setQuality('medium')         // 画质
 viewer.value?.getPerformance()             // 帧率、当前档位

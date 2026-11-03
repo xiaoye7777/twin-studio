@@ -1,5 +1,5 @@
 import { Box3, type Object3D, Vector3 } from 'three'
-import { ancestorIds, isLockedOrHidden, nodeById } from '@twin-studio/core'
+import { ancestorIds, isLockedOrHidden, isPartSurface, nodeById } from '@twin-studio/core'
 import type { EditorSession, PartRef } from '../EditorSession'
 
 /**
@@ -262,7 +262,7 @@ export class ViewportPointer {
     const root = this.session.sync.objectFor(nodeId)
     const chain: Object3D[] = []
     for (let object: Object3D | null = hit.object; object && object !== root; object = object.parent)
-      chain.unshift(object)
+      if (!isPartSurface(object)) chain.unshift(object)
     while (chain.length > 1 && chain[0]!.parent?.children.length === 1) chain.shift()
     const ids = chain
       .map(object => object.userData.assetNodeId as unknown)

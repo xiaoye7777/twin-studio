@@ -40,6 +40,8 @@ import {
   updateLabelObject,
   updateLightObject,
 } from './nodeObjects'
+import { isPartSurface } from '../../engine/ModelLoader'
+import type { AnimationPlayMode } from '../../domain/interactions'
 import { ModelAnimator } from './ModelAnimator'
 import { applyPartMaterial } from './partMaterial'
 import { setEditorMetadata } from './objectMetadata'
@@ -137,9 +139,26 @@ export class SceneSync {
     return this.mounted.get(nodeId)?.animator?.clipNames ?? []
   }
 
+  /** 触发模型的一个动画片段（交互、大屏按钮）。 */
+  playClip(nodeId: string, clip: string, mode: AnimationPlayMode): boolean {
+    return this.mounted.get(nodeId)?.animator?.play(clip, mode) ?? false
+  }
+
+  /** 停止模型上触发的片段（不给名字就全部）。 */
+  stopClips(nodeId: string, clip?: string): boolean {
+    return this.mounted.get(nodeId)?.animator?.stop(clip) ?? false
+  }
+
+  /** 清掉所有模型上触发的片段：退出预览时用，编辑器里看到的还是原来的姿态。 */
+  clearTriggeredClips(): void {
+    for (const entry of this.mounted.values()) entry.animator?.clearTriggered()
+  }
+
   /** The parts of a model node (for part motions), in file order. */
   partsOf(nodeId: string): Array<{ id: string; name: string }> {
-    return [...(this.mounted.get(nodeId)?.assetNodes ?? [])].map(([id, state]) => ({ id, name: state.name || id }))
+    return [...(this.mounted.get(nodeId)?.assetNodes ?? [])]
+      .filter(([, state]) => !isPartSurface(state.object))
+      .map(([id, state]) => ({ id, name: state.name || id }))
   }
 
   /** A model node's parts as the file nests them (names as imported). */
@@ -148,10 +167,12 @@ export class SceneSync {
     if (!entry?.assetNodes) return []
     const byObject = new Map<Object3D, ModelPart>()
     for (const [id, state] of entry.assetNodes)
-      byObject.set(state.object, { id, name: state.name || id, mesh: state.object instanceof Mesh, children: [] })
+      if (!isPartSurface(state.object))
+        byObject.set(state.object, { id, name: state.name || id, mesh: state.object instanceof Mesh, children: [] })
     const roots: ModelPart[] = []
     for (const state of entry.assetNodes.values()) {
-      const part = byObject.get(state.object)!
+      const part = byObject.get(state.object)
+      if (!part) continue
       const parent = state.parent ? byObject.get(state.parent) : undefined
       ;(parent ? parent.children : roots).push(part)
     }

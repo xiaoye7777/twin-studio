@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import {
+  type AnimationPlayMode,
   idleTourState,
   type LoadedTwinPackage,
   loadTwinPackage,
@@ -175,6 +176,10 @@ const publicApi: TwinSceneViewerPublicApi = {
   getTourState: () => session.value?.tours.getState() ?? idleTourState(),
   getNodes: () => session.value?.getNodes() ?? [],
   setNodeVisible: (id: string, visible: boolean) => session.value?.setNodeVisible(id, visible) ?? false,
+  getAnimations: (id: string) => session.value?.getAnimations(id) ?? [],
+  playAnimation: (id: string, clip: string, mode?: AnimationPlayMode) =>
+    session.value?.playAnimation(id, clip, mode) ?? false,
+  stopAnimation: (id: string, clip?: string) => session.value?.stopAnimation(id, clip) ?? false,
   getAlarms: () => session.value?.getAlarms() ?? [],
   setQuality: (quality: ViewerQuality) => session.value?.setQuality(quality),
   getPerformance: () =>

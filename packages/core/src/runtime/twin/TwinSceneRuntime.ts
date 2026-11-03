@@ -7,7 +7,8 @@ import { reactive } from 'vue'
 import type { Object3D } from 'three'
 import { EffectRuntime } from '../effects/EffectRuntime'
 import { type RuleDiagnostic, VisualRuleRuntime } from '../effects/VisualRuleRuntime'
-import { targetForNode, twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'
+import { targetForNode, targetNodeId, twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'
+import type { AnimationPlayMode } from '../../domain/interactions'
 import type { SceneDocumentV2 } from '../../domain/scene'
 import type {
   TwinSceneViewerEvents,
@@ -154,6 +155,8 @@ export class TwinSceneRuntime {
         flyToBookmark: id => this.flyToBookmark(id),
         playTour: id => void this.playTour(id),
         stopTour: () => this.tours.stop(),
+        playAnimation: (target, clip, mode) => this.sync.playClip(targetNodeId(target), clip, mode),
+        stopAnimation: (target, clip) => this.sync.stopClips(targetNodeId(target), clip),
       })
       this.interactions.setInteractions(document.interactions)
       this.interactions.setPointerActive(true)
@@ -311,6 +314,21 @@ export class TwinSceneRuntime {
       parentId: node.parentId,
       visible: this.sync.objectFor(node.id)?.visible ?? node.visible,
     }))
+  }
+
+  /** 模型自带的动画片段。 */
+  getAnimations(nodeId: string): string[] {
+    return this.sync.clipsOf(nodeId)
+  }
+
+  /** 触发模型的一个动画片段，不改动项目。 */
+  playAnimation(nodeId: string, clip: string, mode: AnimationPlayMode = 'once'): boolean {
+    return this.sync.playClip(nodeId, clip, mode)
+  }
+
+  /** 停止触发的片段（不给名字就全部），部件回到原来的姿态。 */
+  stopAnimation(nodeId: string, clip?: string): boolean {
+    return this.sync.stopClips(nodeId, clip)
   }
 
   setNodeVisible(nodeId: string, visible: boolean): boolean {

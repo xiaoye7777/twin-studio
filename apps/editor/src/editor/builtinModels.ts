@@ -1,4 +1,10 @@
-import { type AssetRecord, type AssetRepository, validatePortableAsset } from '@twin-studio/core'
+import {
+  type AnimationPlayMode,
+  type AssetRecord,
+  type AssetRepository,
+  type InteractionTrigger,
+  validatePortableAsset,
+} from '@twin-studio/core'
 
 export type BuiltinModelCategory = '储能' | '新能源' | '电力' | '建筑' | '工业' | '物流' | '园区' | '绿化'
 
@@ -11,6 +17,8 @@ export interface BuiltinModel {
   description: string
   /** 放进场景时的缩放。新模型本身就是真实米制（不填）；最早的 Kenney 模型只有一两个单位大，要放大才和它们同一比例。 */
   scale?: number
+  /** 放进场景时预设的交互：触发方式和要播放的动画片段，可以在「交互」面板里改或删。 */
+  interactions?: Array<{ trigger: InteractionTrigger; clip: string; mode: AnimationPlayMode }>
 }
 
 /** Models bundled with the editor: CC0 downloads and our own; author and source of each one are in public/demo-assets/CREDITS.md. */
@@ -21,7 +29,11 @@ export const builtinModels: readonly BuiltinModel[] = [
     file: 'ess-cabinet.glb',
     name: '储能柜（可拆解）',
     category: '储能',
-    description: '工商业一体柜：柜门可开，内含电池包、电芯、变流器和消防，自带开门和爆炸动画',
+    description: '工商业一体柜：内含电池包、电芯、变流器和消防。预览时单击开关门，双击爆炸和复位',
+    interactions: [
+      { trigger: 'click', clip: 'Doors_Open', mode: 'toggle' },
+      { trigger: 'double-click', clip: 'Explode', mode: 'toggle' },
+    ],
   },
   {
     key: 'container',

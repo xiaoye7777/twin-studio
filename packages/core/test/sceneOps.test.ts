@@ -222,6 +222,34 @@ describe('removing model parts', () => {
 })
 
 describe('duplicating', () => {
+  it('copies interactions with the object; targets inside the copy follow it', () => {
+    const inside = { type: 'primitive', nodeId: 'a1' } as const
+    const outside = { type: 'primitive', nodeId: 'b1' } as const
+    let created: string[] = []
+    const doc = produce(fixture(), draft => {
+      draft.interactions = [
+        {
+          id: 'i1',
+          enabled: true,
+          source: inside,
+          trigger: 'click',
+          action: { type: 'play-animation', target: inside, clip: 'Doors_Open', mode: 'toggle' },
+        },
+        { id: 'i2', enabled: true, source: inside, trigger: 'hover-enter', action: { type: 'show', target: outside } },
+        { id: 'i3', enabled: true, source: outside, trigger: 'click', action: { type: 'focus' } },
+      ]
+      created = duplicateNodes(draft, ['a1'], [0, 0, 3])
+    })
+    const copyId = created[0]!
+    expect(doc.interactions).toHaveLength(5)
+    const copies = doc.interactions.filter(item => item.source.type === 'primitive' && item.source.nodeId === copyId)
+    expect(copies).toHaveLength(2)
+    expect(new Set(doc.interactions.map(item => item.id)).size).toBe(5)
+    expect(copies[0]!.action).toMatchObject({ clip: 'Doors_Open', target: { type: 'primitive', nodeId: copyId } })
+    expect(copies[1]!.action).toMatchObject({ target: outside })
+    expect(isSceneDocumentV2(doc)).toBe(true)
+  })
+
   it('copies subtrees with new ids, offset, effects but not device bindings', () => {
     let created: string[] = []
     const doc = produce(fixture(), draft => {

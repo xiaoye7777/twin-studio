@@ -2,6 +2,9 @@
 import { MousePointerClick, Plus, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import {
+  animationPlayModeLabels,
+  animationPlayModes,
+  type AnimationPlayMode,
   interactionActionLabels,
   interactionActionTypes,
   interactionTriggerLabels,
@@ -23,7 +26,25 @@ const node = computed(() => (props.nodes.length === 1 ? props.nodes[0]! : null))
 const items = computed(() => (node.value ? session.effects.interactionsFor(node.value.id) : []))
 const doc = computed(() => session.doc.value)
 /** Actions that act on an object and so may point at another one. */
-const targetable = new Set(['select', 'focus', 'show', 'hide', 'toggle', 'highlight'])
+const targetable = new Set([
+  'select',
+  'focus',
+  'show',
+  'hide',
+  'toggle',
+  'highlight',
+  'play-animation',
+  'stop-animation',
+])
+
+/** 目标模型上的动画片段。第一段是模型默认循环播放的（比如风扇），交互通常要的是后面的。 */
+function clipsOf(nodeId: string): string[] {
+  return session.sync.clipsOf(nodeId)
+}
+function defaultClip(nodeId: string): string {
+  const clips = clipsOf(nodeId)
+  return clips[1] ?? clips[0] ?? 'none'
+}
 
 function setTrigger(item: SceneInteraction, trigger: SceneInteraction['trigger']): void {
   session.effects.updateInteraction(item.id, target => {
@@ -41,7 +62,9 @@ function setAction(item: SceneInteraction, type: InteractionAction['type']): voi
         ? { type, bookmarkId: doc.value.bookmarks[0]?.id ?? 'none' }
         : type === 'play-tour'
           ? { type, tourId: doc.value.tours[0]?.id ?? 'none' }
-          : ({ type } as InteractionAction)
+          : type === 'play-animation'
+            ? { type, clip: defaultClip(actionTargetId(item)), mode: 'toggle' }
+            : ({ type } as InteractionAction)
   session.effects.updateInteraction(item.id, target => {
     target.action = action
     if (type === 'highlight') target.trigger = 'hover-enter'
@@ -54,6 +77,9 @@ function setTarget(item: SceneInteraction, nodeId: string): void {
     if (!('target' in target.action)) return
     if (!targetNode || nodeId === node.value?.id) delete (target.action as { target?: unknown }).target
     else (target.action as { target?: unknown }).target = targetForNode(targetNode)
+    // 换了模型，片段也要换成新模型上有的
+    if (target.action.type === 'play-animation') target.action.clip = defaultClip(nodeId)
+    if (target.action.type === 'stop-animation') delete target.action.clip
   })
 }
 
@@ -157,6 +183,48 @@ function actionTargetId(item: SceneInteraction): string {
             <option v-for="tour in doc.tours" :key="tour.id" :value="tour.id">{{ tour.name }}</option>
           </select>
         </div>
+        <template v-else-if="item.action.type === 'play-animation'">
+          <div class="ix__param">
+            <span>片段</span>
+            <select
+              class="s-select"
+              :value="item.action.clip"
+              data-testid="interaction-clip"
+              @change="
+                session.effects.updateInteraction(
+                  item.id,
+                  t =>
+                    t.action.type === 'play-animation' && (t.action.clip = ($event.target as HTMLSelectElement).value),
+                )
+              "
+            >
+              <option v-if="!clipsOf(actionTargetId(item)).length" :value="item.action.clip">
+                （这个对象没有动画片段）
+              </option>
+              <option v-for="clip in clipsOf(actionTargetId(item))" :key="clip" :value="clip">{{ clip }}</option>
+            </select>
+          </div>
+          <div class="ix__param">
+            <span>方式</span>
+            <select
+              class="s-select"
+              :value="item.action.mode"
+              data-testid="interaction-mode"
+              @change="
+                session.effects.updateInteraction(
+                  item.id,
+                  t =>
+                    t.action.type === 'play-animation' &&
+                    (t.action.mode = ($event.target as HTMLSelectElement).value as AnimationPlayMode),
+                )
+              "
+            >
+              <option v-for="mode in animationPlayModes" :key="mode" :value="mode">
+                {{ animationPlayModeLabels[mode] }}
+              </option>
+            </select>
+          </div>
+        </template>
         <div v-if="targetable.has(item.action.type)" class="ix__param">
           <span>作用于</span>
           <select

@@ -3,7 +3,12 @@
  * （显示 / 隐藏对象、飞到视角、播放导览、选中设备、向宿主发事件……）。
  */
 import type { Object3D } from 'three'
-import { cloneInteractions, type InteractionTrigger, type SceneInteraction } from '../../domain/interactions'
+import {
+  type AnimationPlayMode,
+  cloneInteractions,
+  type InteractionTrigger,
+  type SceneInteraction,
+} from '../../domain/interactions'
 import { twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'
 import type { ViewerInteractionEvent, ViewerTargetClick } from '../../contract/viewerContract'
 import type { BindingTargetResolver } from '../twin/BindingTargetResolver'
@@ -30,6 +35,8 @@ export interface InteractionRuntimeOptions {
   flyToBookmark?(bookmarkId: string): Promise<boolean>
   playTour?(tourId: string): void
   stopTour?(): void
+  playAnimation?(target: TwinBindingTarget, clip: string, mode: AnimationPlayMode): boolean
+  stopAnimation?(target: TwinBindingTarget, clip?: string): boolean
   publish?(diagnostics: InteractionDiagnostics): void
 }
 
@@ -102,6 +109,12 @@ export class InteractionRuntime {
           break
         case 'stop-tour':
           this.options.stopTour?.()
+          break
+        case 'play-animation':
+          this.options.playAnimation?.(target, interaction.action.clip, interaction.action.mode)
+          break
+        case 'stop-animation':
+          this.options.stopAnimation?.(target, interaction.action.clip)
           break
         case 'highlight': {
           const effect = createEffect('outline', target)
