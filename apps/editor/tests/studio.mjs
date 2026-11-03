@@ -318,6 +318,34 @@ try {
   assert(Math.abs(towerBox.height - 30) < 0.5, `tower height ${towerBox.height}`)
   await page.keyboard.press(`${mod}+z`)
   await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count, beforeTower)
+
+  // The storage cabinet comes apart: doors hinge on their own node's origin and it ships its animation clips.
+  await page.getByTestId('asset-tab-储能').click()
+  await page.getByTestId('builtin-essCabinet').click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count + 1, beforeTower)
+  await settled(page)
+  const cabinet = await studio(
+    page,
+    id => {
+      const parts = new Map()
+      window.__studio.sync.objectFor(id).traverse(object => {
+        if (object.userData.assetNodeId) parts.set(object.userData.assetNodeId, object)
+      })
+      const door = parts.get('ess.door.battery')
+      return {
+        partCount: parts.size,
+        doorHinge: door?.position.toArray(),
+        hasCells: parts.has('ess.pack09.cells'),
+        hasFan: parts.has('ess.pcs.fan1'),
+      }
+    },
+    (await doc()).nodes.at(-1).id,
+  )
+  assert(cabinet.partCount > 50, `cabinet has ${cabinet.partCount} parts`)
+  assert(cabinet.hasCells && cabinet.hasFan, 'cabinet parts carry stable ids')
+  assert(Math.abs(cabinet.doorHinge[0] + 0.677) < 0.002, `door hinge at x=${cabinet.doorHinge[0]}`)
+  await page.keyboard.press(`${mod}+z`)
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count, beforeTower)
   await page.getByTestId('asset-tab-all').click()
   report.builtinLibrary = 'PASS'
 

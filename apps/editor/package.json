@@ -28,6 +28,8 @@
     "vue-router": "4.6.3"
   },
   "devDependencies": {
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
     "@tailwindcss/vite": "4.1.17",
     "@types/node": "24.10.1",
     "@types/three": "0.184.0",

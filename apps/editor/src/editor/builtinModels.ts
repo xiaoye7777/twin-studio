@@ -13,9 +13,16 @@ export interface BuiltinModel {
   scale?: number
 }
 
-/** CC0 models bundled with the editor: file, author and source of each one are in public/demo-assets/CREDITS.md. */
+/** Models bundled with the editor: CC0 downloads and our own; author and source of each one are in public/demo-assets/CREDITS.md. */
 export const builtinModels: readonly BuiltinModel[] = [
   // 储能
+  {
+    key: 'essCabinet',
+    file: 'ess-cabinet.glb',
+    name: '储能柜（可拆解）',
+    category: '储能',
+    description: '工商业一体柜：柜门可开，内含电池包、电芯、变流器和消防，自带开门和爆炸动画',
+  },
   {
     key: 'container',
     file: 'energy-storage-container.glb',
