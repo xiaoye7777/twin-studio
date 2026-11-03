@@ -80,6 +80,9 @@ importers:
       '@twin-studio/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
+      '@twin-studio/walk-mode':
+        specifier: workspace:*
+        version: link:../../packages/walk-mode
       echarts:
         specifier: 5.6.0
         version: 5.6.0
@@ -214,6 +217,21 @@ importers:
       vue-tsc:
         specifier: 3.1.5
         version: 3.1.5(typescript@5.9.3)
+
+  packages/walk-mode:
+    devDependencies:
+      '@types/three':
+        specifier: 0.184.0
+        version: 0.184.0
+      three:
+        specifier: 0.184.0
+        version: 0.184.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.7
+        version: 3.2.7(@types/node@24.10.1)(jiti@2.7.0)(lightningcss@1.30.2)
 
   tools/device-simulator:
     dependencies:

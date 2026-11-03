@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { attachWalkMode } from '@twin-studio/walk-mode'
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BottomDock from '@/components/studio/BottomDock.vue'
@@ -55,6 +56,7 @@ onMounted(async () => {
       saved ? projects.updateProject(projectId, { cover }) : projects.setCover(projectId, cover),
   })
   session.value = opened
+  attachWalkMode(opened)
   if (import.meta.env.DEV) (window as unknown as { __studio?: EditorSession }).__studio = opened
   await opened.open()
   document.title = `${project.name} · Twin Studio`

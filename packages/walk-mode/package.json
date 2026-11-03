@@ -1,0 +1,23 @@
+{
+  "name": "@twin-studio/walk-mode",
+  "version": "0.0.0",
+  "private": true,
+  "description": "可选插件：第三人称小人在场景里走、跑、跳、飞。只依赖 three，不依赖项目其他代码",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "three": "0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.184.0",
+    "three": "0.184.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}

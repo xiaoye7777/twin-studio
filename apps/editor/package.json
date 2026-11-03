@@ -18,6 +18,7 @@
     "@element-plus/icons-vue": "2.3.2",
     "@twin-studio/core": "workspace:*",
     "@twin-studio/viewer": "workspace:*",
+    "@twin-studio/walk-mode": "workspace:*",
     "echarts": "5.6.0",
     "element-plus": "2.11.8",
     "html-to-image": "1.11.11",
