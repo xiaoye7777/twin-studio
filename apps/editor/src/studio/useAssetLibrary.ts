@@ -20,7 +20,7 @@ import {
   writeComponentDragPayload,
   writePrimitiveDragPayload,
 } from '@/editor/assetDrag'
-import { builtinModels, importBuiltinModel } from '@/editor/builtinModels'
+import { builtinModels, builtinThumbnailUrl, importBuiltinModel } from '@/editor/builtinModels'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import type { SceneComponentRecord } from '@/infrastructure/components/ComponentRepository'
 import { useAssetStore } from '@/stores/assets'
@@ -74,7 +74,7 @@ function sizeLabel(bytes: number): string {
 
 /**
  * 底栏资源库的数据：把各种来源的资源合并成一个卡片列表，再按标签和搜索词筛选。
- * 缩略图只为当前看得见的卡片生成（首次渲染后缓存在本机）。
+ * 内置模型的缩略图是预先渲染好的图片；导入的模型只为当前看得见的卡片生成（首次渲染后缓存在本机）。
  */
 export function useAssetLibrary() {
   const session = useSession()
@@ -117,7 +117,7 @@ export function useAssetLibrary() {
         void run(async () => {
           const record = await importBuiltinModel(model, repository)
           void assetStore.refresh()
-          await session.create.addModel(record.id)
+          await session.create.addModel(record.id, null, model)
         }),
     })),
     ...assetStore.assets
@@ -193,8 +193,7 @@ export function useAssetLibrary() {
     requested.add(key)
     const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)]
     if (kind === 'builtin') {
-      const image = await modelThumbnail(key, `${import.meta.env.BASE_URL}demo-assets/${id}`)
-      if (image) thumbs[key] = image
+      thumbs[key] = builtinThumbnailUrl(id)
     } else if (kind === 'asset') {
       const record = await repository.get(id)
       if (!record) return

@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import { Box, Upload } from 'lucide-vue-next'
 import { computed, reactive, ref, watch } from 'vue'
 import { MODEL_ROOT_PART } from '@twin-studio/core'
-import { builtinModels, importBuiltinModel } from '@/editor/builtinModels'
+import { builtinModels, builtinThumbnailUrl, importBuiltinModel } from '@/editor/builtinModels'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { useAssetStore } from '@/stores/assets'
 import { useSession } from '@/studio/context'
@@ -50,10 +50,7 @@ watch(
     state.choice = ''
     state.scope = 'one'
     await assetStore.refresh()
-    for (const model of builtinModels)
-      void modelThumbnail(`builtin:${model.file}`, `${import.meta.env.BASE_URL}demo-assets/${model.file}`).then(
-        image => image && (thumbs[`builtin:${model.key}`] = image),
-      )
+    for (const model of builtinModels) thumbs[`builtin:${model.key}`] = builtinThumbnailUrl(model.file)
     for (const asset of assetStore.assets) {
       if (asset.assetType !== 'model' || builtinFiles.has(asset.name)) continue
       const record = await repository.get(asset.id)

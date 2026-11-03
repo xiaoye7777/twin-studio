@@ -112,7 +112,7 @@ async function onDrop(event: DragEvent): Promise<void> {
       if (!model) throw new Error('内置模型不存在')
       const record = await importBuiltinModel(model, new IndexedDbAssetRepository())
       void assetStore.refresh()
-      await s.create.addModel(record.id, point)
+      await s.create.addModel(record.id, point, model)
     } else if (payload.type === 'component') {
       const component = await useComponentStore().get(payload.componentId)
       if (!component) throw new Error('组件不存在')

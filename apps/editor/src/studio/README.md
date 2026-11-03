@@ -11,7 +11,7 @@ SceneEditor.vue                       打开项目：读场景 → 创建 Editor
 │   ├─ SceneTree.vue                  场景树：层级、拖拽改父子、右键菜单、模型部件
 │   └─ ViewsPanel.vue                 视角（书签）+ TourEditor.vue（导览），都可折叠
 ├─ StudioViewport.vue                 三维视口：画布、工具栏、框选、绘制 / 测量提示、右键菜单（ViewportMenu）
-├─ BottomDock.vue → AssetLibrary.vue  资源：按标签分类的模型、组件、基本体、绘制工具，拖进视口（数据在 useAssetLibrary.ts）
+├─ BottomDock.vue → AssetLibrary.vue  资源：按标签分类的模型、组件、基本体、绘制工具，拖进视口（数据在 useAssetLibrary.ts，内置模型清单在 editor/builtinModels.ts）
 ├─ InspectorPanel.vue                 右侧检查器：未选中时是场景页签，选中时是对象页签
 │   ├─ 场景：SceneEnvironment（环境）/ SceneData（数据接口与设备，组件在 inspector/data/）/ ScenePresentation（放映）
 │   └─ 对象：NodeProperties（属性）/ NodeData（设备绑定）/ NodeEffects（特效与规则）/ NodeInteractions（交互）

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { toSceneDocumentV2 } from '../src/domain/scene'
 import { collectSceneAssets, json, sha256, validateManifest } from '../src/infrastructure/packages/packageFormat'
@@ -91,9 +91,15 @@ describe('validatePortableAsset (GLB)', () => {
   const demoModel = (name: string) =>
     new Uint8Array(readFileSync(new URL(`../../../apps/editor/public/demo-assets/${name}`, import.meta.url)))
 
-  it.each(['energy-storage-container.glb', 'wind-turbine.glb', 'office-tower.glb'])('accepts bundled %s', name =>
-    expect(() => validatePortableAsset(demoModel(name), 'model')).not.toThrow(),
-  )
+  const demoAssets = new URL('../../../apps/editor/public/demo-assets/', import.meta.url)
+  const bundled = readdirSync(demoAssets).filter(name => name.endsWith('.glb'))
+
+  it('finds the bundled models', () => expect(bundled.length).toBeGreaterThan(8))
+
+  it.each(bundled)('accepts bundled %s, which has a thumbnail', name => {
+    expect(() => validatePortableAsset(demoModel(name), 'model')).not.toThrow()
+    expect(existsSync(new URL(`thumbs/${name.replace(/\.glb$/, '.webp')}`, demoAssets))).toBe(true)
+  })
 
   function glb(document: object, binary = new Uint8Array(0)): Uint8Array {
     let text = new TextEncoder().encode(JSON.stringify(document))
@@ -131,6 +137,11 @@ describe('validatePortableAsset (GLB)', () => {
         'model',
       ),
     ).not.toThrow()
+  })
+
+  it('accepts a Meshopt fallback buffer that is larger than the binary chunk', () => {
+    const fallback = { byteLength: 64, extensions: { EXT_meshopt_compression: { fallback: true } } }
+    expect(() => validatePortableAsset(glb({ asset: { version: '2.0' }, buffers: [fallback] }), 'model')).not.toThrow()
   })
 
   it.each([

@@ -12,6 +12,14 @@ const shell = useShell()
 const { filter, tabs, visible, thumbs, uploading, upload } = useAssetLibrary()
 const fileInput = ref<HTMLInputElement>()
 
+/** 标签放不下时可以横向滚动；普通鼠标只有竖向滚轮，这里转成横向。 */
+function scrollTabs(event: WheelEvent): void {
+  const strip = event.currentTarget as HTMLElement
+  if (strip.scrollWidth <= strip.clientWidth) return
+  event.preventDefault()
+  strip.scrollLeft += event.deltaY || event.deltaX
+}
+
 function selectTab(id: string): void {
   shell.assetTab = id
   shell.dockOpen = true
@@ -42,7 +50,7 @@ const emptyHints: Record<string, string> = {
         <ChevronDown :size="13" />
         资源
       </button>
-      <nav class="library__tabs">
+      <nav class="library__tabs" @wheel="scrollTabs">
         <button
           v-for="tab in tabs"
           :key="tab.id"
@@ -89,7 +97,7 @@ const emptyHints: Record<string, string> = {
           @keydown.enter="item.activate()"
         >
           <span class="card__thumb">
-            <img v-if="item.thumb && thumbs[item.thumb]" :src="thumbs[item.thumb]" alt="" />
+            <img v-if="item.thumb && thumbs[item.thumb]" :src="thumbs[item.thumb]" alt="" loading="lazy" />
             <component :is="item.icon" v-else :size="22" />
           </span>
           <span class="card__name">{{ item.name }}</span>
@@ -137,7 +145,8 @@ const emptyHints: Record<string, string> = {
   min-width: 0;
   flex: 1;
   overflow-x: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--s-line-2) transparent;
 }
 .library__tab {
   flex-shrink: 0;

@@ -13,7 +13,7 @@ import {
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { GltfReader } from '@twin-studio/core'
 
-const CACHE_PREFIX = 'twin-studio:thumb:v1:'
+const CACHE_PREFIX = 'twin-studio:thumb:v2:'
 let renderer: WebGLRenderer | null = null
 let reader: GltfReader | null = null
 let queue: Promise<unknown> = Promise.resolve()
@@ -58,8 +58,9 @@ async function render(url: string): Promise<string | null> {
   const pmrem = new PMREMGenerator(renderer)
   const environment = pmrem.fromScene(new RoomEnvironment(), 0.04)
   scene.environment = environment.texture
-  scene.add(new HemisphereLight(0xffffff, 0x404040, 1.2))
-  const sun = new DirectionalLight(0xffffff, 2.2)
+  scene.environmentIntensity = 0.6
+  scene.add(new HemisphereLight(0xffffff, 0x404040, 0.7))
+  const sun = new DirectionalLight(0xffffff, 1.5)
   sun.position.set(3, 5, 4)
   scene.add(sun)
   scene.add(gltf.scene)

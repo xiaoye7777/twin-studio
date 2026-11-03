@@ -102,7 +102,12 @@ export class NodeCreation {
     return roots
   }
 
-  async addModel(assetId: string, at?: Vector3 | null): Promise<string | null> {
+  /** `options` 给内置模型用：中文名字和放置时的缩放；导入的模型用文件名，不缩放。 */
+  async addModel(
+    assetId: string,
+    at?: Vector3 | null,
+    options: { name?: string; scale?: number } = {},
+  ): Promise<string | null> {
     const asset = await this.session.assets.get(assetId)
     if (!asset) throw new Error('资产不存在')
     const url = this.session.sync.resources.getOrCreate(asset).objectUrl
@@ -110,13 +115,18 @@ export class NodeCreation {
     const probe = await this.session.engine.loadGLTFModel(url)
     const bounds = new Box3().setFromObject(probe)
     const position = this.placement(at)
-    const lift = bounds.isEmpty() ? 0 : -bounds.min.y
+    const scale = options.scale ?? 1
+    const lift = bounds.isEmpty() ? 0 : -bounds.min.y * scale
     const node: SceneNodeV2 = {
       id: newId('instance'),
       kind: 'model',
       parentId: null,
-      name: uniqueName(this.session.doc.value, asset.name.replace(/\.glb$/i, '') || '模型'),
-      transform: { ...identityTransform(), position: [position.x, position.y + lift, position.z] },
+      name: uniqueName(this.session.doc.value, options.name ?? (asset.name.replace(/\.glb$/i, '') || '模型')),
+      transform: {
+        ...identityTransform(),
+        position: [position.x, position.y + lift, position.z],
+        scale: [scale, scale, scale],
+      },
       visible: true,
       locked: false,
       model: { assetId, overrides: {}, deleted: [] },

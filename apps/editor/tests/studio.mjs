@@ -281,6 +281,46 @@ try {
   await card.locator('img').waitFor({ timeout: 20000 })
   report.compressedModels = 'PASS'
 
+  // ---------------------------------------------------------------- built-in library
+  // Every card has a real model and thumbnail file. Models land at real-world scale: the first Kenney models are
+  // tiny files that are scaled up on placement, the newer ones are already in metres.
+  await page.getByTestId('asset-tab-all').click()
+  const libraryFiles = await page.evaluate(async () => {
+    const images = [...document.querySelectorAll('[data-testid^="builtin-"] img')].map(image => image.src)
+    const missing = []
+    for (const thumb of images)
+      for (const url of [thumb, thumb.replace('/thumbs/', '/').replace(/\.webp$/, '.glb')])
+        if (!(await fetch(url, { method: 'HEAD' })).ok) missing.push(url)
+    return { count: images.length, missing }
+  })
+  assert(libraryFiles.count > 8, `library shows ${libraryFiles.count} built-in models`)
+  assert.deepEqual(libraryFiles.missing, [])
+  assert.deepEqual(model.transform.scale, [7.4, 7.4, 7.4])
+
+  const beforeTower = (await doc()).nodes.length
+  await page.getByTestId('asset-tab-电力').click()
+  await page.getByTestId('builtin-towerA').click()
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count + 1, beforeTower)
+  await settled(page)
+  const tower = (await doc()).nodes.at(-1)
+  assert.equal(tower.name, '输电铁塔 A')
+  assert.deepEqual(tower.transform.scale, [1, 1, 1])
+  const towerBox = await studio(
+    page,
+    id => {
+      const object = window.__studio.sync.objectFor(id)
+      const bounds = new window.__studio.engine.contentBounds.constructor().setFromObject(object, true)
+      return { bottom: bounds.min.y, height: bounds.max.y - bounds.min.y }
+    },
+    tower.id,
+  )
+  assert(Math.abs(towerBox.bottom) < 0.01, `tower bottom at ${towerBox.bottom}`)
+  assert(Math.abs(towerBox.height - 30) < 0.5, `tower height ${towerBox.height}`)
+  await page.keyboard.press(`${mod}+z`)
+  await page.waitForFunction(count => window.__studio.doc.value.nodes.length === count, beforeTower)
+  await page.getByTestId('asset-tab-all').click()
+  report.builtinLibrary = 'PASS'
+
   // ---------------------------------------------------------------- model parts
   // Double-clicking a model selects the part under the pointer; the part gets its own material, visibility
   // and device binding, and Esc goes back up to the model.

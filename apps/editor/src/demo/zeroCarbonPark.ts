@@ -18,13 +18,24 @@ import {
   type TwinBindingTarget,
   type Vector3Tuple,
 } from '@twin-studio/core'
-import { builtinModels, type BuiltinModelKey, importBuiltinModel } from '@/editor/builtinModels'
+import { getBuiltinModel, importBuiltinModel } from '@/editor/builtinModels'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { LocalSceneRepository } from '@/infrastructure/scenes'
 import type { Project } from '@/stores/project'
 import { deviceTemplates, deviceVariables } from '@/studio/deviceTemplates'
 
-type DemoAssetKey = BuiltinModelKey
+/** 示例场景用到的内置模型。只导入这几个，资源库里其余的模型用到时才下载。 */
+const demoAssetKeys = [
+  'container',
+  'tank',
+  'solar',
+  'turbine',
+  'energyCenter',
+  'office',
+  'factory',
+  'warehouse',
+] as const
+type DemoAssetKey = (typeof demoAssetKeys)[number]
 
 /** Ordinary saved scene configuration: no demo runtime or special data source; models are regular assets. */
 export function buildZeroCarbonPark(projectId: string, assets: Record<DemoAssetKey, string>): SceneDocumentV1 {
@@ -197,7 +208,7 @@ export function buildZeroCarbonPark(projectId: string, assets: Record<DemoAssetK
 /** Uses the editor's built-in models; identical files de-duplicate to the same library asset. */
 async function importDemoAssets(repository: AssetRepository): Promise<Record<DemoAssetKey, string>> {
   const records = await Promise.all(
-    builtinModels.map(async model => [model.key, (await importBuiltinModel(model, repository)).id] as const),
+    demoAssetKeys.map(async key => [key, (await importBuiltinModel(getBuiltinModel(key)!, repository)).id] as const),
   )
   return Object.fromEntries(records) as Record<DemoAssetKey, string>
 }

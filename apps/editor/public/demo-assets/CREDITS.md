@@ -1,4 +1,111 @@
-# Demo model credits
+# Built-in model credits
+
+All built-in models are released under **Creative Commons Zero (CC0 1.0)**: free for personal and commercial
+use, redistribution included, no attribution required. Credit is given here voluntarily.
+License: https://creativecommons.org/publicdomain/zero/1.0/
+
+Checked when downloaded (2026-11-03): Poly Haven states that all its assets are CC0
+(https://polyhaven.com/license); Poly Pizza shows the licence on each model's page.
+
+## Poly Haven (realistic, real-world scale in metres)
+
+| File | Original | Author | Source |
+| --- | --- | --- | --- |
+| `breaker-panel.glb` | Power Box 01 | Rico Cilliers / Yann Kervran | https://polyhaven.com/a/power_box_01 |
+| `pole-plain.glb` | Modular Electricity Poles | James Ray Cock | https://polyhaven.com/a/modular_electricity_poles |
+| `pole-transformer.glb` | Modular Electricity Poles | James Ray Cock | https://polyhaven.com/a/modular_electricity_poles |
+| `pole-transformer-double.glb` | Modular Electricity Poles | James Ray Cock | https://polyhaven.com/a/modular_electricity_poles |
+| `pole-transformer-unit.glb` | Modular Electricity Poles | James Ray Cock | https://polyhaven.com/a/modular_electricity_poles |
+| `portable-generator.glb` | Portable Generator | James Ray Cock | https://polyhaven.com/a/portable_generator |
+| `utility-box.glb` | Utility Box 01 | James Ray Cock | https://polyhaven.com/a/utility_box_01 |
+| `utility-cabinet.glb` | Utility Box 02 | James Ray Cock | https://polyhaven.com/a/utility_box_02 |
+| `air-compressor.glb` | Old Military Compressor | Brian Speight | https://polyhaven.com/a/old_military_compressor |
+| `drill-press.glb` | Drill Press 01 | Viktor | https://polyhaven.com/a/drill_press_01 |
+| `gas-cylinder.glb` | Propane Tank | Slinc | https://polyhaven.com/a/propane_tank |
+| `gas-cylinder-small.glb` | Small Lpg Tank | Ulan Cabanilla | https://polyhaven.com/a/small_lpg_tank |
+| `industrial-pipes.glb` | Modular Industrial Pipes 01 | Jorge Camacho | https://polyhaven.com/a/modular_industrial_pipes_01 |
+| `oil-drum.glb` | Barrel_01 | Jorge Camacho | https://polyhaven.com/a/Barrel_01 |
+| `outdoor-ac-unit.glb` | Exterior Aircon Unit | Monsta3D | https://polyhaven.com/a/exterior_aircon_unit |
+| `overhead-crane.glb` | Overhead Crane | Timothy3D | https://polyhaven.com/a/overhead_crane |
+| `steel-drum.glb` | Barrel 03 | Serhii Khromov | https://polyhaven.com/a/barrel_03 |
+| `tool-cart.glb` | Tool Cart | Savva Zakharov | https://polyhaven.com/a/tool_cart |
+| `tool-chest.glb` | Metal Tool Chest | Yann Kervran / John Hutcheson | https://polyhaven.com/a/metal_tool_chest |
+| `welding-cart.glb` | Portable Welding Cart | Georgii Gorbunov | https://polyhaven.com/a/portable_welding_cart |
+| `covered-car.glb` | Covered Car | MP | https://polyhaven.com/a/covered_car |
+| `hand-truck.glb` | Hand Truck | Mutanzom3D | https://polyhaven.com/a/hand_truck |
+| `metal-rack.glb` | Worn Metal Rack | Luca B | https://polyhaven.com/a/worn_metal_rack |
+| `plastic-crate.glb` | Industrial Plastic Container | Galo Benivegna | https://polyhaven.com/a/industrial_pastic_container |
+| `steel-shelves.glb` | Steel Frame Shelves 01 | James Ray Cock | https://polyhaven.com/a/steel_frame_shelves_01 |
+| `storage-cart.glb` | Industrial Storage Cart | Jule Bielitz | https://polyhaven.com/a/industrial_storage_cart |
+| `armchair.glb` | Modern Arm Chair 01 | Vibrant Nordic | https://polyhaven.com/a/modern_arm_chair_01 |
+| `fence-gate.glb` | Modular Chainlink Fence | James Ray Cock / Amal Kumar | https://polyhaven.com/a/modular_chainlink_fence |
+| `fence-section.glb` | Modular Chainlink Fence | James Ray Cock / Amal Kumar | https://polyhaven.com/a/modular_chainlink_fence |
+| `fire-escape.glb` | Modular Fire Escape | Juniix | https://polyhaven.com/a/modular_fire_escape |
+| `fire-extinguisher.glb` | Korean Fire Extinguisher 01 | UM JOORIN | https://polyhaven.com/a/korean_fire_extinguisher_01 |
+| `fire-hydrant.glb` | Fire Hydrant | Gonçalo Felício | https://polyhaven.com/a/fire_hydrant |
+| `iron-gate.glb` | Large Iron Gate | Josh Dean | https://polyhaven.com/a/large_iron_gate |
+| `manhole-cover.glb` | Water Manhole Cover | Raunox | https://polyhaven.com/a/water_manhole_cover |
+| `office-desk.glb` | Metal Office Desk | Ulan Cabanilla | https://polyhaven.com/a/metal_office_desk |
+| `outdoor-table-set.glb` | Outdoor Table Chair Set 01 | James Ray Cock | https://polyhaven.com/a/outdoor_table_chair_set_01 |
+| `park-bench.glb` | Modular Street Seating | Stuart Attenborrow | https://polyhaven.com/a/modular_street_seating |
+| `road-barrier.glb` | Concrete Road Barrier 02 | Amal Kumar | https://polyhaven.com/a/concrete_road_barrier_02 |
+| `security-camera-a.glb` | Security Camera 01 | Alexander Otterbeck / Yann Kervran | https://polyhaven.com/a/security_camera_01 |
+| `security-camera-b.glb` | Security Camera 02 | Garrison Gager / Yann Kervran | https://polyhaven.com/a/security_camera_02 |
+| `security-light.glb` | Security Light | Maximilian Schuster | https://polyhaven.com/a/security_light |
+| `street-lamp.glb` | Street Lamp 01 | Josh Dean | https://polyhaven.com/a/street_lamp_01 |
+| `trash-can.glb` | Metal Trash Can | GurJas Studios | https://polyhaven.com/a/metal_trash_can |
+| `planter-box.glb` | Planter Box 01 | James Ray Cock | https://polyhaven.com/a/planter_box_01 |
+| `potted-plant.glb` | Potted Plant 04 | James Ray Cock | https://polyhaven.com/a/potted_plant_04 |
+
+Modular kits were split into pieces that work on their own: `pole-*` are the presets of Modular Electricity
+Poles, `fence-*` are pieces of Modular Chainlink Fence (`fence-section` adds a post at both ends), `park-bench`
+is one bench of Modular Street Seating. `fire-hydrant`, `outdoor-ac-unit` and `trash-can` keep one of the two
+variants of the original. `steel-shelves` is scaled down to its documented 2.14 m height; the source file is ten
+times larger.
+
+Terms of the Poly Haven API used for the download: https://polyhaven.com/our-api
+
+## Poly Pizza (stylized)
+
+Licence shown as "CC0 1.0" on each model's page. Scaled to the real-world size of the object (one extra root
+node), centred on the ground. `transmission-*` are recoloured from white to galvanized-steel grey.
+
+| File | Original | Author | Source |
+| --- | --- | --- | --- |
+| `water-tank.glb` | Water Tank | Quaternius | https://poly.pizza/m/XVB8vUbnZb |
+| `pv-module-flat.glb` | Flat Solar Panel | michu | https://poly.pizza/m/bvw2d4XUKR |
+| `pv-module-ground.glb` | Solar Panel Ground | Quaternius | https://poly.pizza/m/LbGiYP5iJu |
+| `pv-module-tilted.glb` | Solar Panel | Quaternius | https://poly.pizza/m/ah89Y79JdT |
+| `pv-roof-structure.glb` | Solar Panel Structure | Quaternius | https://poly.pizza/m/snXloZEimW |
+| `transmission-gantry.glb` | Transmission Tower | iPoly3D | https://poly.pizza/m/ve1ylqqWhy |
+| `transmission-tower-a.glb` | Transmission Tower | iPoly3D | https://poly.pizza/m/TYK3rPu7E5 |
+| `transmission-tower-b.glb` | Transmission Tower | iPoly3D | https://poly.pizza/m/WZhSdczNJW |
+| `transmission-tower-cat.glb` | Transmission Tower | iPoly3D | https://poly.pizza/m/m7914yKYkk |
+| `admin-building.glb` | Large Building | Kenney | https://poly.pizza/m/yKo7F36Qk2 |
+| `brick-office.glb` | Big Building | Quaternius | https://poly.pizza/m/AVCS8jUd2l |
+| `dormitory.glb` | Large Building | Kenney | https://poly.pizza/m/sxXonOmtct |
+| `office-campus.glb` | Large Building | Kenney | https://poly.pizza/m/ppwtREejXg |
+| `office-high-rise.glb` | Skyscraper | Kenney | https://poly.pizza/m/obYD8hWLTZ |
+| `office-rnd.glb` | Large Building | Kenney | https://poly.pizza/m/3IhrYZp6tP |
+| `office-slab-tower.glb` | Skyscraper | Kenney | https://poly.pizza/m/XST1j6kYsL |
+| `service-building.glb` | Large Building | Kenney | https://poly.pizza/m/h7Jaq7bqMq |
+| `box-truck.glb` | Truck | Quaternius | https://poly.pizza/m/cXw6oiFtZ8 |
+| `pallet.glb` | Pallet | Quaternius | https://poly.pizza/m/MwOFAOgOhg |
+| `pickup-truck.glb` | Pickup Truck | Quaternius | https://poly.pizza/m/qn4grQgHm8 |
+| `shipping-container-blue.glb` | Shipping Container | Davidlamic000 | https://poly.pizza/m/83Cai5aKxa |
+| `shipping-container-red.glb` | Shipping Container | Quaternius | https://poly.pizza/m/dQXRtm5GbO |
+| `traffic-barrel.glb` | Traffic Cone | Quaternius | https://poly.pizza/m/VGvQupNGtK |
+| `traffic-barrier.glb` | Traffic Barrier | Quaternius | https://poly.pizza/m/nugx3heueH |
+| `water-tower.glb` | Water Tower | Quaternius | https://poly.pizza/m/tMK8bhapAK |
+| `bush.glb` | Bush | Quaternius | https://poly.pizza/m/ooG6CkLyE8 |
+| `hedge.glb` | Hedge | Quaternius | https://poly.pizza/m/df8uCl1YpK |
+| `tree-autumn.glb` | Autumn Tree | Quaternius | https://poly.pizza/m/2lRubrT6Na |
+| `tree-broadleaf-a.glb` | Tree | Quaternius | https://poly.pizza/m/qZtx0AHhcy |
+| `tree-broadleaf-b.glb` | Tree | Quaternius | https://poly.pizza/m/aVOxaHRPWe |
+| `tree-pine.glb` | Pine | Quaternius | https://poly.pizza/m/699sFuLCN2 |
+| `tree-spruce.glb` | Pine | Quaternius | https://poly.pizza/m/79gmlLnweB |
+
+## Kenney (the zero-carbon park demo)
 
 The zero-carbon park demo uses low-poly models by **Kenney** (www.kenney.nl), released under
 **Creative Commons Zero (CC0 1.0)** — free for personal and commercial use, no attribution required.
@@ -23,4 +130,20 @@ Modification: each model's external `Textures/colormap.png` palette was embedded
 chunk so the file is self-contained (required by Twin Studio's project package format). Geometry and
 materials are unchanged.
 
-These are placeholders for the feasibility demo; production models will be authored in-house.
+## Processing
+
+The Poly Haven and Poly Pizza files went through [glTF Transform](https://gltf-transform.dev) to make them
+self-contained GLBs, which Twin Studio's project package format requires:
+
+```bash
+gltf-transform copy input.gltf a.glb      # embed the textures and buffers
+gltf-transform dedup a.glb b.glb
+gltf-transform webp b.glb c.glb --quality 82
+gltf-transform meshopt c.glb output.glb --level medium
+```
+
+Poly Haven textures are the 1K set (2K for `overhead-crane`, `iron-gate`, `covered-car`). Thumbnails in `thumbs/`
+are rendered by the editor: `apps/editor/scripts/render-builtin-thumbnails.mjs`.
+
+These are general-purpose library models; a production park replaces the ones that need to match real equipment
+with models authored for it (`docs/modeling-guide.md`).
