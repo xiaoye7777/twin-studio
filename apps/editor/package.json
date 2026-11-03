@@ -17,6 +17,7 @@
   "dependencies": {
     "@element-plus/icons-vue": "2.3.2",
     "@twin-studio/core": "workspace:*",
+    "@twin-studio/globe-transition": "workspace:*",
     "@twin-studio/viewer": "workspace:*",
     "echarts": "5.6.0",
     "element-plus": "2.11.8",

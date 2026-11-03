@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { attachGlobeTransition } from '@twin-studio/globe-transition'
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BottomDock from '@/components/studio/BottomDock.vue'
@@ -55,6 +56,12 @@ onMounted(async () => {
       saved ? projects.updateProject(projectId, { cover }) : projects.setCover(projectId, cover),
   })
   session.value = opened
+  attachGlobeTransition(opened, {
+    projectId,
+    projects: () => projects.projects,
+    // 这个页面只在挂载时读一次 projectId，经由列表页跳转才会重新挂载（此时已被地球盖住，看不到列表）。
+    openProject: id => router.replace('/projects').then(() => router.replace(`/editor/${id}`)),
+  })
   if (import.meta.env.DEV) (window as unknown as { __studio?: EditorSession }).__studio = opened
   await opened.open()
   document.title = `${project.name} · Twin Studio`
