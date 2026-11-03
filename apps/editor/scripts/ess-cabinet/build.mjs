@@ -1,280 +1,20 @@
 // 工商业一体式储能柜：程序化建模。1 单位 = 1 米，Y 向上，正面朝 +Z，原点在底部中心。
 // 每个可动或可替换的部件是独立节点（带 assetNodeId），门的节点原点在门轴上，风扇的节点原点在转轴上。
+// 默认生成完整版；--lite 生成轻量版（不含电芯和线缆，电池包合成一个部件），用于成排摆放。部件 id 和动画片段名相同。
 // 用法和部件清单见同目录的 README.md。
-import { execFileSync } from 'node:child_process'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Document, NodeIO } from '@gltf-transform/core'
-import { KHRMaterialsEmissiveStrength } from '@gltf-transform/extensions'
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
-import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { renderTextures } from './textures.mjs'
+import { createKit, disposeTextures } from '../model-kit/kit.mjs'
 
-const output = fileURLToPath(new URL('../../public/demo-assets/ess-cabinet.glb', import.meta.url))
-const work = await mkdtemp(join(tmpdir(), 'ess-cabinet-'))
-await renderTextures(work)
-
-const doc = new Document()
-doc.createBuffer()
-const emissiveExt = doc.createExtension(KHRMaterialsEmissiveStrength)
-
-// ---------------------------------------------------------------- 贴图
-const atlasInfo = JSON.parse(await readFile(`${work}/atlas.json`, 'utf8'))
-const atlasTexture = doc
-  .createTexture('labels')
-  .setMimeType('image/png')
-  .setImage(await readFile(`${work}/atlas.png`))
-
-const powder = {
-  normal: doc
-    .createTexture('powder-normal')
-    .setMimeType('image/png')
-    .setImage(await readFile(`${work}/powder-normal.png`)),
-  rough: doc
-    .createTexture('powder-rough')
-    .setMimeType('image/png')
-    .setImage(await readFile(`${work}/powder-rough.png`)),
-}
-
-// ---------------------------------------------------------------- 材质（同类零件共用，不按零件各建一个）
-function material(name, hex, metal, rough, options = {}) {
-  const color = new THREE.Color(hex)
-  const m = doc
-    .createMaterial(name)
-    .setBaseColorFactor([color.r, color.g, color.b, 1])
-    .setMetallicFactor(metal)
-    .setRoughnessFactor(rough)
-  if (options.powder) {
-    m.setNormalTexture(powder.normal).setNormalScale(options.powder)
-    m.setMetallicRoughnessTexture(powder.rough)
-  }
-  if (options.emissive) {
-    const e = new THREE.Color(options.emissive)
-    m.setEmissiveFactor([e.r, e.g, e.b])
-    if (options.glow)
-      m.setExtension(
-        'KHR_materials_emissive_strength',
-        emissiveExt.createEmissiveStrength().setEmissiveStrength(options.glow),
-      )
-  }
-  return {
-    gltf: m,
-    tile: !!options.powder,
-    decal: !!options.decal,
-    vcol: !!options.vcol,
-    tileScale: options.tileScale ?? 16,
-  }
-}
-// 小零件的颜色放在顶点色里，共用「金属」和「塑料」两种底材质：一个零件再多颜色也只多一两个绘制批次。
-const metal = material('金属', '#ffffff', 0.88, 0.4, { vcol: true })
-const matte = material('塑料橡胶', '#ffffff', 0, 0.5, { vcol: true })
-const tint = (bin, hex) => {
-  const c = new THREE.Color(hex)
-  return { bin, color: [c.r, c.g, c.b] }
-}
-const decal = material('标签', '#ffffff', 0, 0.55, { decal: true })
-const screen = material('屏幕与指示灯', '#ffffff', 0, 0.18, { decal: true })
-const swatch = name => ({ bin: screen, swatch: name })
-const M = {
-  body: material('柜体喷涂', '#9aa2a6', 0.05, 0.6, { powder: 0.16 }),
-  inner: material('内腔喷涂', '#a4abae', 0.02, 0.7, { powder: 0.12 }),
-  dark: material('深灰喷涂', '#3a4248', 0.1, 0.55, { powder: 0.14 }),
-  accent: material('主题青蓝', '#1d6f86', 0.15, 0.45, { powder: 0.12 }),
-  zinc: tint(metal, '#a9b2b6'),
-  alu: tint(metal, '#c2c8cb'),
-  anod: tint(metal, '#3d4247'),
-  copper: tint(metal, '#c9794a'),
-  brass: tint(metal, '#b89a50'),
-  rubber: tint(matte, '#141618'),
-  plastic: tint(matte, '#1c1f22'),
-  plasticLight: tint(matte, '#c4c8c9'),
-  hv: tint(matte, '#dd5f1c'),
-  red: tint(matte, '#b81d1c'),
-  yellow: tint(matte, '#e8b81a'),
-  beacon: tint(matte, '#e8a818'),
-  cell: tint(matte, '#2563a8'),
-  fpc: tint(matte, '#c9973a'),
-  coolBlue: tint(matte, '#1f6fc2'),
-  coolRed: tint(matte, '#c9352d'),
-  ledGreen: swatch('swGreen'),
-  ledAmber: swatch('swAmber'),
-  ledRed: swatch('swRed'),
-  lamp: swatch('swWhite'),
-  decal,
-  screen,
-}
-decal.gltf.setBaseColorTexture(atlasTexture).setAlphaMode('MASK').setAlphaCutoff(0.5)
-// 屏幕和指示灯主要靠自发光：底色压暗，颜色才不会被光照冲淡
-screen.gltf
-  .setBaseColorTexture(atlasTexture)
-  .setBaseColorFactor([0.22, 0.22, 0.22, 1])
-  .setEmissiveTexture(atlasTexture)
-  .setEmissiveFactor([1, 1, 1])
-screen.gltf.setExtension(
-  'KHR_materials_emissive_strength',
-  emissiveExt.createEmissiveStrength().setEmissiveStrength(1.15),
+const LITE = process.argv.includes('--lite')
+const output = fileURLToPath(
+  new URL(`../../public/demo-assets/${LITE ? 'ess-cabinet-lite' : 'ess-cabinet'}.glb`, import.meta.url),
 )
-
-// ---------------------------------------------------------------- 建模小工具
-const AXIS = { x: new THREE.Euler(0, 0, -Math.PI / 2), y: new THREE.Euler(), z: new THREE.Euler(Math.PI / 2, 0, 0) }
-const clean = g => {
-  const out = g.index ? g.toNonIndexed() : g
-  for (const name of Object.keys(out.attributes))
-    if (!['position', 'normal', 'uv', 'color'].includes(name)) out.deleteAttribute(name)
-  // 拉伸体等几何可能自带 groups，合并时会要求一致，这里统一清掉
-  out.clearGroups()
-  return out
-}
-
-/** 一个零件：按材质收集几何体，生成时每种材质一个图元，所以零件再复杂也只占很少的绘制批次。 */
-class Part {
-  constructor(name) {
-    this.name = name
-    this.bins = new Map()
-  }
-  add(mat, geometry, pos = [0, 0, 0], rot = null, scale = null) {
-    const g = clean(geometry.clone())
-    const matrix = new THREE.Matrix4().compose(
-      new THREE.Vector3(...pos),
-      new THREE.Quaternion().setFromEuler(rot instanceof THREE.Euler ? rot : new THREE.Euler(...(rot ?? [0, 0, 0]))),
-      new THREE.Vector3(...(scale ?? [1, 1, 1])),
-    )
-    g.applyMatrix4(matrix)
-    const bin = mat.bin ?? mat
-    const count = g.attributes.position.count
-    if (mat.color) {
-      const colors = new Float32Array(count * 3)
-      for (let i = 0; i < count; i++) colors.set(mat.color, i * 3)
-      g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    }
-    if (mat.swatch) {
-      const [x, y, w, h] = atlasInfo.rects[mat.swatch]
-      for (let i = 0; i < count; i++)
-        g.attributes.uv.setXY(i, (x + w / 2) / atlasInfo.size, (y + h / 2) / atlasInfo.size)
-    }
-    if (!this.bins.has(bin)) this.bins.set(bin, [])
-    this.bins.get(bin).push(g)
-    return this
-  }
-  box(mat, [w, h, d], pos, { r = 0, seg = 1, rot } = {}) {
-    const g =
-      r > 0
-        ? new RoundedBoxGeometry(w, h, d, seg, Math.min(r, w / 2 - 1e-4, h / 2 - 1e-4, d / 2 - 1e-4))
-        : new THREE.BoxGeometry(w, h, d)
-    return this.add(mat, g, pos, rot)
-  }
-  cyl(mat, r, h, pos, { axis = 'y', seg = 16, r2 = r, open = false } = {}) {
-    return this.add(mat, new THREE.CylinderGeometry(r2, r, h, seg, 1, open), pos, AXIS[axis])
-  }
-  ball(mat, r, pos, { scale, seg = 16, half = false } = {}) {
-    const g = new THREE.SphereGeometry(r, seg, Math.ceil(seg / 2), 0, Math.PI * 2, 0, half ? Math.PI / 2 : Math.PI)
-    return this.add(mat, g, pos, null, scale)
-  }
-  torus(mat, r, t, pos, { rot, seg = 24, arc = Math.PI * 2, radial = 6 } = {}) {
-    return this.add(mat, new THREE.TorusGeometry(r, t, radial, seg, arc), pos, rot)
-  }
-  /** 沿折线走的管线，拐角处自动圆滑。 */
-  tube(mat, points, r, { radial = 8, seg = 0 } = {}) {
-    const curve = new THREE.CatmullRomCurve3(
-      points.map(p => new THREE.Vector3(...p)),
-      false,
-      'catmullrom',
-      0.25,
-    )
-    return this.add(mat, new THREE.TubeGeometry(curve, seg || points.length * 7, r, radial, false))
-  }
-  /** 贴图集里的一个标签：只是贴在表面前方的一张小四边形。 */
-  label(name, w, h, pos, { ry = 0, rx = 0, mat = M.decal } = {}) {
-    const [x, y, pw, ph] = atlasInfo.rects[name]
-    const g = new THREE.PlaneGeometry(w, h)
-    const uv = g.attributes.uv
-    for (let i = 0; i < uv.count; i++)
-      uv.setXY(i, (x + uv.getX(i) * pw) / atlasInfo.size, (y + (1 - uv.getY(i)) * ph) / atlasInfo.size)
-    return this.add(mat, g, pos, [rx, ry, 0])
-  }
-  /** 百叶：一排带角度的叶片，后面衬深色，光影比贴图真实得多。 */
-  louver(mat, w, h, n, center, { back = M.anod, ry = 0 } = {}) {
-    const [cx, cy, cz] = center
-    const sin = Math.sin(ry),
-      cos = Math.cos(ry)
-    this.box(back, [w, h, 0.004], [cx - sin * 0.012, cy, cz - cos * 0.012], { rot: [0, ry, 0] })
-    const pitch = h / n
-    for (let i = 0; i < n; i++)
-      this.box(mat, [w - 0.006, pitch * 0.82, 0.003], [cx, cy - h / 2 + pitch * (i + 0.5), cz], {
-        rot: new THREE.Euler(0.72, ry, 0, 'YXZ'),
-      })
-    return this
-  }
-  /** 明装螺丝。 */
-  screws(points, { axis = 'z', r = 0.005, mat = M.zinc } = {}) {
-    for (const p of points) this.cyl(mat, r, 0.003, p, { axis, seg: 6 })
-    return this
-  }
-  toMesh() {
-    if (!this.bins.size) return null
-    const mesh = doc.createMesh(this.name)
-    for (const [mat, list] of this.bins) mesh.addPrimitive(primitive(mergeVertices(mergeGeometries(list), 1e-5), mat))
-    return mesh
-  }
-}
-
-function primitive(g, mat) {
-  const buffer = doc.getRoot().listBuffers()[0]
-  const pos = g.attributes.position.array,
-    nor = g.attributes.normal.array
-  let uv = g.attributes.uv.array
-  if (mat.tile) {
-    // 平铺贴图：按面朝向做盒状投影，纹理在任何尺寸的零件上密度都一样。
-    uv = new Float32Array((pos.length / 3) * 2)
-    for (let i = 0; i < pos.length / 3; i++) {
-      const [ax, ay, az] = [Math.abs(nor[i * 3]), Math.abs(nor[i * 3 + 1]), Math.abs(nor[i * 3 + 2])]
-      const [u, v] =
-        ax > ay && ax > az
-          ? [pos[i * 3 + 2], pos[i * 3 + 1]]
-          : ay > az
-            ? [pos[i * 3], pos[i * 3 + 2]]
-            : [pos[i * 3], pos[i * 3 + 1]]
-      uv[i * 2] = u * mat.tileScale
-      uv[i * 2 + 1] = v * mat.tileScale
-    }
-  }
-  const accessor = (type, array) =>
-    doc.createAccessor().setType(type).setArray(new Float32Array(array)).setBuffer(buffer)
-  const p = doc
-    .createPrimitive()
-    .setMaterial(mat.gltf)
-    .setAttribute('POSITION', accessor('VEC3', pos))
-    .setAttribute('NORMAL', accessor('VEC3', nor))
-  if (mat.tile || mat.decal) p.setAttribute('TEXCOORD_0', accessor('VEC2', uv))
-  if (mat.vcol) p.setAttribute('COLOR_0', accessor('VEC3', g.attributes.color.array))
-  const count = pos.length / 3
-  p.setIndices(
-    doc
-      .createAccessor()
-      .setType('SCALAR')
-      .setArray(count > 65535 ? new Uint32Array(g.index.array) : new Uint16Array(g.index.array))
-      .setBuffer(buffer),
-  )
-  return p
-}
-
-const scene = doc.createScene('储能柜')
-const root = doc.createNode('储能柜').setExtras({ assetNodeId: 'ess' })
-scene.addChild(root)
-const nodes = {}
-
-/** 把零件放进场景：id 写进 assetNodeId，重新生成模型后编辑器里的绑定和修改依然有效。 */
-function place(part, id, pos = [0, 0, 0], parent = root, mesh = undefined) {
-  const node = doc.createNode(part.name).setTranslation(pos).setExtras({ assetNodeId: id })
-  const m = mesh === undefined ? part.toMesh() : mesh
-  if (m) node.setMesh(m)
-  parent.addChild(node)
-  nodes[id] = node
-  return node
-}
+const { doc, M, Part, AXIS, nodes, root, place, channel, finish } = await createKit({
+  name: '储能柜',
+  rootId: 'ess',
+  flat: LITE,
+})
 
 // ---------------------------------------------------------------- 尺寸
 const W = 1.36,
@@ -548,105 +288,126 @@ const rackBottom = BASE + 0.3,
 }
 
 // ---------------------------------------------------------------- 电池包：一份网格，九个实例
-const packParts = (() => {
-  const tray = new Part('外壳')
-  const w = packW,
-    h = packH,
-    d = packD
-  tray.box(M.alu, [w, 0.006, d], [0, 0.003, 0])
-  for (const s of [-1, 1]) tray.box(M.alu, [0.006, h - 0.012, d], [(s * (w - 0.006)) / 2, (h - 0.012) / 2, 0])
-  tray.box(M.alu, [w, h - 0.012, 0.006], [0, (h - 0.012) / 2, -d / 2 + 0.003])
-  for (const s of [-1, 1]) tray.box(M.alu, [0.018, 0.006, d - 0.02], [(s * (w - 0.03)) / 2, h - 0.015, 0]) // 翻边
+const packParts = LITE
+  ? null
+  : (() => {
+      const tray = new Part('外壳')
+      const w = packW,
+        h = packH,
+        d = packD
+      tray.box(M.alu, [w, 0.006, d], [0, 0.003, 0])
+      for (const s of [-1, 1]) tray.box(M.alu, [0.006, h - 0.012, d], [(s * (w - 0.006)) / 2, (h - 0.012) / 2, 0])
+      tray.box(M.alu, [w, h - 0.012, 0.006], [0, (h - 0.012) / 2, -d / 2 + 0.003])
+      for (const s of [-1, 1]) tray.box(M.alu, [0.018, 0.006, d - 0.02], [(s * (w - 0.03)) / 2, h - 0.015, 0]) // 翻边
 
-  const cover = new Part('上盖')
-  cover.box(M.dark, [w + 0.004, 0.006, d - 0.004], [0, 0, 0], { r: 0.002 })
-  for (const x of [-0.24, -0.08, 0.08, 0.24]) cover.box(M.dark, [0.05, 0.004, d - 0.1], [x, 0.004, 0], { r: 0.0015 })
-  const screwPts = []
-  for (const s of [-1, 1]) for (let z = -0.42; z <= 0.42; z += 0.42) screwPts.push([(s * (w - 0.02)) / 2, 0.004, z])
-  cover.screws(screwPts, { axis: 'y', r: 0.004 })
+      const cover = new Part('上盖')
+      cover.box(M.dark, [w + 0.004, 0.006, d - 0.004], [0, 0, 0], { r: 0.002 })
+      for (const x of [-0.24, -0.08, 0.08, 0.24])
+        cover.box(M.dark, [0.05, 0.004, d - 0.1], [x, 0.004, 0], { r: 0.0015 })
+      const screwPts = []
+      for (const s of [-1, 1]) for (let z = -0.42; z <= 0.42; z += 0.42) screwPts.push([(s * (w - 0.02)) / 2, 0.004, z])
+      cover.screws(screwPts, { axis: 'y', r: 0.004 })
 
-  // 电芯：4 排 9 列，每颗一个蓝膜长方体、两个极柱，相邻极柱之间连一片镍排
-  const cells = new Part('电芯模组')
-  const cols = 8,
-    rows = 3,
-    cw = 0.082,
-    ch = 0.104,
-    cd = 0.24
-  const dx = (w - 0.03) / cols,
-    dz = (d - 0.1) / rows
-  const y0 = 0.008
-  const nickel = new THREE.BoxGeometry(0.066, 0.0015, 0.03)
-  for (let r = 0; r < rows; r++) {
-    const z = -d / 2 + 0.03 + dz * (r + 0.5)
-    for (let c = 0; c < cols; c++) {
-      const x = -((cols - 1) * dx) / 2 + c * dx
-      cells.box(M.cell, [cw, ch, cd], [x, y0 + ch / 2, z])
-      cells.box(M.plastic, [cw - 0.006, 0.002, cd - 0.012], [x, y0 + ch + 0.001, z])
-      cells.cyl(M.alu, 0.012, 0.006, [x, y0 + ch + 0.004, z - 0.075], { seg: 6 })
-      cells.cyl(M.copper, 0.012, 0.006, [x, y0 + ch + 0.004, z + 0.075], { seg: 6 })
-      cells.add(M.zinc, nickel, [x, y0 + ch + 0.0078, z - 0.075])
-    }
-    cells.box(M.fpc, [w - 0.06, 0.0012, 0.022], [0, y0 + ch + 0.0088, z]) // 采样排线
-  }
-  cells.box(M.plastic, [0.22, 0.006, 0.09], [0.2, y0 + ch + 0.01, d / 2 - 0.1])
-  cells.label('pcb', 0.21, 0.08, [0.2, y0 + ch + 0.0135, d / 2 - 0.1], { rx: -Math.PI / 2 })
+      // 电芯：4 排 9 列，每颗一个蓝膜长方体、两个极柱，相邻极柱之间连一片镍排
+      const cells = new Part('电芯模组')
+      const cols = 8,
+        rows = 3,
+        cw = 0.082,
+        ch = 0.104,
+        cd = 0.24
+      const dx = (w - 0.03) / cols,
+        dz = (d - 0.1) / rows
+      const y0 = 0.008
+      const nickel = new THREE.BoxGeometry(0.066, 0.0015, 0.03)
+      for (let r = 0; r < rows; r++) {
+        const z = -d / 2 + 0.03 + dz * (r + 0.5)
+        for (let c = 0; c < cols; c++) {
+          const x = -((cols - 1) * dx) / 2 + c * dx
+          cells.box(M.cell, [cw, ch, cd], [x, y0 + ch / 2, z])
+          cells.box(M.plastic, [cw - 0.006, 0.002, cd - 0.012], [x, y0 + ch + 0.001, z])
+          cells.cyl(M.alu, 0.012, 0.006, [x, y0 + ch + 0.004, z - 0.075], { seg: 6 })
+          cells.cyl(M.copper, 0.012, 0.006, [x, y0 + ch + 0.004, z + 0.075], { seg: 6 })
+          cells.add(M.zinc, nickel, [x, y0 + ch + 0.0078, z - 0.075])
+        }
+        cells.box(M.fpc, [w - 0.06, 0.0012, 0.022], [0, y0 + ch + 0.0088, z]) // 采样排线
+      }
+      cells.box(M.plastic, [0.22, 0.006, 0.09], [0.2, y0 + ch + 0.01, d / 2 - 0.1])
+      cells.label('pcb', 0.21, 0.08, [0.2, y0 + ch + 0.0135, d / 2 - 0.1], { rx: -Math.PI / 2 })
 
-  // 前面板：这是柜门打开后看到的部分，细节都放在这里
-  const front = new Part('前面板')
-  const z0 = d / 2
-  front.box(M.anod, [w + 0.03, h, 0.012], [0, h / 2, z0 + 0.006], { r: 0.003, seg: 2 })
-  front.label('packLabel', 0.2, 0.0423, [-0.2, h - 0.037, z0 + 0.0125])
-  for (const s of [-1, 1]) {
-    const x = s * (w / 2 - 0.018)
-    front.tube(
-      M.plastic,
-      [
-        [x, 0.032, z0 + 0.012],
-        [x, 0.036, z0 + 0.034],
-        [x, 0.075, z0 + 0.042],
-        [x, 0.114, z0 + 0.034],
-        [x, 0.118, z0 + 0.012],
-      ],
-      0.0075,
-      { radial: 6, seg: 10 },
-    )
-    front.screws(
-      [
-        [x, 0.018, z0 + 0.0125],
-        [x, 0.132, z0 + 0.0125],
-      ],
-      { r: 0.0045 },
-    )
-  }
-  // 高压接插件：+ 和 −
-  for (const [x, polarity] of [
-    [-0.05, 'plus'],
-    [0.05, 'minus'],
-  ]) {
-    front.box(M.hv, [0.04, 0.05, 0.014], [x, 0.058, z0 + 0.018], { r: 0.004 })
-    front.cyl(M.hv, 0.016, 0.024, [x, 0.058, z0 + 0.034], { axis: 'z', seg: 16 })
-    front.cyl(M.plastic, 0.009, 0.004, [x, 0.058, z0 + 0.0465], { axis: 'z', seg: 12 })
-    front.label(polarity, 0.016, 0.016, [x, 0.098, z0 + 0.0125])
-  }
-  // 通信口和指示灯
-  for (const x of [-0.16, -0.11]) {
-    front.box(M.plastic, [0.035, 0.022, 0.012], [x, 0.06, z0 + 0.018], { r: 0.002 })
-    front.box(M.alu, [0.022, 0.011, 0.001], [x, 0.06, z0 + 0.0245])
-  }
-  front.cyl(M.ledGreen, 0.004, 0.002, [-0.21, 0.06, z0 + 0.013], { axis: 'z', seg: 10 })
-  front.cyl(M.ledAmber, 0.004, 0.002, [-0.23, 0.06, z0 + 0.013], { axis: 'z', seg: 10 })
-  // 液冷快插
-  for (const [x, mat] of [
-    [0.19, M.coolBlue],
-    [0.25, M.coolRed],
-  ]) {
-    front.cyl(M.alu, 0.012, 0.018, [x, 0.07, z0 + 0.02], { axis: 'z', seg: 12 })
-    front.cyl(mat, 0.0135, 0.012, [x, 0.07, z0 + 0.034], { axis: 'z', seg: 12 })
-  }
-  return { tray: tray.toMesh(), cover: cover.toMesh(), cells: cells.toMesh(), front: front.toMesh() }
-})()
+      // 前面板：这是柜门打开后看到的部分，细节都放在这里
+      const front = new Part('前面板')
+      const z0 = d / 2
+      front.box(M.anod, [w + 0.03, h, 0.012], [0, h / 2, z0 + 0.006], { r: 0.003, seg: 2 })
+      front.label('packLabel', 0.2, 0.0423, [-0.2, h - 0.037, z0 + 0.0125])
+      for (const s of [-1, 1]) {
+        const x = s * (w / 2 - 0.018)
+        front.tube(
+          M.plastic,
+          [
+            [x, 0.032, z0 + 0.012],
+            [x, 0.036, z0 + 0.034],
+            [x, 0.075, z0 + 0.042],
+            [x, 0.114, z0 + 0.034],
+            [x, 0.118, z0 + 0.012],
+          ],
+          0.0075,
+          { radial: 6, seg: 10 },
+        )
+        front.screws(
+          [
+            [x, 0.018, z0 + 0.0125],
+            [x, 0.132, z0 + 0.0125],
+          ],
+          { r: 0.0045 },
+        )
+      }
+      // 高压接插件：+ 和 −
+      for (const [x, polarity] of [
+        [-0.05, 'plus'],
+        [0.05, 'minus'],
+      ]) {
+        front.box(M.hv, [0.04, 0.05, 0.014], [x, 0.058, z0 + 0.018], { r: 0.004 })
+        front.cyl(M.hv, 0.016, 0.024, [x, 0.058, z0 + 0.034], { axis: 'z', seg: 16 })
+        front.cyl(M.plastic, 0.009, 0.004, [x, 0.058, z0 + 0.0465], { axis: 'z', seg: 12 })
+        front.label(polarity, 0.016, 0.016, [x, 0.098, z0 + 0.0125])
+      }
+      // 通信口和指示灯
+      for (const x of [-0.16, -0.11]) {
+        front.box(M.plastic, [0.035, 0.022, 0.012], [x, 0.06, z0 + 0.018], { r: 0.002 })
+        front.box(M.alu, [0.022, 0.011, 0.001], [x, 0.06, z0 + 0.0245])
+      }
+      front.cyl(M.ledGreen, 0.004, 0.002, [-0.21, 0.06, z0 + 0.013], { axis: 'z', seg: 10 })
+      front.cyl(M.ledAmber, 0.004, 0.002, [-0.23, 0.06, z0 + 0.013], { axis: 'z', seg: 10 })
+      // 液冷快插
+      for (const [x, mat] of [
+        [0.19, M.coolBlue],
+        [0.25, M.coolRed],
+      ]) {
+        front.cyl(M.alu, 0.012, 0.018, [x, 0.07, z0 + 0.02], { axis: 'z', seg: 12 })
+        front.cyl(mat, 0.0135, 0.012, [x, 0.07, z0 + 0.034], { axis: 'z', seg: 12 })
+      }
+      return { tray: tray.toMesh(), cover: cover.toMesh(), cells: cells.toMesh(), front: front.toMesh() }
+    })()
 const packEntries = []
-for (let i = 0; i < PACKS; i++) {
+if (LITE) {
+  // 轻量版：九个电池包合成一个部件，只留从柜门能看到的前面板
+  const p = new Part('电池模组')
+  for (let i = 0; i < PACKS; i++) {
+    const y = pitch * i
+    const z0 = packD / 2
+    p.box(M.alu, [packW, packH, packD], [0, y + packH / 2, 0])
+    p.box(M.anod, [packW + 0.03, packH, 0.012], [0, y + packH / 2, z0 + 0.006])
+    p.label('packLabel', 0.2, 0.0423, [-0.2, y + packH - 0.037, z0 + 0.0125])
+    for (const x of [-0.05, 0.05]) p.box(M.hv, [0.04, 0.05, 0.02], [x, y + 0.058, z0 + 0.02])
+    for (const [x, mat] of [
+      [0.19, M.coolBlue],
+      [0.25, M.coolRed],
+    ])
+      p.box(mat, [0.025, 0.025, 0.03], [x, y + 0.07, z0 + 0.025])
+  }
+  place(p, 'ess.packs', [packCX, rackBottom, packZ])
+}
+for (let i = 0; i < (LITE ? 0 : PACKS); i++) {
   const number = String(i + 1).padStart(2, '0')
   const id = `ess.pack${number}`
   const y = rackBottom + i * pitch
@@ -776,7 +537,7 @@ const elecX = (SX + xR) / 2 + 0.002 // 电气仓中线
   p.box(M.zinc, [0.385, 0.006, d + 0.02], [0, -0.003, -d / 2])
   place(p, 'ess.ems', [elecX, 1.2, zF - 0.14])
 }
-{
+if (!LITE) {
   const p = new Part('交流配电单元')
   const w = 0.35,
     h = 0.42
@@ -827,7 +588,7 @@ const elecX = (SX + xR) / 2 + 0.002 // 电气仓中线
   for (const y of [0.16, 0.38]) p.box(M.zinc, [0.024, 0.012, 0.2], [0, y, -0.18])
   place(p, 'ess.fire.cylinder', [elecX + 0.03, BASE + 0.06, zF - 0.26])
 }
-{
+if (!LITE) {
   const p = new Part('消防控制器')
   p.box(M.plasticLight, [0.14, 0.18, 0.05], [0, 0, 0], { r: 0.004 })
   p.box(M.red, [0.11, 0.03, 0.002], [0, 0.058, 0.0255])
@@ -919,7 +680,7 @@ const elecX = (SX + xR) / 2 + 0.002 // 电气仓中线
 
 // ---------------------------------------------------------------- 线缆：爆炸时收起，不留在半空
 const frontZ = packZ + packD / 2
-{
+if (!LITE) {
   const p = new Part('动力线')
   for (let i = 0; i < PACKS - 1; i++) {
     const y = rackBottom + i * pitch + 0.058
@@ -980,7 +741,7 @@ const frontZ = packZ + packD / 2
     )
   place(p, 'ess.cables.power')
 }
-{
+if (!LITE) {
   const p = new Part('通信线')
   for (let k = 0; k < 3; k++) {
     const offset = k * 0.011
@@ -1010,7 +771,7 @@ const frontZ = packZ + packD / 2
   }
   place(p, 'ess.cables.signal')
 }
-{
+if (!LITE) {
   const p = new Part('液冷管路')
   const mx = packCX + packW / 2 + 0.03
   p.cyl(M.coolBlue, 0.013, 1.86, [mx - 0.006, rackBottom + 0.72, frontZ + 0.052], { seg: 12 })
@@ -1042,7 +803,7 @@ const frontZ = packZ + packD / 2
   }
   place(p, 'ess.cables.coolant')
 }
-{
+if (!LITE) {
   const p = new Part('消防管路')
   const cy = BASE + 0.06 + 0.46 + 0.17
   p.tube(
@@ -1065,24 +826,13 @@ const frontZ = packZ + packD / 2
 
 // ---------------------------------------------------------------- 动画
 const ease = t => (t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t))
-function channel(animation, node, path, times, values, size) {
-  const buffer = doc.getRoot().listBuffers()[0]
-  const input = doc.createAccessor().setType('SCALAR').setArray(new Float32Array(times)).setBuffer(buffer)
-  const output = doc
-    .createAccessor()
-    .setType(size === 4 ? 'VEC4' : 'VEC3')
-    .setArray(new Float32Array(values))
-    .setBuffer(buffer)
-  const sampler = doc.createAnimationSampler().setInput(input).setOutput(output).setInterpolation('LINEAR')
-  animation.addSampler(sampler)
-  animation.addChannel(doc.createAnimationChannel().setTargetNode(node).setTargetPath(path).setSampler(sampler))
-}
 const quatY = angle => [0, Math.sin(angle / 2), 0, Math.cos(angle / 2)]
 const quatZ = angle => [0, 0, Math.sin(angle / 2), Math.cos(angle / 2)]
 
 /** 把「从 t0 到 t1 的一段运动」采样成关键帧；reverse 生成反向片段，开门和关门、爆炸和复位一一对应。 */
 function tween(animation, id, path, value, t0, t1, total, reverse) {
   const node = nodes[id]
+  if (!node) return // 轻量版没有线缆等部件
   const samples = 14
   const times = [],
     values = []
@@ -1109,6 +859,7 @@ function tween(animation, id, path, value, t0, t1, total, reverse) {
 }
 const baseT = id => nodes[id].getTranslation()
 const move = (animation, id, delta, t0, t1, total, reverse) => {
+  if (!nodes[id]) return
   const b = baseT(id)
   tween(
     animation,
@@ -1152,6 +903,7 @@ function doorsClip(name, reverse) {
 doorsClip('Doors_Open', false)
 doorsClip('Doors_Close', true)
 
+// 轻量版成排摆放，只向前、向上展开，不穿到隔壁柜子里
 function explodeClip(name, reverse) {
   const a = doc.createAnimation(name)
   const total = 5
@@ -1171,23 +923,24 @@ function explodeClip(name, reverse) {
       reverse,
     )
   // 外壳向四周散开
-  move(a, 'ess.door.battery', [-1.25, 0, 1.15], 0.3, 1.5, total, reverse)
-  move(a, 'ess.door.electrical', [2.55, 0, 0.9], 0.4, 1.6, total, reverse)
-  move(a, 'ess.roof', [0, 1.7, 0], 0.5, 1.7, total, reverse)
-  move(a, 'ess.ceiling', [0, 1.28, 0], 0.6, 1.8, total, reverse)
-  move(a, 'ess.panel.left', [-1.9, 0, 0], 0.6, 1.8, total, reverse)
-  move(a, 'ess.panel.right', [2.3, 0, 0], 0.6, 1.8, total, reverse)
-  move(a, 'ess.panel.back', [0, 0, -1.1], 0.6, 1.8, total, reverse)
-  move(a, 'ess.cooling', [0, 0, -1.9], 0.7, 1.9, total, reverse)
+  move(a, 'ess.door.battery', LITE ? [0, 0, 1.7] : [-1.25, 0, 1.15], 0.3, 1.5, total, reverse)
+  move(a, 'ess.door.electrical', LITE ? [0, 0, 1.7] : [2.55, 0, 0.9], 0.4, 1.6, total, reverse)
+  move(a, 'ess.roof', LITE ? [0, 1.25, 0] : [0, 1.7, 0], 0.5, 1.7, total, reverse)
+  move(a, 'ess.ceiling', LITE ? [0, 0.9, 0] : [0, 1.28, 0], 0.6, 1.8, total, reverse)
+  if (!LITE) move(a, 'ess.panel.left', [-1.9, 0, 0], 0.6, 1.8, total, reverse)
+  if (!LITE) move(a, 'ess.panel.right', [2.3, 0, 0], 0.6, 1.8, total, reverse)
+  if (!LITE) move(a, 'ess.panel.back', [0, 0, -1.1], 0.6, 1.8, total, reverse)
+  if (!LITE) move(a, 'ess.cooling', [0, 0, -1.9], 0.7, 1.9, total, reverse)
   // 电气仓设备向右抽出，各走各的距离，避免重叠
-  move(a, 'ess.pcs', [1.2, 0.5, 0.2], 1.3, 2.5, total, reverse)
-  move(a, 'ess.ems', [1.2, 0.34, 0.6], 1.4, 2.6, total, reverse)
+  move(a, 'ess.pcs', LITE ? [0, 0, 1.0] : [1.2, 0.5, 0.2], 1.3, 2.5, total, reverse)
+  move(a, 'ess.ems', LITE ? [0, 0, 1.0] : [1.2, 0.34, 0.6], 1.4, 2.6, total, reverse)
   move(a, 'ess.breakers', [1.2, 0.1, 0.9], 1.5, 2.7, total, reverse)
   move(a, 'ess.busbars', [0, 0, -0.22], 2.7, 3.2, total, reverse)
   move(a, 'ess.fire.panel', [1.1, -0.02, 1.3], 1.6, 2.8, total, reverse)
-  move(a, 'ess.fire.cylinder', [1.2, 0, 0.5], 1.7, 2.9, total, reverse)
+  move(a, 'ess.fire.cylinder', LITE ? [0, 0, 1.2] : [1.2, 0, 0.5], 1.7, 2.9, total, reverse)
   // 电池包向前抽出、纵向拉开；上盖掀起，露出电芯
   move(a, 'ess.hvbox', [0, -0.05, 0.85], 1.9, 3, total, reverse)
+  move(a, 'ess.packs', [0, 0.03, 0.85], 2.1, 3.2, total, reverse)
   for (const { i, id } of packEntries) {
     const t = 2.1 + i * 0.09
     move(a, id, [0, i * 0.14 + 0.03, 0.85], t, t + 1.1, total, reverse)
@@ -1202,34 +955,10 @@ function serviceClip(name, reverse) {
   const a = doc.createAnimation(name)
   move(a, 'ess.pack05', [0, 0, 0.72], 0, 1.6, 1.6, reverse)
 }
-serviceClip('Pack_Pull', false)
-serviceClip('Pack_Insert', true)
+if (!LITE) {
+  serviceClip('Pack_Pull', false)
+  serviceClip('Pack_Insert', true)
+}
 
-const raw = join(work, 'raw.glb')
-await new NodeIO().registerExtensions([KHRMaterialsEmissiveStrength]).write(raw, doc)
-
-// 压缩：贴图转 WebP，几何和动画用 Meshopt（节点层级保持不变，所以不用 optimize 的合并步骤）
-const transform = (command, input, out, ...args) =>
-  execFileSync('npx', ['--yes', '@gltf-transform/cli@4.5.1', command, input, out, ...args], { stdio: 'pipe' })
-transform('webp', raw, join(work, 'webp.glb'), '--quality', '88')
-transform('meshopt', join(work, 'webp.glb'), output, '--level', 'medium')
-await rm(work, { recursive: true, force: true })
-
-let tris = 0,
-  prims = 0
-const seen = doc
-  .getRoot()
-  .listNodes()
-  .filter(n => n.getMesh())
-for (const node of seen)
-  for (const p of node.getMesh().listPrimitives()) {
-    prims++
-    tris += (p.getIndices()?.getCount() ?? 0) / 3
-  }
-console.log(
-  `节点 ${doc.getRoot().listNodes().length} · 网格节点 ${seen.length} · 绘制批次 ${prims} · 三角面 ${Math.round(tris)} · 材质 ${doc.getRoot().listMaterials().length} · 动画 ${doc
-    .getRoot()
-    .listAnimations()
-    .map(a => a.getName())
-    .join(', ')}`,
-)
+await finish(output)
+await disposeTextures()

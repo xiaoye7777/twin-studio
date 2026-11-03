@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { confirmAction } from '@/components/ui/confirm'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { FileUp, Plus, Sparkles } from 'lucide-vue-next'
+import { ChevronDown, FileUp, Plus, Sparkles } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import CreateProjectDialog from '@/components/project/CreateProjectDialog.vue'
 import ProjectCard from '@/components/project/ProjectCard.vue'
+import UiDropdown from '@/components/ui/UiDropdown.vue'
+import { createStorageStation } from '@/demo/storageStation'
 import { createZeroCarbonPark } from '@/demo/zeroCarbonPark'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
 import { SceneHistoryRepository } from '@/infrastructure/history/SceneHistoryRepository'
@@ -23,12 +25,28 @@ const exportingId = ref('')
 const scenes = new LocalSceneRepository()
 const packages = new ProjectPackageService(scenes, new IndexedDbAssetRepository(), projectStore)
 
-async function createDemo(): Promise<void> {
+const demos = [
+  {
+    label: '储能电站（精细模型）',
+    testid: 'create-demo-storage',
+    create: createStorageStation,
+    done: '已创建储能电站示例',
+  },
+  {
+    label: '零碳园区（卡通模型）',
+    testid: 'create-demo-park',
+    create: createZeroCarbonPark,
+    done: '已创建零碳园区示例',
+  },
+]
+const demoMenu = [demos.map(demo => ({ label: demo.label, testid: demo.testid, action: () => void createDemo(demo) }))]
+
+async function createDemo(demo: (typeof demos)[number]): Promise<void> {
   if (creatingDemo.value) return
   creatingDemo.value = true
   try {
-    const project = await createZeroCarbonPark(projectStore.addImportedProject)
-    ElMessage.success('已创建零碳智慧园区示例')
+    const project = await demo.create(projectStore.addImportedProject)
+    ElMessage.success(demo.done)
     editProject(project)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '创建示例失败')
@@ -114,9 +132,13 @@ function openDashboard(project: Project): void {
         <p>搭建园区三维场景，配置设备数据与告警，导出给数据大屏放映</p>
       </div>
       <div class="projects__actions">
-        <button class="s-btn" data-testid="create-park-demo" :disabled="creatingDemo" @click="createDemo">
-          <Sparkles :size="14" />{{ creatingDemo ? '创建中…' : '零碳园区示例' }}
-        </button>
+        <UiDropdown :sections="demoMenu" :width="190">
+          <template #default="{ toggle }">
+            <button class="s-btn" data-testid="create-demo" :disabled="creatingDemo" @click="toggle">
+              <Sparkles :size="14" />{{ creatingDemo ? '创建中…' : '生成案例' }}<ChevronDown :size="12" />
+            </button>
+          </template>
+        </UiDropdown>
         <button class="s-btn" data-testid="import-project" :disabled="importing" @click="packageInput?.click()">
           <FileUp :size="14" />{{ importing ? '导入中…' : '导入项目包' }}
         </button>
@@ -149,10 +171,16 @@ function openDashboard(project: Project): void {
     </div>
     <div v-else class="projects__empty">
       <Sparkles :size="28" />
-      <h2>从零碳园区示例开始</h2>
-      <p>示例包含光伏、风电、储能和建筑模型，已配置设备数据、告警规则、能流线和自动导览。</p>
+      <h2>从案例开始</h2>
+      <p>案例已配置设备、数据、告警规则、能流线、交互和自动导览，可以直接预览和修改。</p>
       <div class="projects__actions">
-        <button class="s-btn s-btn--primary" @click="createDemo"><Sparkles :size="14" />创建示例</button>
+        <UiDropdown :sections="demoMenu" :width="190">
+          <template #default="{ toggle }">
+            <button class="s-btn s-btn--primary" :disabled="creatingDemo" @click="toggle">
+              <Sparkles :size="14" />{{ creatingDemo ? '创建中…' : '生成案例' }}<ChevronDown :size="12" />
+            </button>
+          </template>
+        </UiDropdown>
         <button class="s-btn" @click="dialogVisible = true"><Plus :size="14" />新建空白项目</button>
       </div>
     </div>

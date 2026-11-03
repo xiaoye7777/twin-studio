@@ -127,6 +127,15 @@ export async function renderTextures(out) {
     swAmber: [1380, 20, 24, 24, `<div style="width:100%;height:100%;background:#ffab1f"></div>`],
     swRed: [1420, 20, 24, 24, `<div style="width:100%;height:100%;background:#ff3a2c"></div>`],
     swWhite: [1460, 20, 24, 24, `<div style="width:100%;height:100%;background:#f4f8ff"></div>`],
+    pvCell: [1300, 60, 420, 300, `<div class="pv">${Array.from({ length: 48 }, () => '<i></i>').join('')}</div>`],
+    tagMain: [20, 1680, 620, 120, `<div class="tag"><b>T1</b><span>主变压器 MAIN TRANSFORMER</span></div>`],
+    tagBox: [660, 1680, 620, 120, `<div class="tag light"><b>箱变</b><span>箱式变压器 PAD-MOUNTED</span></div>`],
+    tagSwitch: [1300, 1680, 720, 120, `<div class="tag light"><b>35kV</b><span>开关舱 SWITCHGEAR ROOM</span></div>`],
+    tagControl: [20, 1820, 620, 120, `<div class="tag light"><b>站控室</b><span>CONTROL ROOM</span></div>`],
+    tagEv: [660, 1820, 620, 120, `<div class="tag"><b>光储充</b><span>PV · STORAGE · EV</span></div>`],
+    evScreen: [1300, 1820, 300, 200, `<div class="ev"><b>充电桩</b><span>-- kW</span><em>请插枪</em></div>`],
+    sign: [20, 1950, 1000, 90, `<div class="sign-wide"><b>储能电站</b><span>ENERGY STORAGE STATION</span></div>`],
+    swGlow: [1620, 1820, 24, 24, `<div style="width:100%;height:100%;background:#ffe2b0"></div>`],
     arrow: [
       20,
       1540,
@@ -154,6 +163,9 @@ export async function renderTextures(out) {
 .firetag{width:100%;height:100%;background:#fff;border:6px solid #b01615;border-radius:12px;color:#b01615;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}.firetag b{font-size:62px;line-height:1.1}.firetag span{font-size:50px}.firetag em{font-style:normal;font-size:24px;font-weight:700}
 .hazard{width:100%;height:100%;background:repeating-linear-gradient(-45deg,#f6c21c 0 40px,#14181b 40px 80px)}
 .strip{width:100%;height:100%;display:flex;background:#f1f3f4;color:#14181b;border:2px solid #333}.strip span{flex:1;text-align:center;font-size:26px;line-height:64px;border-right:2px solid #333;font-weight:600}
+.pv{width:100%;height:100%;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(6,1fr);gap:3px;padding:6px;background:#c9ced2}.pv i{display:block;background:linear-gradient(135deg,#10274f,#183a73 55%,#0d2044);box-shadow:inset 0 0 0 1px #2b4f8c}
+.ev{width:100%;height:100%;background:#0a1b26;color:#d9f7f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}.ev b{font-size:34px}.ev span{font-size:44px;color:#2fd0c8}.ev em{font-style:normal;font-size:22px;color:#7fb7c0}
+.sign-wide{width:100%;height:100%;display:flex;align-items:baseline;justify-content:center;gap:30px;background:#1d6f86;color:#fff;line-height:90px}.sign-wide b{font-size:62px;letter-spacing:16px;font-weight:600}.sign-wide span{font-size:26px;letter-spacing:4px}
 .arrow{width:100%;height:100%;display:flex;align-items:center;gap:12px;padding:0 16px;background:#1a2024;color:#fff;font-size:30px;border-radius:6px}
 </style>${Object.entries(labels)
     .map(
@@ -171,10 +183,21 @@ export async function renderTextures(out) {
     clip: { x: 0, y: 0, width: SIZE, height: SIZE },
   })
   const powder = await page.evaluate(powderTextures)
+  const fence = await page.evaluate(() => {
+    // 焊接钢丝网：透明底上的细网格，可平铺
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 128
+    const c = canvas.getContext('2d')
+    c.fillStyle = '#fff'
+    c.fillRect(0, 0, 128, 14)
+    c.fillRect(0, 0, 14, 128)
+    return canvas.toDataURL('image/png')
+  })
   await close()
   const save = (name, url) => writeFile(`${out}/${name}`, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'))
   await save('powder-normal.png', powder.normal)
   await save('powder-rough.png', powder.rough)
+  await save('fence-mesh.png', fence)
   await writeFile(
     `${out}/atlas.json`,
     JSON.stringify({

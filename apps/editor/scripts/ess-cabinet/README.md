@@ -7,6 +7,8 @@ cd apps/editor
 CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node scripts/ess-cabinet/build.mjs
 ```
 
+加 `--lite` 生成轻量版 `ess-cabinet-lite.glb`：约 1.9 万面（完整版 8.3 万），不含电芯和线缆，九个电池包合成一个部件 `ess.packs`，没有 `Pack_Pull`。其余部件 id 和动画片段名相同，成排摆放时用它。
+
 没有装 Playwright 的 Chromium 时才需要 `CHROME_PATH`。模型变了之后，删掉 `public/demo-assets/thumbs/ess-cabinet.webp`，再运行一次 `scripts/render-builtin-thumbnails.mjs` 更新缩略图。
 
 ## 动画片段

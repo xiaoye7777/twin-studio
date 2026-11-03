@@ -36,6 +36,17 @@ export const builtinModels: readonly BuiltinModel[] = [
     ],
   },
   {
+    key: 'essCabinetLite',
+    file: 'ess-cabinet-lite.glb',
+    name: '储能柜（轻量）',
+    category: '储能',
+    description: '外观和动画同可拆解版，不含电芯和线缆，适合成排摆放。预览时单击开关门，双击爆炸和复位',
+    interactions: [
+      { trigger: 'click', clip: 'Doors_Open', mode: 'toggle' },
+      { trigger: 'double-click', clip: 'Explode', mode: 'toggle' },
+    ],
+  },
+  {
     key: 'container',
     file: 'energy-storage-container.glb',
     name: '储能集装箱',
@@ -53,6 +64,14 @@ export const builtinModels: readonly BuiltinModel[] = [
   },
   { key: 'waterTank', file: 'water-tank.glb', name: '储水罐', category: '储能', description: '冷热水蓄能、消防水罐' },
   // 新能源
+  {
+    key: 'pvCarport',
+    file: 'pv-carport.glb',
+    name: '光伏车棚',
+    category: '新能源',
+    description: '16 米悬臂式光伏车棚，可停 4 辆车',
+  },
+  { key: 'evCharger', file: 'ev-charger.glb', name: '充电桩', category: '新能源', description: '双枪直流充电桩' },
   {
     key: 'solar',
     file: 'solar-array.glb',
@@ -98,6 +117,28 @@ export const builtinModels: readonly BuiltinModel[] = [
     description: '带光伏板的坡屋面结构',
   },
   // 电力
+  {
+    key: 'hvBay',
+    file: 'hv-bay.glb',
+    name: '高压出线间隔',
+    category: '电力',
+    description: '10 米跨格构架，带绝缘子串和隔离开关',
+  },
+  {
+    key: 'mainTransformer',
+    file: 'main-transformer.glb',
+    name: '主变压器',
+    category: '电力',
+    description: '油浸式主变，带散热器、套管和储油柜',
+  },
+  {
+    key: 'boxTransformer',
+    file: 'box-transformer.glb',
+    name: '箱式变压器',
+    category: '电力',
+    description: '三仓式箱变',
+  },
+  { key: 'cableTray', file: 'cable-tray.glb', name: '电缆桥架', category: '电力', description: '一段 6 米，可排列' },
   { key: 'polePlain', file: 'pole-plain.glb', name: '配电线杆', category: '电力', description: '架空线路水泥杆' },
   {
     key: 'poleTransformer',
@@ -171,6 +212,14 @@ export const builtinModels: readonly BuiltinModel[] = [
     description: '变电站进线门型架',
   },
   // 建筑
+  {
+    key: 'switchgearCabin',
+    file: 'switchgear-cabin.glb',
+    name: '35kV 开关舱',
+    category: '建筑',
+    description: '12 米预制舱',
+  },
+  { key: 'controlRoom', file: 'control-room.glb', name: '站控室', category: '建筑', description: '12 米预制舱' },
   {
     key: 'energyCenter',
     file: 'energy-center.glb',
@@ -289,6 +338,23 @@ export const builtinModels: readonly BuiltinModel[] = [
     description: '停放的小轿车，盖着车衣',
   },
   // 园区
+  {
+    key: 'stationFence',
+    file: 'station-fence.glb',
+    name: '电站围栏',
+    category: '园区',
+    description: '一段 4 米，带防攀爬',
+  },
+  {
+    key: 'stationFenceLong',
+    file: 'station-fence-long.glb',
+    name: '电站围栏（16 米）',
+    category: '园区',
+    description: '一段 16 米，带防攀爬',
+  },
+  { key: 'lightMast', file: 'light-mast.glb', name: '高杆灯', category: '园区', description: '12 米投光灯杆，带监控' },
+  { key: 'boomBarrier', file: 'boom-barrier.glb', name: '道闸', category: '园区', description: '5 米道闸' },
+  { key: 'stationSign', file: 'station-sign.glb', name: '电站标识', category: '园区', description: '门口标识牌' },
   { key: 'streetLamp', file: 'street-lamp.glb', name: '路灯', category: '园区', description: '约 4 米高的庭院路灯' },
   { key: 'cameraA', file: 'security-camera-a.glb', name: '监控摄像头 A', category: '园区', description: '枪式摄像机' },
   { key: 'cameraB', file: 'security-camera-b.glb', name: '监控摄像头 B', category: '园区', description: '枪式摄像机' },

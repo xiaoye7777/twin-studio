@@ -112,6 +112,7 @@ try {
   const suites = [
     ['editor', 'apps/editor/tests/studio.mjs', { TEST_BASE_URL: editor }],
     ['demo', 'apps/editor/tests/zero-carbon-demo.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
+    ['station', 'apps/editor/tests/storage-station.mjs', { TEST_BASE_URL: editor }],
     ['screens', 'apps/editor/tests/screens.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
     ['interfaces', 'apps/editor/tests/data-api.mjs', { TEST_BASE_URL: editor, TWIN_DATA_PORT: String(dataPort) }],
     [

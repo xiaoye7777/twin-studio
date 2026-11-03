@@ -59,4 +59,4 @@ pnpm pack:viewer     # 生成 release/twin-studio-viewer-<version>.tgz
 
 ## 模型
 
-建模规范见 [docs/modeling-guide.md](docs/modeling-guide.md)。内置模型资源库来自 Poly Haven、Poly Pizza 和 Kenney，均为 CC0（逐个来源见 `apps/editor/public/demo-assets/CREDITS.md`）。
+建模规范见 [docs/modeling-guide.md](docs/modeling-guide.md)。内置模型资源库来自 Poly Haven、Poly Pizza 和 Kenney，均为 CC0；储能柜和电站设备由 `apps/editor/scripts/` 下的脚本生成（逐个来源见 `apps/editor/public/demo-assets/CREDITS.md`）。

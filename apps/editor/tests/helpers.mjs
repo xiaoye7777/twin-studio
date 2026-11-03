@@ -46,7 +46,8 @@ export async function settled(page) {
 /** Creates the zero-carbon sample from the project page; it opens in the editor. Returns its project id. */
 export async function createDemo(page, baseUrl) {
   await page.goto(`${baseUrl}/projects`)
-  await page.getByTestId('create-park-demo').click()
+  await page.getByTestId('create-demo').click()
+  await page.getByTestId('create-demo-park').click()
   await page.waitForURL(/\/editor\/zero-carbon-/)
   await waitForStudio(page)
   return page.evaluate(() => window.__studio.projectId)
