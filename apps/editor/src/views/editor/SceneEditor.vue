@@ -1,160 +1,140 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import EditorResourcePanel from '@/components/editor/EditorResourcePanel.vue'
-import EditorToolbar from '@/components/editor/EditorToolbar.vue'
-import InspectorPanel from '@/components/editor/InspectorPanel.vue'
-import SceneSettingsPanel from '@/components/editor/SceneSettingsPanel.vue'
-import SceneHierarchy from '@/components/editor/SceneHierarchy.vue'
-import ThreeViewport from '@/components/editor/ThreeViewport.vue'
+import BottomDock from '@/components/studio/BottomDock.vue'
+import ResizeHandle from '@/components/studio/ResizeHandle.vue'
+import HistoryDialog from '@/components/studio/HistoryDialog.vue'
+import InspectorPanel from '@/components/studio/InspectorPanel.vue'
+import PerformanceDialog from '@/components/studio/PerformanceDialog.vue'
+import LeftPanel from '@/components/studio/LeftPanel.vue'
+import StatusBar from '@/components/studio/StatusBar.vue'
+import ReplaceModelDialog from '@/components/studio/ReplaceModelDialog.vue'
+import StudioDialogs from '@/components/studio/StudioDialogs.vue'
+import ViewportMenu from '@/components/studio/ViewportMenu.vue'
+import StudioViewport from '@/components/studio/StudioViewport.vue'
+import TopBar from '@/components/studio/TopBar.vue'
+import { IndexedDbAssetRepository } from '@/infrastructure/assets'
+import { SceneHistoryRepository } from '@/infrastructure/history/SceneHistoryRepository'
+import { LocalSceneRepository } from '@/infrastructure/scenes'
 import { useProjectStore } from '@/stores/project'
-import { useSceneSettingsStore } from '@/stores/sceneSettings'
+import { SessionKey } from '@/studio/context'
+import { EditorSession } from '@/studio/EditorSession'
+import { createShellState, panelLimits, ShellKey } from '@/studio/shell'
+import { useStudioShortcuts } from '@/studio/useShortcuts'
+import '@/studio/studio.css'
 
 const route = useRoute()
 const router = useRouter()
-const projectStore = useProjectStore()
-const sceneSettingsStore = useSceneSettingsStore()
+const projects = useProjectStore()
+const projectId = String(route.params.projectId ?? '')
+const project = projects.getProjectById(projectId)
+const session = shallowRef<EditorSession | null>(null)
+const shell = createShellState()
+const viewport = ref<InstanceType<typeof StudioViewport>>()
+provide(SessionKey, session)
+provide(ShellKey, shell)
+useStudioShortcuts(session, shell)
 
-const projectId = computed(() => String(route.params.projectId))
-const projectName = computed(() => projectStore.getProjectById(projectId.value)?.name ?? '未命名项目')
+const preview = computed(() => session.value?.ui.mode === 'preview')
 
-type ResizablePanel = 'left' | 'right' | 'bottom'
-
-const editorAreaRef = ref<HTMLElement | null>(null)
-const leftPanelWidth = ref(240)
-const rightPanelWidth = ref(280)
-const bottomPanelHeight = ref(160)
-let activePanel: ResizablePanel | null = null
-let previousCursor = ''
-let previousUserSelect = ''
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), Math.max(min, max))
-}
-
-function handleResize(event: PointerEvent): void {
-  const bounds = editorAreaRef.value?.getBoundingClientRect()
-  if (!bounds || !activePanel) return
-
-  if (activePanel === 'left') {
-    leftPanelWidth.value = clamp(
-      event.clientX - bounds.left,
-      180,
-      Math.min(480, bounds.width - rightPanelWidth.value - 420),
-    )
-  } else if (activePanel === 'right') {
-    rightPanelWidth.value = clamp(
-      bounds.right - event.clientX,
-      240,
-      Math.min(520, bounds.width - leftPanelWidth.value - 420),
-    )
-  } else {
-    bottomPanelHeight.value = clamp(bounds.bottom - event.clientY, 112, Math.min(420, bounds.height - 240))
+onMounted(async () => {
+  if (!project) {
+    await router.replace('/projects')
+    return
   }
-}
+  const canvas = viewport.value?.canvas
+  if (!canvas) return
+  const opened = new EditorSession(canvas, {
+    projectId,
+    projectName: project.name,
+    assets: new IndexedDbAssetRepository(),
+    scenes: new LocalSceneRepository(),
+    history: new SceneHistoryRepository(),
+    // A save also marks the project as updated; opening only refreshes the picture.
+    onCover: (cover, saved) =>
+      saved ? projects.updateProject(projectId, { cover }) : projects.setCover(projectId, cover),
+  })
+  session.value = opened
+  if (import.meta.env.DEV) (window as unknown as { __studio?: EditorSession }).__studio = opened
+  await opened.open()
+  document.title = `${project.name} · Twin Studio`
+})
 
-function stopResize(): void {
-  if (!activePanel) return
-  activePanel = null
-  window.removeEventListener('pointermove', handleResize)
-  window.removeEventListener('pointerup', stopResize)
-  window.removeEventListener('pointercancel', stopResize)
-  document.body.style.cursor = previousCursor
-  document.body.style.userSelect = previousUserSelect
-}
-
-function startResize(panel: ResizablePanel, event: PointerEvent): void {
-  event.preventDefault()
-  stopResize()
-  activePanel = panel
-  previousCursor = document.body.style.cursor
-  previousUserSelect = document.body.style.userSelect
-  document.body.style.cursor = panel === 'bottom' ? 'row-resize' : 'col-resize'
-  document.body.style.userSelect = 'none'
-  window.addEventListener('pointermove', handleResize)
-  window.addEventListener('pointerup', stopResize)
-  window.addEventListener('pointercancel', stopResize)
-}
-
-// Dialogs, dropdowns and messages are teleported to <body>; the dark Element Plus theme follows the editor.
-onMounted(() => document.documentElement.classList.add('dark'))
 onBeforeUnmount(() => {
-  stopResize()
-  document.documentElement.classList.remove('dark')
+  session.value?.dispose()
+  session.value = null
 })
 </script>
 
 <template>
-  <div class="studio flex h-screen min-w-[1200px] flex-col overflow-hidden">
-    <EditorToolbar :project-name="projectName" @back="router.push('/projects')" />
-    <div ref="editorAreaRef" class="flex min-h-0 flex-1 flex-col">
-      <div class="flex min-h-0 flex-1">
-        <div class="h-full shrink-0 overflow-hidden" :style="{ width: `${leftPanelWidth}px` }">
-          <SceneHierarchy />
-        </div>
-        <div
-          data-testid="resize-left-panel"
-          aria-label="调整场景列表宽度"
-          class="panel-resizer panel-resizer--vertical"
-          role="separator"
-          @pointerdown="startResize('left', $event)"
-        />
-        <ThreeViewport :key="projectId" :project-id="projectId" :project-name="projectName" />
-        <div
-          data-testid="resize-right-panel"
-          aria-label="调整属性面板宽度"
-          class="panel-resizer panel-resizer--vertical"
-          role="separator"
-          @pointerdown="startResize('right', $event)"
-        />
-        <div class="h-full shrink-0 overflow-hidden" :style="{ width: `${rightPanelWidth}px` }">
-          <SceneSettingsPanel v-if="sceneSettingsStore.panelOpen" />
-          <InspectorPanel v-else />
-        </div>
+  <div class="studio" :class="{ 'is-preview': preview, 'is-dock-closed': !shell.dockOpen }" data-testid="studio">
+    <TopBar v-if="session" />
+    <div v-else class="studio__topbar-placeholder" />
+    <div
+      class="studio__body"
+      :style="{ '--left-width': `${shell.leftWidth}px`, '--right-width': `${shell.rightWidth}px` }"
+    >
+      <div v-if="session?.ui.ready && !preview" class="studio__left">
+        <LeftPanel class="studio__panel" />
+        <ResizeHandle v-model="shell.leftWidth" edge="right" v-bind="panelLimits.left" />
       </div>
-      <div
-        data-testid="resize-resource-panel"
-        aria-label="调整资源面板高度"
-        class="panel-resizer panel-resizer--horizontal"
-        role="separator"
-        @pointerdown="startResize('bottom', $event)"
-      />
-      <div class="shrink-0 overflow-hidden" :style="{ height: `${bottomPanelHeight}px` }">
-        <EditorResourcePanel />
+      <div class="studio__center">
+        <StudioViewport ref="viewport" />
+        <BottomDock v-if="session?.ui.ready && !preview" />
+      </div>
+      <div v-if="session?.ui.ready && !preview" class="studio__right">
+        <InspectorPanel class="studio__panel" />
+        <ResizeHandle v-model="shell.rightWidth" edge="left" v-bind="panelLimits.right" />
       </div>
     </div>
+    <StatusBar v-if="session" />
+    <StudioDialogs v-if="session?.ui.ready" />
+    <ReplaceModelDialog v-if="session?.ui.ready" />
+    <ViewportMenu v-if="session?.ui.ready" />
+    <HistoryDialog v-if="session?.ui.ready" />
+    <PerformanceDialog v-if="session?.ui.ready" />
   </div>
 </template>
 
 <style scoped>
-/* Hairline splitters with a generous invisible hit area. */
-.panel-resizer {
+.studio__topbar-placeholder {
+  border-bottom: 1px solid var(--s-line);
+  background: var(--s-panel);
+}
+.studio__body {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: var(--left-width) minmax(0, 1fr) var(--right-width);
+}
+.studio.is-preview .studio__body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.studio.is-preview .studio__center {
+  grid-column: 1;
+}
+.studio__left {
   position: relative;
-  z-index: 30;
-  flex: none;
-  background: var(--color-line);
-  transition: background-color 120ms ease;
-  touch-action: none;
+  display: flex;
+  min-height: 0;
+  grid-column: 1;
+  border-right: 1px solid var(--s-line);
 }
-
-.panel-resizer::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
+.studio__panel {
+  min-width: 0;
+  flex: 1;
 }
-
-.panel-resizer:hover,
-.panel-resizer:active {
-  background: var(--color-accent);
+.studio__right {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  grid-column: 3;
+  border-left: 1px solid var(--s-line);
 }
-
-.panel-resizer--vertical {
-  width: 1px;
-  cursor: col-resize;
-}
-
-.panel-resizer--horizontal {
-  height: 1px;
-  cursor: row-resize;
+.studio__center {
+  grid-column: 2;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
 }
 </style>

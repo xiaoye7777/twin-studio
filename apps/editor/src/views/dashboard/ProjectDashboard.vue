@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, EditPen, Monitor } from '@element-plus/icons-vue'
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TwinSceneViewer } from '@twin-studio/viewer'
 import { IndexedDbAssetRepository } from '@/infrastructure/assets'
@@ -31,6 +31,31 @@ const lastInteraction = shallowRef<ViewerInteractionEvent | null>(null)
 // Preview through the exact delivery path: export the saved project to .twin.zip and load it with the SDK.
 const packages = new ProjectPackageService(new LocalSceneRepository(), new IndexedDbAssetRepository(), projects)
 const packageSource = shallowRef<Blob | null>(null)
+
+// Venues differ: check the composition on their screen shapes, and the look on weaker hardware.
+const ratios = [
+  { id: 'fill', label: '铺满窗口', value: 0 },
+  { id: '16:9', label: '16:9 标准大屏', value: 16 / 9 },
+  { id: '21:9', label: '21:9 影院宽银幕', value: 21 / 9 },
+  { id: '32:9', label: '32:9 超宽拼接屏', value: 32 / 9 },
+  { id: '4:3', label: '4:3 投影', value: 4 / 3 },
+  { id: '9:16', label: '9:16 竖屏', value: 9 / 16 },
+] as const
+const ratio = ref<(typeof ratios)[number]['id']>('fill')
+const quality = ref<'auto' | 'low' | 'medium' | 'high'>('auto')
+const windowSize = ref({ width: window.innerWidth, height: window.innerHeight })
+const onResize = () => (windowSize.value = { width: window.innerWidth, height: window.innerHeight })
+onMounted(() => window.addEventListener('resize', onResize))
+onBeforeUnmount(() => window.removeEventListener('resize', onResize))
+const frame = computed(() => {
+  const value = ratios.find(item => item.id === ratio.value)!.value
+  if (!value) return null
+  const width = Math.max(200, windowSize.value.width - 32)
+  const height = Math.max(200, windowSize.value.height - 84 - 16)
+  return width / height > value
+    ? { width: Math.round(height * value), height }
+    : { width, height: Math.round(width / value) }
+})
 
 const devices = computed(() => {
   const state = runtime.value
@@ -114,17 +139,33 @@ onBeforeUnmount(() => {
     :data-runtime-revision="runtime?.runtimeRevision ?? 0"
     class="relative h-screen min-h-[640px] min-w-[1100px] overflow-hidden bg-slate-950 text-slate-200"
   >
-    <section data-testid="dashboard-viewer-region" class="absolute inset-0 overflow-hidden bg-slate-950">
-      <TwinSceneViewer
-        v-if="packageSource"
-        ref="viewer"
-        :key="projectId"
-        :source="packageSource"
-        @loaded="handleLoaded"
-        @selection-change="handleSelection"
-        @interaction-event="lastInteraction = $event"
-        @error="status = $event"
-      />
+    <section
+      data-testid="dashboard-viewer-region"
+      :class="frame ? 'top-[84px] bottom-4 flex items-center justify-center' : 'inset-y-0'"
+      class="absolute inset-x-0 overflow-hidden bg-slate-950"
+    >
+      <div
+        data-testid="dashboard-frame"
+        :style="frame ? { width: `${frame.width}px`, height: `${frame.height}px` } : undefined"
+        :class="frame ? 'relative rounded-sm ring-1 ring-white/20 shadow-2xl shadow-black/60' : 'absolute inset-0'"
+      >
+        <TwinSceneViewer
+          v-if="packageSource"
+          ref="viewer"
+          :key="projectId"
+          :source="packageSource"
+          :quality="quality"
+          @loaded="handleLoaded"
+          @selection-change="handleSelection"
+          @interaction-event="lastInteraction = $event"
+          @error="status = $event"
+        />
+        <span
+          v-if="frame"
+          class="pointer-events-none absolute bottom-2 right-3 rounded bg-black/50 px-2 py-0.5 font-mono text-[10px] text-slate-300"
+          >{{ ratio }} · {{ frame.width }}×{{ frame.height }}</span
+        >
+      </div>
     </section>
 
     <header
@@ -164,6 +205,25 @@ onBeforeUnmount(() => {
         />
         {{ liveLabels[liveStatus] }}
       </span>
+      <select
+        v-model="ratio"
+        data-testid="dashboard-ratio"
+        title="按场馆屏幕比例预览构图"
+        class="ml-3 rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-300 outline-none hover:border-blue-500"
+      >
+        <option v-for="item in ratios" :key="item.id" :value="item.id">{{ item.label }}</option>
+      </select>
+      <select
+        v-model="quality"
+        data-testid="dashboard-quality"
+        title="画质：选择「流畅」可模拟普通电脑上的效果"
+        class="ml-2 rounded-md border border-slate-700 bg-slate-800 px-2 py-1.5 text-xs text-slate-300 outline-none hover:border-blue-500"
+      >
+        <option value="auto">画质：自动</option>
+        <option value="low">画质：流畅（普通电脑）</option>
+        <option value="medium">画质：均衡</option>
+        <option value="high">画质：高清</option>
+      </select>
       <button
         data-testid="dashboard-edit"
         class="ml-3 flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition hover:border-blue-500 hover:text-white"
@@ -174,7 +234,10 @@ onBeforeUnmount(() => {
       </button>
     </header>
 
-    <div class="pointer-events-none absolute inset-x-4 bottom-4 top-[84px] z-10 flex justify-between gap-6">
+    <div
+      v-if="!frame"
+      class="pointer-events-none absolute inset-x-4 bottom-4 top-[84px] z-10 flex justify-between gap-6"
+    >
       <aside
         data-testid="dashboard-left-panel"
         class="pointer-events-auto w-[260px] shrink-0 overflow-auto rounded-xl border border-white/10 bg-slate-950/45 p-4 shadow-2xl shadow-black/20 backdrop-blur-md"

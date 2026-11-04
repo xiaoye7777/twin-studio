@@ -21,5 +21,11 @@ export type PublicTypeChecks = [
   Assert<Fits<Core.ViewerDiagnostics, Public.ViewerDiagnostics>>,
   Assert<Fits<Core.TwinSceneViewerPublicApi, Public.TwinSceneViewerPublicApi>>,
   Assert<Fits<Core.SceneDocumentV1, Public.SceneDocumentV1>>,
+  Assert<Fits<Core.SceneDocumentV2, Public.SceneDocumentV2>>,
+  Assert<Fits<Core.ViewerTourState, Public.ViewerTourState>>,
+  Assert<Fits<Core.ViewerAlarm, Public.ViewerAlarm>>,
+  Assert<Fits<Core.ViewerHoverEvent, Public.ViewerHoverEvent>>,
+  Assert<Fits<Core.ViewerNode, Public.ViewerNode>>,
+  Assert<Same<Core.ViewerQuality, Public.ViewerQuality>>,
   Assert<Fits<typeof Core.SCENE_DOCUMENT_VERSION, typeof Public.SCENE_DOCUMENT_VERSION>>,
 ]

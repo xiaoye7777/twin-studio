@@ -2,6 +2,12 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'
 import { json, record } from './packageFormat'
 import type { AssetType } from '../assets/AssetRepository'
 
+/** Meshopt 的占位缓冲区只声明解压后的大小，文件里没有对应的数据，所以它可以比二进制块大。 */
+function isMeshoptFallback(buffer: Record<string, unknown>): boolean {
+  const extension = record(buffer.extensions) ? buffer.extensions.EXT_meshopt_compression : undefined
+  return record(extension) && extension.fallback === true
+}
+
 /** Only self-contained GLB and Radiance HDR are supported by the current asset UI. */
 export function validatePortableAsset(bytes: Uint8Array, type: AssetType): void {
   if (type === 'environment') {
@@ -57,7 +63,7 @@ export function validatePortableAsset(bytes: Uint8Array, type: AssetType): void 
       !record(buffer) ||
       typeof buffer.byteLength !== 'number' ||
       buffer.byteLength < 0 ||
-      (buffer.uri === undefined && buffer.byteLength > binarySize)
+      (buffer.uri === undefined && !isMeshoptFallback(buffer) && buffer.byteLength > binarySize)
     )
       throw new Error('GLB 二进制缓冲区不完整')
   }

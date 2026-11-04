@@ -1,5 +1,14 @@
+/*
+ * 点击交互的执行：预览 / Viewer 中点击、双击、悬停对象时，按场景配置执行动作
+ * （显示 / 隐藏对象、飞到视角、播放导览、选中设备、向宿主发事件……）。
+ */
 import type { Object3D } from 'three'
-import { cloneInteractions, type InteractionTrigger, type SceneInteraction } from '../../domain/interactions'
+import {
+  type AnimationPlayMode,
+  cloneInteractions,
+  type InteractionTrigger,
+  type SceneInteraction,
+} from '../../domain/interactions'
 import { twinBindingTargetKey, type TwinBindingTarget } from '../../domain/twin'
 import type { ViewerInteractionEvent, ViewerTargetClick } from '../../contract/viewerContract'
 import type { BindingTargetResolver } from '../twin/BindingTargetResolver'
@@ -23,6 +32,11 @@ export interface InteractionRuntimeOptions {
   focusTarget(target: TwinBindingTarget): Promise<boolean>
   resolveDeviceId?(target: TwinBindingTarget): string | null
   emit(event: ViewerInteractionEvent): void
+  flyToBookmark?(bookmarkId: string): Promise<boolean>
+  playTour?(tourId: string): void
+  stopTour?(): void
+  playAnimation?(target: TwinBindingTarget, clip: string, mode: AnimationPlayMode): boolean
+  stopAnimation?(target: TwinBindingTarget, clip?: string): boolean
   publish?(diagnostics: InteractionDiagnostics): void
 }
 
@@ -82,6 +96,26 @@ export class InteractionRuntime {
           if (object) this.visibility.set(object, false)
           break
         }
+        case 'toggle': {
+          const object = this.options.resolver.resolve(target)
+          if (object) this.visibility.set(object, !object.visible)
+          break
+        }
+        case 'fly-to-bookmark':
+          await this.options.flyToBookmark?.(interaction.action.bookmarkId)
+          break
+        case 'play-tour':
+          this.options.playTour?.(interaction.action.tourId)
+          break
+        case 'stop-tour':
+          this.options.stopTour?.()
+          break
+        case 'play-animation':
+          this.options.playAnimation?.(target, interaction.action.clip, interaction.action.mode)
+          break
+        case 'stop-animation':
+          this.options.stopAnimation?.(target, interaction.action.clip)
+          break
         case 'highlight': {
           const effect = createEffect('outline', target)
           effect.id = `interaction:hover:${interaction.id}`

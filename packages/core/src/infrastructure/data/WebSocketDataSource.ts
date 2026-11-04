@@ -1,8 +1,21 @@
+/*
+ * WebSocket 数据源：连接网关，收到的消息按「设备编号 + 变量名」写入运行时状态；断线后 1s → 10s 退避重连。
+ * 连上后先发一条订阅消息（本场景有哪些设备和变量），模拟器据此生成数据，真实网关可以忽略。
+ * 消息解析在 messageMapping.ts（和 HTTP 轮询共用）。
+ */
+import type { SourceMapping } from '../../domain/dataSources'
 import type { TwinBinding, TwinRuntimeValueData, TwinVariableDataType } from '../../domain/twin'
 import type { DataSource, DataSourceConnectionStatus } from './DataSource'
+import { mapDeviceMessages, readPath } from './messageMapping'
 
 export interface WebSocketDataSourceOptions {
   url: string
+  /** 设备消息在每条推送里的位置；空 = 整条消息。 */
+  resultPath?: string
+  /** 连上后发送的第一条消息；空 = 本接口涉及的设备清单。 */
+  subscribe?: string
+  heartbeat?: { interval: number; message: string }
+  mapping?: SourceMapping
   getBindings(): readonly TwinBinding[]
   setRuntimeValue(bindingId: string, variableKey: string, value: TwinRuntimeValueData): void
   onStatus(status: DataSourceConnectionStatus, error?: string): void
@@ -29,6 +42,26 @@ function isValueOfType(value: unknown, dataType: TwinVariableDataType): value is
   return typeof value === dataType
 }
 
+/** The optional first client message: the devices and variables this scene displays. */
+export function subscriptionMessage(bindings: readonly TwinBinding[]): {
+  type: 'subscribe'
+  devices: Array<{ deviceId: string; variables: Array<{ key: string; dataType: TwinVariableDataType }> }>
+} {
+  const devices = new Map<string, Map<string, TwinVariableDataType>>()
+  for (const binding of bindings) {
+    const variables = devices.get(binding.device.id) ?? new Map<string, TwinVariableDataType>()
+    for (const variable of binding.variables) variables.set(variable.key, variable.dataType)
+    devices.set(binding.device.id, variables)
+  }
+  return {
+    type: 'subscribe',
+    devices: [...devices].map(([deviceId, variables]) => ({
+      deviceId,
+      variables: [...variables].map(([key, dataType]) => ({ key, dataType })),
+    })),
+  }
+}
+
 /** Maps the transport envelope to existing binding/variable identities. */
 export function mapWebSocketDeviceMessage(
   message: unknown,
@@ -52,6 +85,7 @@ export class WebSocketDataSource implements DataSource {
   private stopping = false
   private retryTimer: ReturnType<typeof setTimeout> | null = null
   private retries = 0
+  private heartbeat: ReturnType<typeof setInterval> | null = null
 
   constructor(private readonly options: WebSocketDataSourceOptions) {}
 
@@ -75,21 +109,27 @@ export class WebSocketDataSource implements DataSource {
         if (this.socket !== socket) return
         this.retries = 0
         this.options.onStatus('connected')
+        // Tell the gateway which devices this scene shows. Gateways that push everything may ignore it;
+        // the Twin Studio device simulator uses it to generate data for any project.
+        try {
+          socket.send(this.options.subscribe?.trim() || JSON.stringify(subscriptionMessage(this.options.getBindings())))
+        } catch {
+          // A failed hint never affects receiving data.
+        }
+        this.startHeartbeat(socket)
       })
       socket.addEventListener('message', event => {
         if (this.socket !== socket) return
         try {
           const parsed: unknown = JSON.parse(typeof event.data === 'string' ? event.data : '')
-          const messages = Array.isArray(parsed) ? parsed : [parsed]
-          let accepted = false
-          for (const message of messages) {
-            const updates = mapWebSocketDeviceMessage(message, this.options.getBindings())
-            for (const update of updates)
-              this.options.setRuntimeValue(update.bindingId, update.variableKey, update.value)
-            accepted = accepted || updates.length > 0
-          }
+          const updates = mapDeviceMessages(
+            readPath(parsed, this.options.resultPath ?? ''),
+            this.options.getBindings(),
+            this.options.mapping,
+          )
+          for (const update of updates) this.options.setRuntimeValue(update.bindingId, update.variableKey, update.value)
           this.options.onStatus('connected')
-          if (accepted) this.options.onMessage?.()
+          if (updates.length) this.options.onMessage?.()
         } catch {
           // The connection itself is still live; report the bad frame without dropping current values.
           this.options.onStatus('connected', '收到无法解析的 WebSocket JSON 消息')
@@ -101,6 +141,7 @@ export class WebSocketDataSource implements DataSource {
       socket.addEventListener('close', () => {
         if (this.socket !== socket) return
         this.socket = null
+        this.stopHeartbeat()
         activeSocketCount = Math.max(0, activeSocketCount - 1)
         if (this.stopping) return
         this.options.onStatus('disconnected', 'WebSocket 连接已关闭')
@@ -109,6 +150,20 @@ export class WebSocketDataSource implements DataSource {
     } catch (error) {
       this.options.onStatus('error', error instanceof Error ? error.message : 'WebSocket 连接失败')
     }
+  }
+
+  private startHeartbeat(socket: WebSocket): void {
+    const heartbeat = this.options.heartbeat
+    if (!heartbeat) return
+    this.stopHeartbeat()
+    this.heartbeat = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) socket.send(heartbeat.message)
+    }, heartbeat.interval * 1000)
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeat) clearInterval(this.heartbeat)
+    this.heartbeat = null
   }
 
   /** Demo-grade resilience: back off 1s → 2s → 4s … capped at 10s until stop(). */
@@ -123,6 +178,7 @@ export class WebSocketDataSource implements DataSource {
 
   stop(): void {
     this.stopping = true
+    this.stopHeartbeat()
     if (this.retryTimer) {
       clearTimeout(this.retryTimer)
       this.retryTimer = null

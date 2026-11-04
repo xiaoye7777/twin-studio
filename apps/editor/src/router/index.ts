@@ -5,12 +5,6 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/dev/viewer',
-      name: 'twin-viewer',
-      component: () => import('@/views/dev/ViewerPreview.vue'),
-      meta: { title: 'Twin Scene Viewer' },
-    },
-    {
       path: '/',
       component: AppLayout,
       children: [
@@ -23,6 +17,18 @@ const router = createRouter({
           name: 'projects',
           component: () => import('@/views/project/ProjectManagement.vue'),
           meta: { title: '项目管理' },
+        },
+        {
+          path: 'screens',
+          name: 'screens',
+          component: () => import('@/views/screen/ScreenList.vue'),
+          meta: { title: '数据大屏' },
+        },
+        {
+          path: 'datasources',
+          name: 'datasources',
+          component: () => import('@/views/datasource/DataSourceCenter.vue'),
+          meta: { title: '数据接口' },
         },
         {
           path: 'assets',
@@ -45,16 +51,28 @@ const router = createRouter({
       meta: { title: '场景编辑器' },
     },
     {
+      path: '/screens/:screenId/edit',
+      name: 'screen-editor',
+      component: () => import('@/views/screen/ScreenEditor.vue'),
+      meta: { title: '大屏编辑器' },
+    },
+    {
+      path: '/screens/:screenId/play',
+      name: 'screen-play',
+      component: () => import('@/views/screen/ScreenPreview.vue'),
+      meta: { title: '大屏放映' },
+    },
+    {
+      path: '/screens/:screenId/preview',
+      name: 'screen-preview',
+      component: () => import('@/views/screen/ScreenPreview.vue'),
+      meta: { title: '大屏预览' },
+    },
+    {
       path: '/projects/:projectId/dashboard',
       name: 'project-dashboard',
       component: () => import('@/views/dashboard/ProjectDashboard.vue'),
       meta: { title: '数据大屏' },
-    },
-    {
-      path: '/dev/meteor-sandbox',
-      name: 'meteor-sandbox',
-      component: () => import('@/views/dev/MeteorSandbox.vue'),
-      meta: { title: 'Meteor3D Runtime Sandbox' },
     },
     {
       path: '/:pathMatch(.*)*',

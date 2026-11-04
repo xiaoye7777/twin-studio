@@ -11,29 +11,8 @@ export interface Project {
 
 const STORAGE_KEY = 'digital-twin-studio-projects'
 
-const starterProjects: Project[] = [
-  {
-    id: 'shenzhen-energy-park',
-    name: '深圳储能产业园',
-    cover: 'linear-gradient(135deg, #dcecff 0%, #9fc5f8 52%, #597ca8 100%)',
-    createdAt: '2026-08-06T06:30:00.000Z',
-    updatedAt: '2026-08-13T08:20:00.000Z',
-  },
-  {
-    id: 'east-china-data-center',
-    name: '华东数据中心',
-    cover: 'linear-gradient(135deg, #dff6ef 0%, #91cdbb 52%, #527f77 100%)',
-    createdAt: '2026-08-02T03:15:00.000Z',
-    updatedAt: '2026-08-12T02:40:00.000Z',
-  },
-  {
-    id: 'smart-manufacturing-line',
-    name: '智能制造产线',
-    cover: 'linear-gradient(135deg, #efe7ff 0%, #b9a1e8 52%, #75639f 100%)',
-    createdAt: '2026-07-25T09:00:00.000Z',
-    updatedAt: '2026-08-10T10:10:00.000Z',
-  },
-]
+/** New installs start empty; the project page offers the zero-carbon park sample. */
+const starterProjects: Project[] = []
 
 function loadProjects(): Project[] {
   try {
@@ -60,7 +39,6 @@ export const useProjectStore = defineStore('project', () => {
     const project: Project = {
       id: createId(),
       name: name.trim(),
-      cover: 'linear-gradient(135deg, #e6f0ff 0%, #a8c8f0 52%, #6483aa 100%)',
       createdAt: timestamp,
       updatedAt: timestamp,
     }
@@ -88,5 +66,29 @@ export const useProjectStore = defineStore('project', () => {
     { deep: true },
   )
 
-  return { projects, projectCount, createProject, getProjectById, addImportedProject }
+  function updateProject(id: string, patch: Partial<Omit<Project, 'id'>>): void {
+    const project = getProjectById(id)
+    if (project) Object.assign(project, patch, { updatedAt: new Date().toISOString() })
+  }
+
+  /** The card picture; not an edit, so the project's update time stays. */
+  function setCover(id: string, cover: string): void {
+    const project = getProjectById(id)
+    if (project) project.cover = cover
+  }
+
+  function removeProject(id: string): void {
+    projects.value = projects.value.filter(project => project.id !== id)
+  }
+
+  return {
+    projects,
+    projectCount,
+    createProject,
+    getProjectById,
+    addImportedProject,
+    updateProject,
+    setCover,
+    removeProject,
+  }
 })

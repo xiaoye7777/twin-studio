@@ -1,9 +1,21 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
+    <script>
+      // 在页面渲染前设好主题，避免先闪一下错误的颜色（与 src/theme/themes.ts 的逻辑一致）。
+      ;(function () {
+        var choice = 'system'
+        try {
+          choice = localStorage.getItem('twin-studio:theme') || 'system'
+        } catch (error) {}
+        var dark = choice === 'system' ? matchMedia('(prefers-color-scheme: dark)').matches : choice !== 'light'
+        document.documentElement.dataset.theme = choice === 'system' ? (dark ? 'dark' : 'light') : choice
+        if (dark) document.documentElement.classList.add('dark')
+      })()
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+
     <meta name="description" content="面向企业的低代码数字孪生平台 Demo" />
     <title>Digital Twin Studio</title>
   </head>

@@ -5,6 +5,8 @@ export const TwinBindingTargetSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('asset-instance'), instanceId: nonEmptyString }),
   z.object({ type: z.literal('asset-node'), instanceId: nonEmptyString, assetNodeId: nonEmptyString }),
   z.object({ type: z.literal('primitive'), nodeId: nonEmptyString }),
+  /** Any scene node by id (groups, paths, areas, labels…). Scene format v2. */
+  z.object({ type: z.literal('node'), nodeId: nonEmptyString }),
 ])
 
 export const TwinVariableDataTypeSchema = z.enum(['number', 'boolean', 'string'])

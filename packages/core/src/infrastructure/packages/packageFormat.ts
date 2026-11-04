@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { SceneDocumentV1 } from '../../domain/scene'
+import type { SceneDocument } from '../../domain/scene'
 import { nonEmptyString, trimmedString } from '../../domain/schemaHelpers'
 import type { AssetType } from '../assets/AssetRepository'
 
@@ -55,10 +55,10 @@ export type PackageAsset = z.infer<typeof PackageAssetSchema>
 export type PackageManifest = z.infer<typeof PackageManifestSchema>
 
 /** Explicit schema dependencies. Rules embed recipes; effects/interactions have no assets. */
-export function collectSceneAssets(scene: SceneDocumentV1): Map<string, AssetType> {
+export function collectSceneAssets(scene: SceneDocument): Map<string, AssetType> {
   const result = new Map<string, AssetType>()
-  for (const instance of scene.instances) result.set(instance.assetId, 'model')
-  const environment = scene.sceneSettings?.environmentAssetId
+  for (const node of scene.nodes) if (node.kind === 'model') result.set(node.model.assetId, 'model')
+  const environment = scene.settings.sky.mode === 'hdr' ? scene.settings.sky.hdrAssetId : null
   if (environment) {
     if (result.has(environment)) throw new Error('同一资产不能同时作为模型和环境')
     result.set(environment, 'environment')

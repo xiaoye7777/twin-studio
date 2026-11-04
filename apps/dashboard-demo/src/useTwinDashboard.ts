@@ -1,9 +1,13 @@
 import { computed, ref, shallowRef } from 'vue'
 import type {
   TwinSceneViewerPublicApi,
+  ViewerAlarm,
+  ViewerBookmark,
   ViewerInteractionEvent,
   ViewerRuntimeState,
   ViewerSelection,
+  ViewerTour,
+  ViewerTourState,
 } from '@twin-studio/viewer'
 
 export interface DeviceView {
@@ -21,6 +25,12 @@ export function useTwinDashboard() {
   const selectedDeviceId = ref<string | null>(null)
   const lastEvent = shallowRef<ViewerInteractionEvent | null>(null)
   const loadStatus = ref('正在加载园区项目包…')
+  // SDK 0.4.0: views, tours, layers and alarms defined in the editor.
+  const bookmarks = shallowRef<ViewerBookmark[]>([])
+  const tours = shallowRef<ViewerTour[]>([])
+  const tour = shallowRef<ViewerTourState | null>(null)
+  const layers = ref<Array<{ id: string; name: string; visible: boolean }>>([])
+  const alarms = shallowRef<ViewerAlarm[]>([])
   const devices = computed<DeviceView[]>(() => {
     const state = runtime.value
     if (!state) return []
@@ -69,7 +79,15 @@ export function useTwinDashboard() {
     error: runtime.value?.dataSourceError ?? null,
   }))
   function handleLoaded(event: { projectName: string; objectCount: number; bindingCount: number }) {
-    runtime.value = viewerRef.value?.getRuntimeState() ?? null
+    const api = viewerRef.value
+    runtime.value = api?.getRuntimeState() ?? null
+    bookmarks.value = api?.getBookmarks() ?? []
+    tours.value = api?.getTours() ?? []
+    // Top-level groups (zones) work as layers.
+    layers.value = (api?.getNodes() ?? [])
+      .filter(node => node.kind === 'group' && node.parentId === null)
+      .map(({ id, name, visible }) => ({ id, name, visible }))
+    alarms.value = api?.getAlarms() ?? []
     loadStatus.value = `${event.projectName} · ${event.objectCount} 个对象 · ${event.bindingCount} 个设备绑定`
   }
   function handleSelection(selection: ViewerSelection) {
@@ -77,6 +95,25 @@ export function useTwinDashboard() {
   }
   function handleInteraction(event: ViewerInteractionEvent) {
     lastEvent.value = event
+  }
+  function handleTourChange(state: ViewerTourState) {
+    tour.value = state
+  }
+  function handleAlarmChange(list: ViewerAlarm[]) {
+    alarms.value = list
+  }
+  function toggleTour() {
+    const api = viewerRef.value
+    if (!api) return
+    if (tour.value?.playing) api.stopTour()
+    else if (tours.value[0]) void api.playTour(tours.value[0].id)
+  }
+  function flyTo(bookmarkId: string) {
+    void viewerRef.value?.flyToBookmark(bookmarkId)
+  }
+  function toggleLayer(id: string) {
+    const layer = layers.value.find(item => item.id === id)
+    if (layer && viewerRef.value?.setNodeVisible(id, !layer.visible)) layer.visible = !layer.visible
   }
   async function chooseDevice(deviceId: string) {
     if (viewerRef.value?.selectDevice(deviceId)) await viewerRef.value.focusDevice(deviceId)
@@ -99,5 +136,15 @@ export function useTwinDashboard() {
     handleInteraction,
     chooseDevice,
     clearSelection,
+    bookmarks,
+    tours,
+    tour,
+    layers,
+    alarms,
+    handleTourChange,
+    handleAlarmChange,
+    toggleTour,
+    flyTo,
+    toggleLayer,
   }
 }

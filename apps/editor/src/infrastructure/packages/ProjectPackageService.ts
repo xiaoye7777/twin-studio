@@ -9,7 +9,7 @@ import {
   PACKAGE_VERSION,
   type PackageManifest,
   readPackageZip,
-  type SceneDocumentV1,
+  type SceneDocument,
   type SceneRepository,
   sha256,
   validateManifest,
@@ -29,27 +29,18 @@ interface PackageProjects {
   addImportedProject(project: Project): void
 }
 
-/** Package rules on top of the scene schema: business IDs present and unique, geometry within range. */
-function validatePackageScene(raw: unknown): SceneDocumentV1 {
+/** Package rules on top of the scene schema: binding ids present and unique, primitive sizes in range. */
+function validatePackageScene(raw: unknown): SceneDocument {
   const { document: value } = loadSceneDocument(raw)
-  const unique = (ids: string[]) => ids.every(id => !!id) && new Set(ids).size === ids.length
-  if (
-    !unique(value.instances.map(item => item.instanceId)) ||
-    !unique(value.primitives.map(item => item.nodeId)) ||
-    !unique((value.bindings ?? []).map(item => item.id))
-  )
-    throw new Error('SceneDocument 包含重复或空业务 ID')
-  for (const instance of value.instances) {
-    if (!unique(instance.nodeOverrides.map(item => item.assetNodeId)))
-      throw new Error('SceneDocument 包含重复节点 override')
-  }
-  for (const primitive of value.primitives) {
-    for (const [key, size] of Object.entries(primitive.properties)) {
-      if (key === 'color') continue
-      if (typeof size !== 'number' || !Number.isFinite(size) || size < 0 || size > 1e6)
-        throw new Error('Primitive 几何参数无效')
+  const ids = value.bindings.map(item => item.id)
+  if (!ids.every(id => !!id) || new Set(ids).size !== ids.length) throw new Error('场景包含重复或空的设备绑定 ID')
+  for (const node of value.nodes) {
+    if (node.kind !== 'primitive') continue
+    for (const [key, size] of Object.entries(node.primitive)) {
+      if (typeof size !== 'number') continue
+      if (!Number.isFinite(size) || size < 0 || size > 1e6) throw new Error('基本体几何参数无效')
       if (key === 'radialSegments' && (!Number.isInteger(size) || size < 3 || size > 256))
-        throw new Error('Primitive 分段数超出支持范围')
+        throw new Error('基本体分段数超出支持范围')
     }
   }
   return value
@@ -147,9 +138,9 @@ export class ProjectPackageService {
       })
     }
     scene.projectId = projectId
-    for (const instance of scene.instances) instance.assetId = remap.get(instance.assetId)!
-    if (scene.sceneSettings?.environmentAssetId)
-      scene.sceneSettings.environmentAssetId = remap.get(scene.sceneSettings.environmentAssetId)!
+    for (const node of scene.nodes) if (node.kind === 'model') node.model.assetId = remap.get(node.model.assetId)!
+    const hdr = scene.settings.sky.hdrAssetId
+    if (hdr) scene.settings.sky.hdrAssetId = remap.get(hdr) ?? null
     const project: Project = {
       id: projectId,
       name: `${manifest.project.name.slice(0, 196)}（导入）`,

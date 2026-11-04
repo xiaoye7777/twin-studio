@@ -7,7 +7,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@sparkjsdev/spark': fileURLToPath(new URL('./src/internal/sparkStub.ts', import.meta.url)),
     },
     dedupe: ['three', 'vue'],
   },
@@ -18,6 +17,7 @@ export default defineConfig({
       fileName: () => 'twin-viewer.js',
       cssFileName: 'twin-viewer',
     },
-    rollupOptions: { external: ['vue', 'three', /^three\//] },
+    // three stays a peer dependency, but `?url` imports (bundled decoders) are inlined into a lazy chunk.
+    rollupOptions: { external: id => /^(vue|three)(\/|$)/.test(id) && !id.includes('?') },
   },
 })

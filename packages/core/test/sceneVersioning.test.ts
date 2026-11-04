@@ -6,16 +6,25 @@ import {
   SceneDocumentError,
   SceneDocumentVersionError,
 } from '../src/domain/scene/sceneVersioning'
+import { migrateSceneV1ToV2 } from '../src/domain/scene/sceneMigrations'
+import type { SceneDocumentV1 } from '../src/domain/scene'
 import { fixture, patch } from './helpers'
 
 const v1Fixtures = ['zero-carbon-park-models', 'zero-carbon-park-primitives', 'sdk-assets']
 
 describe('compatibility: every v1 document ever shipped still loads', () => {
-  it.each(v1Fixtures)('%s loads unchanged', name => {
+  it.each(v1Fixtures)('%s loads as its lossless v2 upgrade', name => {
     const raw = fixture(`v1/${name}.scene.json`)
     const { document, migratedFrom } = loadSceneDocument(raw)
+    expect(document).toEqual(migrateSceneV1ToV2(raw as SceneDocumentV1))
+    expect(migratedFrom).toBe(1)
+  })
+
+  it.each(v1Fixtures)('%s round-trips once upgraded (v2 loads unchanged)', name => {
+    const upgraded = loadSceneDocument(fixture(`v1/${name}.scene.json`)).document
+    const { document, migratedFrom } = loadSceneDocument(structuredClone(upgraded))
     // Deep equality proves validation keeps every field of real documents (nothing stripped).
-    expect(document).toEqual(raw)
+    expect(document).toEqual(upgraded)
     expect(migratedFrom).toBeNull()
   })
 

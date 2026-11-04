@@ -44,6 +44,9 @@ export function createViewerRuntimeState(state: TwinRuntimeState): ViewerRuntime
     get dataSourceError() {
       return state.dataSourceError
     },
+    get dataSourceStates() {
+      return state.dataSourceStates
+    },
     getRuntimeValue(bindingId: string, variableKey: string) {
       const value = state.getRuntimeValue(bindingId, variableKey)
       return value ? readonly(value) : null

@@ -82,7 +82,7 @@ describe('instantiateTemplate', () => {
 
   it('rejects model-relative targets on primitives', () => {
     expect(() => instantiateTemplate(clone(template) as never, { type: 'primitive', nodeId: 'n1' }, exists)).toThrow(
-      'Primitive',
+      '此模板需要模型实例',
     )
   })
 

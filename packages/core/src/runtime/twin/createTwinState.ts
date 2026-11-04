@@ -1,3 +1,8 @@
+/*
+ * 运行时数据状态（Vue 响应式）：设备绑定列表、每个「绑定 + 变量」的当前值、各数据接口的连接状态。
+ * 值只在内存里，不写进文档；runtimeRevision 每次有新值加一，界面和规则据此更新。
+ * dataSourceStates 是每个接口的状态；dataSourceStatus 等是汇总（只要有一个接口连着就是 connected）。
+ */
 import { ref, shallowRef } from 'vue'
 import {
   twinBindingTargetKey,
@@ -7,7 +12,7 @@ import {
   type TwinRuntimeValue,
   type TwinRuntimeValueData,
 } from '../../domain/twin'
-import type { DataSourceConnectionStatus, DataSourceType } from '../../infrastructure/data'
+import type { DataSourceConnectionStatus, DataSourceRuntimeState, DataSourceType } from '../../infrastructure/data'
 
 function cloneBinding(binding: TwinBinding): TwinBinding {
   return {
@@ -36,6 +41,25 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
   const dataSourceStatus = ref<DataSourceConnectionStatus>('disconnected')
   const dataSourceMessageCount = ref(0)
   const dataSourceError = ref<string | null>(null)
+  const dataSourceStates = shallowRef<DataSourceRuntimeState[]>([])
+
+  /** 由各接口的状态得出汇总。 */
+  function summarizeDataSources(): void {
+    const states = dataSourceStates.value
+    if (!states.length) return
+    const statuses = states.map(state => state.status)
+    dataSourceType.value = states[0]!.type
+    dataSourceStatus.value = statuses.includes('connected')
+      ? 'connected'
+      : statuses.includes('connecting')
+        ? 'connecting'
+        : statuses.includes('error')
+          ? 'error'
+          : 'disconnected'
+    const failed = states.find(state => state.error)
+    dataSourceError.value = failed ? (states.length > 1 ? `${failed.name}：${failed.error}` : failed.error) : null
+    dataSourceMessageCount.value = states.reduce((sum, state) => sum + state.messageCount, 0)
+  }
 
   function initializeProject(nextProjectId: string, savedBindings: readonly TwinBinding[] = []): void {
     projectId.value = nextProjectId
@@ -49,6 +73,7 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
     dataSourceStatus.value = 'disconnected'
     dataSourceMessageCount.value = 0
     dataSourceError.value = null
+    dataSourceStates.value = []
   }
 
   function resetProject(leavingProjectId: string): void {
@@ -65,6 +90,7 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
     dataSourceStatus.value = 'disconnected'
     dataSourceMessageCount.value = 0
     dataSourceError.value = null
+    dataSourceStates.value = []
   }
 
   function getBindingByTarget(target: TwinBindingTarget): TwinBinding | null {
@@ -132,7 +158,12 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
     onConfigurationChanged()
   }
 
-  function setRuntimeValue(bindingId: string, variableKey: string, value: TwinRuntimeValueData): void {
+  function setRuntimeValue(
+    bindingId: string,
+    variableKey: string,
+    value: TwinRuntimeValueData,
+    sourceId?: string,
+  ): void {
     runtimeValues.value = {
       ...runtimeValues.value,
       [runtimeValueKey(bindingId, variableKey)]: {
@@ -140,14 +171,18 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
         variableKey,
         value,
         updatedAt: new Date().toISOString(),
+        sourceId,
       },
     }
     runtimeRevision.value += 1
   }
 
-  function clearRuntimeValues(): void {
-    if (!Object.keys(runtimeValues.value).length) return
-    runtimeValues.value = {}
+  /** 清空数值；给了 sourceId 就只清这个接口提供的。 */
+  function clearRuntimeValues(sourceId?: string): void {
+    const entries = Object.entries(runtimeValues.value)
+    const kept = sourceId ? entries.filter(([, value]) => value.sourceId !== sourceId) : []
+    if (kept.length === entries.length) return
+    runtimeValues.value = Object.fromEntries(kept)
     runtimeRevision.value += 1
   }
 
@@ -172,8 +207,35 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
     dataSourceStatus.value = status
     dataSourceError.value = error ?? null
   }
-  function recordDataSourceMessage(): void {
-    dataSourceMessageCount.value += 1
+  /** 现在运行哪些接口。keep 里的接口保留原有状态（它们没有重启），其余从「连接中」开始。 */
+  function setDataSourceList(
+    sources: ReadonlyArray<{ id: string; name: string; type: DataSourceType }>,
+    keep: ReadonlySet<string>,
+  ): void {
+    dataSourceStates.value = sources.map(source => {
+      const existing = keep.has(source.id) ? dataSourceStates.value.find(state => state.id === source.id) : undefined
+      return existing
+        ? { ...existing, name: source.name }
+        : { ...source, status: 'connecting' as const, error: null, messageCount: 0 }
+    })
+    summarizeDataSources()
+  }
+  function updateDataSourceState(
+    id: string,
+    patch: Partial<Pick<DataSourceRuntimeState, 'status' | 'error' | 'messageCount'>>,
+  ): void {
+    if (!dataSourceStates.value.some(state => state.id === id)) return
+    dataSourceStates.value = dataSourceStates.value.map(state => (state.id === id ? { ...state, ...patch } : state))
+    summarizeDataSources()
+  }
+  /** 收到一条有效消息；不给 id 时只计入总数（QA 模拟数据）。 */
+  function recordDataSourceMessage(id?: string): void {
+    if (!id) {
+      dataSourceMessageCount.value += 1
+      return
+    }
+    const state = dataSourceStates.value.find(item => item.id === id)
+    if (state) updateDataSourceState(id, { messageCount: state.messageCount + 1 })
   }
   function resetDataSourceMessages(): void {
     dataSourceMessageCount.value = 0
@@ -193,6 +255,7 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
     dataSourceStatus,
     dataSourceMessageCount,
     dataSourceError,
+    dataSourceStates,
     initializeProject,
     resetProject,
     getBindingByTarget,
@@ -208,6 +271,8 @@ export function createTwinState(onConfigurationChanged: () => void = () => {}) {
     setMockRunning,
     recordMockTick,
     setDataSourceState,
+    setDataSourceList,
+    updateDataSourceState,
     recordDataSourceMessage,
     resetDataSourceMessages,
     cloneBindings: () => bindings.value.map(cloneBinding),
