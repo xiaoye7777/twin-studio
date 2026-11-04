@@ -10,6 +10,7 @@
 | 数据大屏编辑器 | [apps/editor/src/screen/README.md](../apps/editor/src/screen/README.md) |
 | 对外的 Viewer SDK | [packages/viewer/README.md](../packages/viewer/README.md) |
 | 场景文件格式 | [docs/schema/](schema/) |
+| 3D 编辑器的后端接口（草案） | [editor-api.md](editor-api.md) |
 
 ## 一、四个部分
 
